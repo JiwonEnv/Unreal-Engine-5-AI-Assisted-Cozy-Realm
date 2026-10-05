@@ -57,3 +57,6 @@
 *_BuiltData.uasset
 
 # SourceArt(원본 모델·텍스처·후가공 파일)는 레포에 올린다. 큰 파일은 .gitattributes의 LFS 규칙으로 관리.
+
+# 작업 스크린샷 (노션 카드·블로그용, 레포에는 안 올림)
+Captures/
