@@ -31,13 +31,13 @@ private:
 
 public:
 
-	/** Camera setup to use. When empty, built-in defaults are used */
+	/** 사용할 카메라 설정 에셋 (DA_CameraSettings_...). 비워 두면 코드의 기본값을 쓴다. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Camera")
 	TObjectPtr<UCozyRealmCameraSettings> Settings;
 
 	ACozyRealmCameraPawn();
 
-	/** Re-reads the settings asset and updates the camera */
+	/** 설정 에셋을 다시 읽어 카메라에 적용한다 */
 	UFUNCTION(BlueprintCallable, Category="Camera")
 	void ApplySettings();
 
