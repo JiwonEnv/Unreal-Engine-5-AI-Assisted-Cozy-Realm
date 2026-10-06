@@ -1,2 +1,4 @@
-﻿---,FacilityId,Inputs,OutputItem,OutputAmount,Seconds,Note
-Mill_Flour,Mill,"((""Wheat"", 3))",Flour,1,15,🙋 밀 3 → 밀가루 1 (15초) · 기능 2에서 사용
+﻿---,FacilityId,Inputs,OutputItem,OutputAmount,Seconds,bTestOnly,Note
+Mill_Flour,Mill,"((""Wheat"", 3))",Flour,1,15,False,🙋 밀 3 → 밀가루 1 (15초) · 기능 2에서 사용
+Mill_TestFlour2,Mill,"((""Wheat"", 4))",Flour,2,10,True,🤖 테스트 전용 · 같은 완료품(밀가루)을 만드는 다른 레시피 · 1회 2개 표시 검증용 (실제 레시피 아님)
+Mill_TestRiceFlour,Mill,"((""Rice"", 3))",RiceFlour,1,20,True,🤖 테스트 전용 · 다른 품목 제한 검증용 · 값은 기획서 쌀가루(20초)지만 해금 전이라 디버그에서만 노출

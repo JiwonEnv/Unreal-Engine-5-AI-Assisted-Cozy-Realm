@@ -5,3 +5,5 @@ Flour,밀가루,Material,4,3,🙋 판매가 4골드
 TimeTalisman,시간 부적,Currency,0,4,🙋 업그레이드 시간 단축 재화 / ❓ 시작 보유량
 MindShard,심상 조각,Currency,0,0,🤖 외형 업그레이드 재화 (HUD 표시는 외형 기능 때)
 RedBean,팥,Material,0,0,🙋 공통 밭 작물 / 판매가 ❓
+Rice,쌀,Material,0,0,🙋 공통 밭 작물 / 판매가 ❓ / 지금은 테스트 레시피 검증용으로만 사용
+RiceFlour,쌀가루,Material,8,0,🙋 판매가 8골드 / 제분소 2단계 레시피(해금 ❓)

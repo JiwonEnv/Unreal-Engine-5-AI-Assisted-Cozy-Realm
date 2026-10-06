@@ -88,9 +88,13 @@ struct FCozyFacilityRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Production")
 	float SpeedBonusPerLevel = 0.f;
 
-	/** 이 시설에 쌓아 둘 수 있는 미수령 생산물 최대 개수 · 가득 차면 이 시설만 생산을 멈춤 (공용 창고 한도와 별개) */
+	/** 이 시설에 쌓아 둘 수 있는 미수령 완료품 최대 개수 (생산·가공 공통) · 한 번에 한 종류만 · 공용 창고 한도와 별개 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Production")
 	int32 UnclaimedCapacity = 0;
+
+	/** 동시에 진행할 수 있는 가공 작업 수 (가공 시설만 · 0이면 가공 불가) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Processing")
+	int32 ProcessingSlots = 0;
 
 	/** 미수령 생산물을 창고로 옮기는 버튼 이름 (예: 수확 · 수령) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Production")
@@ -178,7 +182,7 @@ struct FCozyResidentRow : public FTableRowBase
 	FString Note;
 };
 
-/** 가공 레시피 (기능 2에서 사용 · 지금은 데이터 구조만) */
+/** 가공 레시피 (1행 = 1회 실행 · 공통 가공 기능이 모든 제작 시설에서 사용 · D32) */
 USTRUCT(BlueprintType)
 struct FCozyRecipeRow : public FTableRowBase
 {
@@ -196,13 +200,17 @@ struct FCozyRecipeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Recipe")
 	FName OutputItem;
 
-	/** 나오는 개수 */
+	/** 1회 실행마다 나오는 개수 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Recipe")
 	int32 OutputAmount = 1;
 
-	/** 가공 시간 (초) */
+	/** 1회 실행에 걸리는 시간 (초) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Recipe")
 	float Seconds = 15.f;
+
+	/** 검증용 레시피 · 디버그 메뉴에서 '테스트 레시피 보이기'를 켰을 때만 가공 창에 나옴 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Recipe")
+	bool bTestOnly = false;
 
 	/** 🙋/🤖/❓ 표시와 메모 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Note")

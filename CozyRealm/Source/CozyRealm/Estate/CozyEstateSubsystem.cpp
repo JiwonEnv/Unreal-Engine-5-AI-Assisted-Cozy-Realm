@@ -121,6 +121,10 @@ int32 UCozyEstateSubsystem::ValidateData() const
 					Warn(FString::Printf(TEXT("시설 %s: 없는 작물 참조 %s"), *Key.ToString(), *CropId.ToString()));
 				}
 			}
+			if (Row.Functions.Contains(ECozyFacilityFunction::Processing) && (Row.ProcessingSlots < 1 || Row.UnclaimedCapacity < 1))
+			{
+				Warn(FString::Printf(TEXT("시설 %s: 가공 시설인데 가공 칸(%d) 또는 미수령 한도(%d)가 0"), *Key.ToString(), Row.ProcessingSlots, Row.UnclaimedCapacity));
+			}
 		});
 	}
 
@@ -161,6 +165,15 @@ int32 UCozyEstateSubsystem::ValidateData() const
 			if (!GetItemDef(Row.OutputItem))
 			{
 				Warn(FString::Printf(TEXT("레시피 %s: 없는 결과 재료 %s"), *Key.ToString(), *Row.OutputItem.ToString()));
+			}
+			if (Row.OutputAmount < 1 || Row.Seconds <= 0.f)
+			{
+				Warn(FString::Printf(TEXT("레시피 %s: 1회 개수(%d) 또는 시간(%.1f)이 0 이하"), *Key.ToString(), Row.OutputAmount, Row.Seconds));
+			}
+			const FCozyFacilityRow* Facility = GetFacilityDef(Row.FacilityId);
+			if (Facility && Row.OutputAmount > Facility->UnclaimedCapacity)
+			{
+				Warn(FString::Printf(TEXT("레시피 %s: 1회 개수(%d)가 시설 미수령 한도(%d)보다 커서 시작할 수 없음"), *Key.ToString(), Row.OutputAmount, Facility->UnclaimedCapacity));
 			}
 		});
 	}
@@ -484,30 +497,16 @@ FCozyProductionView UCozyEstateSubsystem::GetProductionView(const FGuid& Facilit
 		return View;
 	}
 	View.bHasProduction = true;
-	View.UnclaimedCapacity = Def->UnclaimedCapacity;
-	View.UnclaimedAmount = GetUnclaimedTotal(FacilityId);
 	View.CollectButtonLabel = Def->CollectButtonLabel;
 	{
-		FName ShownItem = NAME_None;
-		if (const FCozyCropRow* SelectedCrop = GetCropDef(Facility->SelectedCropId))
-		{
-			ShownItem = SelectedCrop->ProducedItem;
-		}
-		for (const TPair<FName, int32>& Pair : Facility->UnclaimedItems)
-		{
-			if (Pair.Value > 0)
-			{
-				ShownItem = Pair.Key;
-				break;
-			}
-		}
-		const FCozyItemRow* ShownDef = GetItemDef(ShownItem);
-		View.UnclaimedItemName = ShownDef ? ShownDef->DisplayName : FText::FromName(ShownItem);
-		// 창고 상태 (미수령분은 포함하지 않음) · 지금 수령 가능한 수량
-		View.StoredAmount = GetAmount(ShownItem);
-		View.StorageCap = (ShownDef && ShownDef->Category == ECozyItemCategory::Material) ? Config.StorageCapPerItem : 0;
-		const int32 Space = GetStorageSpace(ShownItem);
-		View.CollectableNow = FMath::Min(View.UnclaimedAmount, Space);
+		// 미수령 · 창고 상태는 생산·가공 공통 계산을 그대로 씀 (D31)
+		const FCozyUnclaimedView Unclaimed = GetUnclaimedView(FacilityId);
+		View.UnclaimedCapacity = Unclaimed.Capacity;
+		View.UnclaimedAmount = Unclaimed.Amount;
+		View.UnclaimedItemName = Unclaimed.ItemName;
+		View.StoredAmount = Unclaimed.StoredAmount;
+		View.StorageCap = Unclaimed.StorageCap;
+		View.CollectableNow = Unclaimed.CollectableNow;
 	}
 
 	const FCozyCropRow* Crop = GetCropDef(Facility->SelectedCropId);
@@ -619,15 +618,117 @@ int32 UCozyEstateSubsystem::AddResource(FName ItemId, int32 Amount)
 
 int32 UCozyEstateSubsystem::GetUnclaimedTotal(const FGuid& FacilityId) const
 {
-	int32 Total = 0;
-	if (const FCozyFacilityState* Facility = FindFacility(FacilityId))
+	const FCozyFacilityState* Facility = FindFacility(FacilityId);
+	return Facility ? Facility->UnclaimedAmount : 0;
+}
+
+FCozyUnclaimedView UCozyEstateSubsystem::GetUnclaimedView(const FGuid& FacilityId) const
+{
+	FCozyUnclaimedView View;
+	const FCozyFacilityState* Facility = FindFacility(FacilityId);
+	const FCozyFacilityRow* Def = Facility ? GetFacilityDef(Facility->DefinitionId) : nullptr;
+	if (!Def)
 	{
-		for (const TPair<FName, int32>& Pair : Facility->UnclaimedItems)
+		return View;
+	}
+	View.Capacity = Def->UnclaimedCapacity;
+	View.Amount = Facility->UnclaimedAmount;
+	View.Reserved = GetReservedUnclaimed(*Facility);
+	View.ItemId = GetLockedOutputItem(*Facility);
+
+	// 표시할 품목: 맡은 품목이 없으면 밭은 선택한 작물의 생산물로 안내
+	FName ShownItem = View.ItemId;
+	if (ShownItem.IsNone())
+	{
+		if (const FCozyCropRow* Crop = GetCropDef(Facility->SelectedCropId))
 		{
-			Total += Pair.Value;
+			ShownItem = Crop->ProducedItem;
 		}
 	}
-	return Total;
+	View.ItemName = ShownItem.IsNone() ? LOCTEXT("NoUnclaimedItem", "없음") : GetItemName(ShownItem);
+	if (!ShownItem.IsNone())
+	{
+		const FCozyItemRow* ItemDef = GetItemDef(ShownItem);
+		View.StoredAmount = GetAmount(ShownItem);
+		View.StorageCap = (ItemDef && ItemDef->Category == ECozyItemCategory::Material) ? Config.StorageCapPerItem : 0;
+		View.CollectableNow = FMath::Min(View.Amount, GetStorageSpace(ShownItem));
+	}
+	return View;
+}
+
+int32 UCozyEstateSubsystem::GetReservedUnclaimed(const FCozyFacilityState& Facility) const
+{
+	int32 Reserved = 0;
+	for (const FCozyJobRecord& Job : State.Jobs)
+	{
+		if (Job.FacilityId == Facility.InstanceId && Job.Type == ECozyJobType::Processing)
+		{
+			Reserved += FMath::Max(0, Job.TotalRuns - Job.PaidCycles) * Job.OutputPerRun;
+		}
+	}
+	return Reserved;
+}
+
+FName UCozyEstateSubsystem::GetLockedOutputItem(const FCozyFacilityState& Facility) const
+{
+	if (Facility.UnclaimedAmount > 0 && !Facility.UnclaimedItemId.IsNone())
+	{
+		return Facility.UnclaimedItemId;
+	}
+	for (const FCozyJobRecord& Job : State.Jobs)
+	{
+		if (Job.FacilityId == Facility.InstanceId && Job.Type == ECozyJobType::Processing && !Job.OutputItemId.IsNone())
+		{
+			return Job.OutputItemId;
+		}
+	}
+	return NAME_None;
+}
+
+bool UCozyEstateSubsystem::CanAcceptOutputItem(const FGuid& FacilityId, FName ItemId, FText& OutReason) const
+{
+	const FCozyFacilityState* Facility = FindFacility(FacilityId);
+	if (!Facility)
+	{
+		OutReason = LOCTEXT("NoFacility", "시설을 찾을 수 없습니다");
+		return false;
+	}
+	// 🙋 기준은 레시피 이름이 아니라 완료품 ID (같은 완료품을 만드는 다른 레시피는 허용 · D31)
+	if (Facility->UnclaimedAmount > 0 && Facility->UnclaimedItemId != ItemId)
+	{
+		const FText Name = GetItemName(Facility->UnclaimedItemId);
+		OutReason = FText::Format(LOCTEXT("OtherItemUnclaimed", "다른 품목을 만들려면 남은 {0}을(를) 모두 수령해 주세요 (미수령 {0} {1}개)"), Name, FText::AsNumber(Facility->UnclaimedAmount));
+		return false;
+	}
+	for (const FCozyJobRecord& Job : State.Jobs)
+	{
+		if (Job.FacilityId == FacilityId && Job.Type == ECozyJobType::Processing && Job.OutputItemId != ItemId)
+		{
+			OutReason = FText::Format(LOCTEXT("OtherItemInProgress", "{0}을(를) 만드는 작업이 진행 중입니다 · 다른 품목은 그 작업이 끝나거나 취소된 뒤에 만들 수 있습니다"), GetItemName(Job.OutputItemId));
+			return false;
+		}
+	}
+	return true;
+}
+
+void UCozyEstateSubsystem::AddUnclaimed(FCozyFacilityState& Facility, FName ItemId, int32 Amount)
+{
+	if (Amount <= 0)
+	{
+		return;
+	}
+	if (Facility.UnclaimedAmount <= 0)
+	{
+		Facility.UnclaimedItemId = ItemId;
+	}
+	ensureMsgf(Facility.UnclaimedItemId == ItemId, TEXT("미수령 공간에 다른 품목을 넣으려 함 (D31 위반)"));
+	Facility.UnclaimedAmount += Amount;
+}
+
+FText UCozyEstateSubsystem::GetItemName(FName ItemId) const
+{
+	const FCozyItemRow* ItemDef = GetItemDef(ItemId);
+	return ItemDef ? ItemDef->DisplayName : FText::FromName(ItemId);
 }
 
 FCozyCollectResult UCozyEstateSubsystem::CollectUnclaimed(const FGuid& FacilityId)
@@ -647,29 +748,16 @@ FCozyCollectResult UCozyEstateSubsystem::CollectUnclaimed(const FGuid& FacilityI
 
 	// 🙋 창고에 들어갈 만큼만 옮기고 나머지는 이 시설에 남김 · 생산물은 버리지 않음 (D27)
 	// 시설에서 빼는 것과 창고에 넣는 것을 한 번에 처리 → 버튼을 여러 번 눌러도 같은 생산물이 두 번 들어가지 않음
-	FText FirstItemName;
-	for (TPair<FName, int32>& Pair : Facility->UnclaimedItems)
+	const FText FirstItemName = GetItemName(Facility->UnclaimedItemId);
+	const int32 Added = AddResource(Facility->UnclaimedItemId, Facility->UnclaimedAmount);
+	Facility->UnclaimedAmount -= Added;
+	Result.Moved = Added;
+	Result.Remaining = Facility->UnclaimedAmount;
+	if (Facility->UnclaimedAmount <= 0)
 	{
-		if (Pair.Value <= 0)
-		{
-			continue;
-		}
-		const int32 Added = AddResource(Pair.Key, Pair.Value);
-		Pair.Value -= Added;
-		Result.Moved += Added;
-		Result.Remaining += Pair.Value;
-		if (FirstItemName.IsEmpty())
-		{
-			const FCozyItemRow* ItemDef = GetItemDef(Pair.Key);
-			FirstItemName = ItemDef ? ItemDef->DisplayName : FText::FromName(Pair.Key);
-		}
-	}
-	for (auto It = Facility->UnclaimedItems.CreateIterator(); It; ++It)
-	{
-		if (It.Value() <= 0)
-		{
-			It.RemoveCurrent();
-		}
+		// 모두 수령하면 품목 칸이 비어 다른 품목을 고를 수 있음 (D31)
+		Facility->UnclaimedAmount = 0;
+		Facility->UnclaimedItemId = NAME_None;
 	}
 
 	// 이번 클릭의 결과만 담는다 (현재 미수령량·창고 수량은 UI가 최신 값으로 따로 보여 줌)
@@ -738,6 +826,8 @@ bool UCozyEstateSubsystem::AssignResident(const FGuid& ResidentId, const FGuid& 
 	FCozyFacilityState* Facility = FindFacilityMutable(FacilityId);
 	Facility->AssignedResidents.Add(ResidentId);
 	Resident->AssignedFacility = FacilityId;
+	// 필요 인원이 다시 채워지면 일시 정지했던 가공을 멈춘 시점부터 이어서 (D30)
+	UpdateProcessingPause(*Facility);
 	UE_LOG(LogCozyRealm, Log, TEXT("주민 배치: %s → %s"), *GetResidentDisplayName(ResidentId).ToString(), *GetFacilityDisplayName(FacilityId).ToString());
 	NotifyChanged();
 	return true;
@@ -771,7 +861,9 @@ void UCozyEstateSubsystem::RemoveResidentFromFacility(FCozyResidentState& Reside
 	if (FCozyFacilityState* OldFacility = FindFacilityMutable(Resident.AssignedFacility))
 	{
 		OldFacility->AssignedResidents.Remove(Resident.InstanceId);
+		// 자동 생산은 주기 초기화(D26), 가공은 진행도를 유지한 채 일시 정지(D30) · 주민 이동 자체는 막지 않음
 		CancelProductionIfUnderstaffed(*OldFacility);
+		UpdateProcessingPause(*OldFacility);
 	}
 	Resident.AssignedFacility.Invalidate();
 }
@@ -872,6 +964,10 @@ void UCozyEstateSubsystem::StepJobs()
 		{
 			StepProduction(Facility, *Def);
 		}
+		if (Def && Def->Functions.Contains(ECozyFacilityFunction::Processing))
+		{
+			StepProcessing(Facility, *Def);
+		}
 	}
 }
 
@@ -920,12 +1016,9 @@ void UCozyEstateSubsystem::StepProduction(FCozyFacilityState& Facility, const FC
 	const int32 Capacity = Def.UnclaimedCapacity;
 	auto HasUnclaimedSpace = [&Facility, Capacity, Crop]()
 	{
-		int32 Total = 0;
-		for (const TPair<FName, int32>& Pair : Facility.UnclaimedItems)
-		{
-			Total += Pair.Value;
-		}
-		return Total + Crop->ProducedAmount <= Capacity;
+		// 한 번에 한 종류만 (D31): 비어 있거나 같은 품목이고, 한도 안일 때만
+		const bool bSameItem = Facility.UnclaimedAmount <= 0 || Facility.UnclaimedItemId == Crop->ProducedItem;
+		return bSameItem && Facility.UnclaimedAmount + Crop->ProducedAmount <= Capacity;
 	};
 	if (Job->State == ECozyJobState::Held)
 	{
@@ -951,8 +1044,296 @@ void UCozyEstateSubsystem::StepProduction(FCozyFacilityState& Facility, const FC
 			break;
 		}
 		// 완료분은 보유 재료가 아니라 시설의 미수령분으로 · 주기 기록과 함께 (같은 주기를 두 번 넘기지 않음)
-		Facility.UnclaimedItems.FindOrAdd(Crop->ProducedItem) += Crop->ProducedAmount;
+		AddUnclaimed(Facility, Crop->ProducedItem, Crop->ProducedAmount);
 		++Job->PaidCycles;
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 공통 가공 (D28~D33 · 제분소·제빵소·공방이 모두 이 함수들을 씀)
+
+const FCozyRecipeRow* UCozyEstateSubsystem::GetRecipeDef(FName Id) const
+{
+	return RecipeTable ? RecipeTable->FindRow<FCozyRecipeRow>(Id, TEXT(""), false) : nullptr;
+}
+
+TArray<FName> UCozyEstateSubsystem::GetFacilityRecipes(const FGuid& FacilityId) const
+{
+	TArray<FName> Result;
+	const FCozyFacilityState* Facility = FindFacility(FacilityId);
+	if (!Facility || !RecipeTable)
+	{
+		return Result;
+	}
+	RecipeTable->ForeachRow<FCozyRecipeRow>(TEXT("Recipes"), [&](const FName& Key, const FCozyRecipeRow& Row)
+	{
+		if (Row.FacilityId == Facility->DefinitionId && (!Row.bTestOnly || bShowTestRecipes))
+		{
+			Result.Add(Key);
+		}
+	});
+	return Result;
+}
+
+void UCozyEstateSubsystem::SetShowTestRecipes(bool bShow)
+{
+	bShowTestRecipes = bShow;
+	NotifyChanged();
+}
+
+double UCozyEstateSubsystem::GetProcessingDuration(const FCozyFacilityState& Facility, const FCozyRecipeRow& Recipe, const FCozyFacilityRow& Def) const
+{
+	const double SpeedMultiplier = 1.0 + Def.SpeedBonusPerLevel * FMath::Max(0, Facility.Level - 1);
+	return FMath::Max(0.1, static_cast<double>(Recipe.Seconds) / SpeedMultiplier);
+}
+
+FCozyRecipeQuote UCozyEstateSubsystem::GetRecipeQuote(const FGuid& FacilityId, FName RecipeId, int32 Runs) const
+{
+	FCozyRecipeQuote Quote;
+	Quote.Runs = FMath::Max(0, Runs);
+	const FCozyFacilityState* Facility = FindFacility(FacilityId);
+	const FCozyFacilityRow* Def = Facility ? GetFacilityDef(Facility->DefinitionId) : nullptr;
+	const FCozyRecipeRow* Recipe = GetRecipeDef(RecipeId);
+	if (!Def || !Recipe || Recipe->FacilityId != Facility->DefinitionId || !Def->Functions.Contains(ECozyFacilityFunction::Processing))
+	{
+		Quote.BlockReason = LOCTEXT("QuoteInvalid", "이 시설에서 만들 수 없는 레시피입니다");
+		return Quote;
+	}
+	Quote.bValid = true;
+	Quote.OutputPerRun = FMath::Max(1, Recipe->OutputAmount);
+	Quote.OutputName = GetItemName(Recipe->OutputItem);
+	Quote.SecondsPerRun = GetProcessingDuration(*Facility, *Recipe, *Def);
+	Quote.TotalOutput = Quote.OutputPerRun * Quote.Runs;
+	Quote.TotalSeconds = Quote.SecondsPerRun * Quote.Runs;
+
+	// ① 재료: 창고의 사용 가능한 보유량으로 몇 회분인가 (미수령분은 재료가 아님 · D28)
+	Quote.MaxByMaterials = MAX_int32;
+	FText MaterialReason;
+	for (const TPair<FName, int32>& Input : Recipe->Inputs)
+	{
+		FCozyRecipeQuote::FInput& Line = Quote.Inputs.AddDefaulted_GetRef();
+		Line.ItemId = Input.Key;
+		Line.Need = Input.Value * Quote.Runs;
+		Line.Have = GetAmount(Input.Key);
+		const int32 PerRun = FMath::Max(1, Input.Value);
+		const int32 Possible = Line.Have / PerRun;
+		if (Possible < Quote.MaxByMaterials)
+		{
+			Quote.MaxByMaterials = Possible;
+			if (Possible <= 0)
+			{
+				MaterialReason = FText::Format(LOCTEXT("QuoteNoMaterial", "재료가 부족합니다 · 1회에 {0} {1}개 필요 (보유 {2}개)"), GetItemName(Input.Key), FText::AsNumber(Input.Value), FText::AsNumber(Line.Have));
+			}
+		}
+	}
+	if (Quote.MaxByMaterials == MAX_int32)
+	{
+		Quote.MaxByMaterials = 0;
+	}
+
+	// ② 공간: 남은 미수령 공간 − 진행·일시 정지 작업이 확보한 공간 (D32·D33)
+	const int32 FreeSpace = FMath::Max(0, Def->UnclaimedCapacity - Facility->UnclaimedAmount - GetReservedUnclaimed(*Facility));
+	Quote.MaxBySpace = FreeSpace / Quote.OutputPerRun;
+
+	// ③ 시작 조건: 주민 · 가공 칸 · 같은 품목 (안 맞으면 최대 0회)
+	FText ConditionReason;
+	int32 ActiveJobs = 0;
+	for (const FCozyJobRecord& Job : State.Jobs)
+	{
+		if (Job.FacilityId == FacilityId && Job.Type == ECozyJobType::Processing)
+		{
+			++ActiveJobs;
+		}
+	}
+	FText ItemReason;
+	if (!IsFacilityWorking(*Facility, *Def))
+	{
+		ConditionReason = FText::Format(LOCTEXT("QuoteNoResident", "주민이 부족해 가공을 시작할 수 없습니다 (필요 {0}명)"), FText::AsNumber(FMath::Max(1, Def->MinResidents)));
+	}
+	else if (ActiveJobs >= Def->ProcessingSlots)
+	{
+		ConditionReason = FText::Format(LOCTEXT("QuoteNoSlot", "가공 칸이 모두 사용 중입니다 (동시 {0}개) · 지금 작업이 끝나거나 취소되면 시작할 수 있습니다"), FText::AsNumber(Def->ProcessingSlots));
+	}
+	else if (!CanAcceptOutputItem(FacilityId, Recipe->OutputItem, ItemReason))
+	{
+		ConditionReason = ItemReason;
+	}
+
+	Quote.MaxRuns = ConditionReason.IsEmpty() ? FMath::Min(Quote.MaxByMaterials, Quote.MaxBySpace) : 0;
+
+	if (!ConditionReason.IsEmpty())
+	{
+		Quote.BlockReason = ConditionReason;
+	}
+	else if (Quote.MaxByMaterials <= 0)
+	{
+		Quote.BlockReason = MaterialReason;
+	}
+	else if (Quote.MaxBySpace <= 0)
+	{
+		Quote.BlockReason = FText::Format(LOCTEXT("QuoteNoSpace", "미수령 공간이 부족합니다 · 남은 공간 {0}개 (1회에 {1}개 필요) · 완료품을 수령하면 공간이 생깁니다"), FText::AsNumber(FreeSpace), FText::AsNumber(Quote.OutputPerRun));
+	}
+	else if (Quote.Runs < 1)
+	{
+		Quote.BlockReason = LOCTEXT("QuoteNoRuns", "제작 횟수를 1회 이상 골라 주세요");
+	}
+	else if (Quote.Runs > Quote.MaxRuns)
+	{
+		Quote.BlockReason = FText::Format(LOCTEXT("QuoteOverMax", "선택한 {0}회는 지금 최대 {1}회를 넘습니다 · 수량을 줄여 주세요"), FText::AsNumber(Quote.Runs), FText::AsNumber(Quote.MaxRuns));
+	}
+	Quote.bCanStart = Quote.BlockReason.IsEmpty();
+	return Quote;
+}
+
+bool UCozyEstateSubsystem::StartProcessing(const FGuid& FacilityId, FName RecipeId, int32 Runs, FText& OutMessage)
+{
+	// 시작 직전 조건 재확인 · 실패하면 재료 차감·작업 등록 모두 하지 않음 (D28·D32)
+	const FCozyRecipeQuote Quote = GetRecipeQuote(FacilityId, RecipeId, Runs);
+	FCozyFacilityState* Facility = FindFacilityMutable(FacilityId);
+	const FCozyRecipeRow* Recipe = GetRecipeDef(RecipeId);
+	const FCozyFacilityRow* Def = Facility ? GetFacilityDef(Facility->DefinitionId) : nullptr;
+	if (!Quote.bCanStart || !Facility || !Recipe || !Def)
+	{
+		OutMessage = Quote.BlockReason.IsEmpty() ? LOCTEXT("StartFailed", "가공을 시작할 수 없습니다") : Quote.BlockReason;
+		UE_LOG(LogCozyRealm, Log, TEXT("가공 시작 실패: %s %s ×%d · %s"), *GetFacilityDisplayName(FacilityId).ToString(), *RecipeId.ToString(), Runs, *OutMessage.ToString());
+		return false;
+	}
+
+	// 선택한 전체 횟수의 재료를 한 번에 차감 · 회차마다 다시 차감하지 않음 (D33)
+	FString UsedText;
+	for (const FCozyRecipeQuote::FInput& Input : Quote.Inputs)
+	{
+		State.Resources.FindOrAdd(Input.ItemId) -= Input.Need;
+		UsedText += FString::Printf(TEXT("%s%s %d개"), UsedText.IsEmpty() ? TEXT("") : TEXT(", "), *GetItemName(Input.ItemId).ToString(), Input.Need);
+	}
+
+	// 작업 등록 · 남은 회차 × 1회 개수만큼 미수령 공간을 확보한 것으로 계산됨
+	FCozyJobRecord Job;
+	Job.JobId = FGuid::NewGuid();
+	Job.FacilityId = FacilityId;
+	Job.Type = ECozyJobType::Processing;
+	Job.ContentId = RecipeId;
+	Job.StartGameSeconds = State.GameSeconds;
+	Job.DurationSeconds = Quote.SecondsPerRun;
+	Job.TotalRuns = Runs;
+	Job.OutputItemId = Recipe->OutputItem;
+	Job.OutputPerRun = Quote.OutputPerRun;
+	State.Jobs.Add(Job);
+
+	OutMessage = FText::Format(LOCTEXT("StartOk", "{0} {1}회 제작을 시작했습니다 (완료품 {2}개) · 재료 {3} 사용"),
+		Quote.OutputName, FText::AsNumber(Runs), FText::AsNumber(Quote.TotalOutput), FText::FromString(UsedText));
+	UE_LOG(LogCozyRealm, Log, TEXT("가공 시작: %s %s ×%d · 재료 %s 차감 · 확보 %d"), *GetFacilityDisplayName(FacilityId).ToString(), *RecipeId.ToString(), Runs, *UsedText, Quote.TotalOutput);
+	NotifyChanged();
+	return true;
+}
+
+bool UCozyEstateSubsystem::CancelProcessing(const FGuid& JobId, FText& OutMessage)
+{
+	const int32 JobIndex = State.Jobs.IndexOfByPredicate([&JobId](const FCozyJobRecord& J) { return J.JobId == JobId && J.Type == ECozyJobType::Processing; });
+	if (JobIndex == INDEX_NONE)
+	{
+		OutMessage = LOCTEXT("CancelNoJob", "취소할 가공 작업이 없습니다");
+		return false;
+	}
+	const FCozyJobRecord Job = State.Jobs[JobIndex];
+	// 완성된 회차의 완료품은 이미 미수령분에 있으므로 그대로 둔다 · 미완료 회차는 재료 반환·완료품 없이 종료
+	// 작업 기록을 지우면 그 작업이 확보했던 공간도 함께 풀린다 (D29·D33)
+	State.Jobs.RemoveAt(JobIndex);
+	const int32 Done = Job.PaidCycles;
+	const int32 Dropped = FMath::Max(0, Job.TotalRuns - Job.PaidCycles);
+	OutMessage = FText::Format(LOCTEXT("CancelOk", "{0} 제작을 취소했습니다 · 완성된 {1}회분({2}개)은 시설에 남김 · 미완료 {3}회는 재료를 돌려받지 않고 종료"),
+		GetItemName(Job.OutputItemId), FText::AsNumber(Done), FText::AsNumber(Done * Job.OutputPerRun), FText::AsNumber(Dropped));
+	UE_LOG(LogCozyRealm, Log, TEXT("가공 취소: %s · 완성 %d회 유지 · 미완료 %d회 종료(반환 없음)"), *GetFacilityDisplayName(Job.FacilityId).ToString(), Done, Dropped);
+	NotifyChanged();
+	return true;
+}
+
+TArray<FCozyProcessingJobView> UCozyEstateSubsystem::GetProcessingJobs(const FGuid& FacilityId) const
+{
+	TArray<FCozyProcessingJobView> Result;
+	for (const FCozyJobRecord& Job : State.Jobs)
+	{
+		if (Job.FacilityId != FacilityId || Job.Type != ECozyJobType::Processing)
+		{
+			continue;
+		}
+		FCozyProcessingJobView& View = Result.AddDefaulted_GetRef();
+		View.JobId = Job.JobId;
+		View.OutputName = GetItemName(Job.OutputItemId);
+		View.CompletedRuns = Job.PaidCycles;
+		View.TotalRuns = Job.TotalRuns;
+		View.OutputPerRun = Job.OutputPerRun;
+		View.bPaused = Job.State == ECozyJobState::Held;
+		// 일시 정지 중에는 멈춘 시각까지만 진행으로 침 (멈춘 시간은 진행에 포함하지 않음 · D30)
+		const double Now = View.bPaused ? Job.HeldSinceGameSeconds : State.GameSeconds;
+		const double Elapsed = FMath::Max(0.0, Now - Job.StartGameSeconds - Job.PausedSeconds);
+		const double IntoRun = FMath::Clamp(Elapsed - Job.PaidCycles * Job.DurationSeconds, 0.0, Job.DurationSeconds);
+		View.RunProgress01 = Job.DurationSeconds > 0.0 ? static_cast<float>(IntoRun / Job.DurationSeconds) : 0.f;
+		View.RunRemainingSeconds = static_cast<float>(Job.DurationSeconds - IntoRun);
+		View.TotalRemainingSeconds = static_cast<float>(FMath::Max(0, Job.TotalRuns - Job.PaidCycles) * Job.DurationSeconds - IntoRun);
+		View.Status = View.bPaused ? Job.HeldReason
+			: FText::Format(LOCTEXT("ProcessingRun", "{0} 제작 중 · {1}/{2}회째"), View.OutputName, FText::AsNumber(FMath::Min(Job.PaidCycles + 1, Job.TotalRuns)), FText::AsNumber(Job.TotalRuns));
+	}
+	return Result;
+}
+
+void UCozyEstateSubsystem::UpdateProcessingPause(FCozyFacilityState& Facility)
+{
+	const FCozyFacilityRow* Def = GetFacilityDef(Facility.DefinitionId);
+	if (!Def || !Def->Functions.Contains(ECozyFacilityFunction::Processing))
+	{
+		return;
+	}
+	const bool bWorking = IsFacilityWorking(Facility, *Def);
+	for (FCozyJobRecord& Job : State.Jobs)
+	{
+		if (Job.FacilityId != Facility.InstanceId || Job.Type != ECozyJobType::Processing)
+		{
+			continue;
+		}
+		if (!bWorking && Job.State == ECozyJobState::Running)
+		{
+			// 🙋 판단 기준은 '필요 인원 미달' · 현재 회차 진행도와 투입 재료를 그대로 둔 채 멈춤
+			Job.State = ECozyJobState::Held;
+			Job.HeldSinceGameSeconds = State.GameSeconds;
+			Job.HeldReason = LOCTEXT("ProcessingPaused", "주민 부족으로 가공 일시 정지");
+			UE_LOG(LogCozyRealm, Log, TEXT("가공 일시 정지(주민 부족): %s · %d/%d회 완료"), *GetFacilityDisplayName(Facility.InstanceId).ToString(), Job.PaidCycles, Job.TotalRuns);
+		}
+		else if (bWorking && Job.State == ECozyJobState::Held)
+		{
+			// 멈춘 시점부터 이어서 · 재료를 다시 차감하지 않음
+			Job.PausedSeconds += State.GameSeconds - Job.HeldSinceGameSeconds;
+			Job.State = ECozyJobState::Running;
+			Job.HeldReason = FText::GetEmpty();
+			UE_LOG(LogCozyRealm, Log, TEXT("가공 재개: %s · 멈춘 시간 %.0f초는 진행에서 제외"), *GetFacilityDisplayName(Facility.InstanceId).ToString(), Job.PausedSeconds);
+		}
+	}
+}
+
+void UCozyEstateSubsystem::StepProcessing(FCozyFacilityState& Facility, const FCozyFacilityRow& Def)
+{
+	UpdateProcessingPause(Facility);
+	for (int32 Index = State.Jobs.Num() - 1; Index >= 0; --Index)
+	{
+		FCozyJobRecord& Job = State.Jobs[Index];
+		if (Job.FacilityId != Facility.InstanceId || Job.Type != ECozyJobType::Processing || Job.State != ECozyJobState::Running)
+		{
+			continue;
+		}
+		// 한 회씩 순서대로: 회차가 끝날 때마다 완료품이 미수령분에 쌓임 (D33) · 공간은 시작할 때 확보해 둠
+		const double Elapsed = State.GameSeconds - Job.StartGameSeconds - Job.PausedSeconds;
+		const int32 DueRuns = Job.DurationSeconds > 0.0 ? FMath::Min(Job.TotalRuns, FMath::FloorToInt32(Elapsed / Job.DurationSeconds)) : 0;
+		while (Job.PaidCycles < DueRuns)
+		{
+			AddUnclaimed(Facility, Job.OutputItemId, Job.OutputPerRun);
+			++Job.PaidCycles;
+			UE_LOG(LogCozyRealm, Log, TEXT("가공 회차 완료: %s %s %d/%d회 · 미수령 %d"), *GetFacilityDisplayName(Facility.InstanceId).ToString(), *Job.OutputItemId.ToString(), Job.PaidCycles, Job.TotalRuns, Facility.UnclaimedAmount);
+		}
+		if (Job.PaidCycles >= Job.TotalRuns)
+		{
+			UE_LOG(LogCozyRealm, Log, TEXT("가공 완료: %s %s %d회 모두 끝남"), *GetFacilityDisplayName(Facility.InstanceId).ToString(), *Job.OutputItemId.ToString(), Job.TotalRuns);
+			State.Jobs.RemoveAt(Index);
+		}
 	}
 }
 

@@ -32,6 +32,19 @@ namespace CozyHud
 	{
 		return FText::Format(LOCTEXT("TimeScale", "×{0}"), FText::AsNumber(FMath::RoundToInt(Scale)));
 	}
+
+	/** 초 → "45초" / "1분 30초" */
+	FText DurationText(double Seconds)
+	{
+		const int32 Total = FMath::Max(0, FMath::CeilToInt32(Seconds));
+		if (Total < 60)
+		{
+			return FText::Format(LOCTEXT("DurSec", "{0}초"), FText::AsNumber(Total));
+		}
+		return Total % 60 == 0
+			? FText::Format(LOCTEXT("DurMin", "{0}분"), FText::AsNumber(Total / 60))
+			: FText::Format(LOCTEXT("DurMinSec", "{0}분 {1}초"), FText::AsNumber(Total / 60), FText::AsNumber(Total % 60));
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -202,6 +215,10 @@ void UCozyHudWidget::HandleEstateChanged(bool bStructural)
 	else if (WindowKind == ECozyWindowKind::Storage)
 	{
 		UpdateStorageLive();
+	}
+	else if (WindowKind == ECozyWindowKind::Processing)
+	{
+		UpdateProcessingLive();
 	}
 	if (!bStructural)
 	{
@@ -461,7 +478,7 @@ void UCozyHudWidget::RefreshIcons()
 			AddIcon(LOCTEXT("IconNagaya", "주민 관리"), [this, FacilityId]() { OpenWindow(ECozyWindowKind::Nagaya, FacilityId); });
 			break;
 		case ECozyFacilityFunction::Processing:
-			AddIcon(LOCTEXT("IconProcess", "가공"), [this, FacilityId]() { PlaceholderLabel = LOCTEXT("PhProcess", "가공"); OpenWindow(ECozyWindowKind::Placeholder, FacilityId); });
+			AddIcon(LOCTEXT("IconProcess", "가공"), [this, FacilityId]() { OpenWindow(ECozyWindowKind::Processing, FacilityId); });
 			break;
 		case ECozyFacilityFunction::Sales:
 			AddIcon(LOCTEXT("IconSell", "판매"), [this, FacilityId]() { PlaceholderLabel = LOCTEXT("PhSell", "판매"); OpenWindow(ECozyWindowKind::Placeholder, FacilityId); });
@@ -496,6 +513,15 @@ void UCozyHudWidget::OpenWindow(ECozyWindowKind Kind, const FGuid& FacilityId, c
 	WindowFacility = FacilityId;
 	WindowTargetFacility = TargetFacility;
 	LastFeedback = FText::GetEmpty();
+	if (Kind == ECozyWindowKind::Processing)
+	{
+		// 처음 열면 첫 레시피 · 1회
+		UCozyEstateSubsystem* Estate = GetEstate();
+		const TArray<FName> Recipes = Estate ? Estate->GetFacilityRecipes(FacilityId) : TArray<FName>();
+		ProcSelectedRecipe = Recipes.Num() > 0 ? Recipes[0] : NAME_None;
+		ProcSelectedRuns = 1;
+		ProcPendingCancelJob.Invalidate();
+	}
 	if (WindowOverlay)
 	{
 		WindowOverlay->SetVisibility(ESlateVisibility::Visible);
@@ -536,6 +562,22 @@ void UCozyHudWidget::RefreshWindow()
 	StorageAmountTexts.Reset();
 	StorageSpaceTexts.Reset();
 	StorageItemIds.Reset();
+	ProcSelectedText = nullptr;
+	ProcRunsText = nullptr;
+	ProcMinusButton = nullptr;
+	ProcPlusButton = nullptr;
+	ProcMaxButton = nullptr;
+	ProcMaxText = nullptr;
+	ProcSummaryText = nullptr;
+	ProcBlockText = nullptr;
+	ProcStorageNoteText = nullptr;
+	ProcStartButton = nullptr;
+	ProcSlotStatusTexts.Reset();
+	ProcSlotBars.Reset();
+	ProcSlotTimeTexts.Reset();
+	ProcSlotCancelButtons.Reset();
+	ProcConfirmBox = nullptr;
+	ProcConfirmText = nullptr;
 	ActionSink = &WindowActions;
 
 	switch (WindowKind)
@@ -552,11 +594,14 @@ void UCozyHudWidget::RefreshWindow()
 	case ECozyWindowKind::Storage:
 		BuildStorageContent();
 		break;
+	case ECozyWindowKind::Processing:
+		BuildProcessingContent();
+		break;
 	default:
 		break;
 	}
 
-	if (!LastFeedback.IsEmpty() && WindowKind != ECozyWindowKind::FacilityInfo)
+	if (!LastFeedback.IsEmpty() && WindowKind != ECozyWindowKind::FacilityInfo && WindowKind != ECozyWindowKind::Processing)
 	{
 		WindowContent->AddChildToVerticalBox(MakeText(LastFeedback, 16, CozyHud::WarningText))->SetPadding(FMargin(0.f, 12.f, 0.f, 0.f));
 	}
@@ -603,19 +648,7 @@ void UCozyHudWidget::BuildFacilityInfoContent()
 			CollectRow->AddChildToHorizontalBox(InfoUnclaimedText)->SetPadding(FMargin(0.f, 0.f, 16.f, 0.f));
 			const FGuid FacilityId = WindowFacility;
 			const FText CollectLabel = View.CollectButtonLabel.IsEmpty() ? LOCTEXT("CollectDefault", "수령") : View.CollectButtonLabel;
-			InfoCollectButton = MakeButton(CollectLabel, [this, FacilityId]()
-			{
-				if (UCozyEstateSubsystem* EstateNow = GetEstate())
-				{
-					// 클릭 결과는 '방금 한 일'로 따로 · 현재 상태 줄은 알림을 받아 최신 값으로 바뀜
-					LastFeedback = EstateNow->CollectUnclaimed(FacilityId).Message;
-					if (InfoFeedbackText)
-					{
-						InfoFeedbackText->SetText(FText::Format(LOCTEXT("JustDid", "방금 한 일 — {0}"), LastFeedback));
-						InfoFeedbackText->SetVisibility(ESlateVisibility::Visible);
-					}
-				}
-			}, View.UnclaimedAmount > 0, 16);
+			InfoCollectButton = MakeButton(CollectLabel, [this, FacilityId]() { HandleCollectClicked(FacilityId); }, View.UnclaimedAmount > 0, 16);
 			CollectRow->AddChildToHorizontalBox(InfoCollectButton);
 			WindowContent->AddChildToVerticalBox(CollectRow)->SetPadding(FMargin(0.f, 14.f, 0.f, 0.f));
 			// 그 생산물의 창고 상태 · 지금 받을 수 있는 수량 (미수령분은 창고에 포함하지 않음)
@@ -802,6 +835,361 @@ void UCozyHudWidget::UpdateStorageLive()
 }
 
 // ---------------------------------------------------------------------------
+// 공통 가공 창 (모든 제작 시설이 같은 창 · 레시피·재료·완료품·시간은 데이터 · D32)
+
+void UCozyHudWidget::SetFeedback(const FText& Message)
+{
+	LastFeedback = Message;
+	if (InfoFeedbackText)
+	{
+		InfoFeedbackText->SetText(FText::Format(LOCTEXT("JustDid", "방금 한 일 — {0}"), LastFeedback));
+		InfoFeedbackText->SetVisibility(LastFeedback.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+	}
+}
+
+void UCozyHudWidget::HandleCollectClicked(const FGuid& FacilityId)
+{
+	if (UCozyEstateSubsystem* Estate = GetEstate())
+	{
+		// 클릭 결과는 '방금 한 일'로 따로 · 현재 상태 줄은 알림을 받아 최신 값으로 바뀜
+		SetFeedback(Estate->CollectUnclaimed(FacilityId).Message);
+	}
+}
+
+void UCozyHudWidget::BuildProcessingContent()
+{
+	UCozyEstateSubsystem* Estate = GetEstate();
+	const FCozyFacilityState* Facility = Estate ? Estate->FindFacility(WindowFacility) : nullptr;
+	const FCozyFacilityRow* Def = Facility ? Estate->GetFacilityDef(Facility->DefinitionId) : nullptr;
+	if (!Def)
+	{
+		CloseWindow();
+		return;
+	}
+	const FGuid FacilityId = WindowFacility;
+	WindowTitle->SetText(FText::Format(LOCTEXT("ProcTitle", "{0}  Lv.{1} — 가공"), Def->DisplayName, FText::AsNumber(Facility->Level)));
+
+	// 배치된 주민 (UpdateProcessingLive가 갱신)
+	InfoResidentText = MakeText(FText::GetEmpty());
+	WindowContent->AddChildToVerticalBox(InfoResidentText)->SetPadding(FMargin(0.f, 0.f, 0.f, 8.f));
+
+	// ① 레시피 선택
+	WindowContent->AddChildToVerticalBox(MakeText(LOCTEXT("ProcStep1", "① 레시피 선택"), 17, CozyHud::AccentText))->SetPadding(FMargin(0.f, 4.f));
+	UHorizontalBox* RecipeRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+	for (const FName& RecipeId : Estate->GetFacilityRecipes(FacilityId))
+	{
+		const FCozyRecipeRow* Recipe = Estate->GetRecipeDef(RecipeId);
+		if (!Recipe)
+		{
+			continue;
+		}
+		const FCozyItemRow* Output = Estate->GetItemDef(Recipe->OutputItem);
+		const FText Label = FText::Format(Recipe->bTestOnly ? LOCTEXT("RecipeBtnTest", "{0} ×{1} (테스트)") : LOCTEXT("RecipeBtn", "{0} ×{1}"),
+			Output ? Output->DisplayName : FText::FromName(Recipe->OutputItem), FText::AsNumber(Recipe->OutputAmount));
+		RecipeRow->AddChildToHorizontalBox(MakeButton(Label, [this, RecipeId]()
+		{
+			ProcSelectedRecipe = RecipeId;
+			ProcSelectedRuns = 1;
+			UpdateProcessingLive();
+		}, true, 14))->SetPadding(FMargin(0.f, 0.f, 6.f, 0.f));
+	}
+	WindowContent->AddChildToVerticalBox(RecipeRow)->SetPadding(FMargin(0.f, 2.f));
+	ProcSelectedText = MakeText(FText::GetEmpty(), 15);
+	WindowContent->AddChildToVerticalBox(ProcSelectedText)->SetPadding(FMargin(0.f, 4.f));
+
+	// ② 제작 수량 (레시피 실행 횟수)
+	WindowContent->AddChildToVerticalBox(MakeText(LOCTEXT("ProcStep2", "② 제작 횟수"), 17, CozyHud::AccentText))->SetPadding(FMargin(0.f, 8.f, 0.f, 2.f));
+	UHorizontalBox* RunsRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+	ProcMinusButton = MakeButton(LOCTEXT("RunsMinus", " − "), [this]()
+	{
+		ProcSelectedRuns = FMath::Max(1, ProcSelectedRuns - 1);
+		UpdateProcessingLive();
+	}, true, 16);
+	RunsRow->AddChildToHorizontalBox(ProcMinusButton)->SetPadding(FMargin(0.f, 0.f, 8.f, 0.f));
+	ProcRunsText = MakeText(FText::GetEmpty(), 18);
+	RunsRow->AddChildToHorizontalBox(ProcRunsText)->SetVerticalAlignment(VAlign_Center);
+	ProcPlusButton = MakeButton(LOCTEXT("RunsPlus", " + "), [this]()
+	{
+		++ProcSelectedRuns;
+		UpdateProcessingLive();
+	}, true, 16);
+	RunsRow->AddChildToHorizontalBox(ProcPlusButton)->SetPadding(FMargin(8.f, 0.f, 8.f, 0.f));
+	ProcMaxButton = MakeButton(LOCTEXT("RunsMax", "최대"), [this, FacilityId]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			ProcSelectedRuns = FMath::Max(1, EstateNow->GetRecipeQuote(FacilityId, ProcSelectedRecipe, 1).MaxRuns);
+			UpdateProcessingLive();
+		}
+	}, true, 14);
+	RunsRow->AddChildToHorizontalBox(ProcMaxButton);
+	WindowContent->AddChildToVerticalBox(RunsRow)->SetPadding(FMargin(0.f, 2.f));
+	ProcMaxText = MakeText(FText::GetEmpty(), 14, CozyHud::MutedText);
+	WindowContent->AddChildToVerticalBox(ProcMaxText)->SetPadding(FMargin(0.f, 2.f));
+
+	// ③ 재료·시간 확인 → 시작
+	WindowContent->AddChildToVerticalBox(MakeText(LOCTEXT("ProcStep3", "③ 재료·시간 확인"), 17, CozyHud::AccentText))->SetPadding(FMargin(0.f, 8.f, 0.f, 2.f));
+	ProcSummaryText = MakeText(FText::GetEmpty(), 15);
+	WindowContent->AddChildToVerticalBox(ProcSummaryText)->SetPadding(FMargin(0.f, 2.f));
+	ProcBlockText = MakeText(FText::GetEmpty(), 15, CozyHud::WarningText);
+	WindowContent->AddChildToVerticalBox(ProcBlockText)->SetPadding(FMargin(0.f, 2.f));
+	ProcStorageNoteText = MakeText(FText::GetEmpty(), 15, CozyHud::AccentText);
+	WindowContent->AddChildToVerticalBox(ProcStorageNoteText)->SetPadding(FMargin(0.f, 2.f));
+	ProcStartButton = MakeButton(LOCTEXT("ProcStart", "제작 시작"), [this, FacilityId]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			// 시작 직전에 서비스가 조건을 다시 확인 · 실패하면 아무것도 바뀌지 않음
+			FText Message;
+			EstateNow->StartProcessing(FacilityId, ProcSelectedRecipe, ProcSelectedRuns, Message);
+			SetFeedback(Message);
+			UpdateProcessingLive();
+		}
+	}, false, 16);
+	WindowContent->AddChildToVerticalBox(ProcStartButton)->SetPadding(FMargin(0.f, 4.f, 0.f, 0.f));
+
+	// 가공 칸 (데이터의 동시 가공 수만큼 · 슬롯이 늘어도 같은 코드)
+	WindowContent->AddChildToVerticalBox(MakeText(LOCTEXT("ProcSlots", "진행 중인 가공"), 17, CozyHud::AccentText))->SetPadding(FMargin(0.f, 14.f, 0.f, 2.f));
+	for (int32 SlotIndex = 0; SlotIndex < FMath::Max(1, Def->ProcessingSlots); ++SlotIndex)
+	{
+		UHorizontalBox* SlotHeader = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+		UTextBlock* StatusText = MakeText(FText::GetEmpty(), 16);
+		UHorizontalBoxSlot* StatusSlot = SlotHeader->AddChildToHorizontalBox(StatusText);
+		StatusSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+		StatusSlot->SetVerticalAlignment(VAlign_Center);
+		UButton* CancelButton = MakeButton(LOCTEXT("ProcCancel", "취소"), [this, FacilityId, SlotIndex]()
+		{
+			UCozyEstateSubsystem* EstateNow = GetEstate();
+			const TArray<FCozyProcessingJobView> Jobs = EstateNow ? EstateNow->GetProcessingJobs(FacilityId) : TArray<FCozyProcessingJobView>();
+			if (!Jobs.IsValidIndex(SlotIndex))
+			{
+				return;
+			}
+			// 🙋 취소 전 안내와 확인 (D29) · 안내 숫자는 UpdateProcessingLive가 최신 값으로 갱신
+			ProcPendingCancelJob = Jobs[SlotIndex].JobId;
+			UpdateProcessingLive();
+		}, true, 14);
+		SlotHeader->AddChildToHorizontalBox(CancelButton)->SetPadding(FMargin(12.f, 0.f, 0.f, 0.f));
+		WindowContent->AddChildToVerticalBox(SlotHeader)->SetPadding(FMargin(0.f, 4.f, 0.f, 2.f));
+
+		UProgressBar* Bar = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass());
+		Bar->SetFillColorAndOpacity(CozyHud::AccentText);
+		WindowContent->AddChildToVerticalBox(Bar)->SetPadding(FMargin(0.f, 2.f));
+		UTextBlock* TimeText = MakeText(FText::GetEmpty(), 14, CozyHud::MutedText);
+		WindowContent->AddChildToVerticalBox(TimeText);
+
+		ProcSlotStatusTexts.Add(StatusText);
+		ProcSlotBars.Add(Bar);
+		ProcSlotTimeTexts.Add(TimeText);
+		ProcSlotCancelButtons.Add(CancelButton);
+	}
+
+	// 취소 확인 (평소에는 숨김)
+	ProcConfirmBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
+	ProcConfirmText = MakeText(FText::GetEmpty(), 15, CozyHud::WarningText);
+	ProcConfirmBox->AddChildToVerticalBox(ProcConfirmText)->SetPadding(FMargin(0.f, 0.f, 0.f, 4.f));
+	UHorizontalBox* ConfirmRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+	ConfirmRow->AddChildToHorizontalBox(MakeButton(LOCTEXT("ProcConfirmYes", "취소 확정"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			FText Message;
+			EstateNow->CancelProcessing(ProcPendingCancelJob, Message);
+			ProcPendingCancelJob.Invalidate();
+			SetFeedback(Message);
+			UpdateProcessingLive();
+		}
+	}, true, 14))->SetPadding(FMargin(0.f, 0.f, 8.f, 0.f));
+	ConfirmRow->AddChildToHorizontalBox(MakeButton(LOCTEXT("ProcConfirmNo", "계속 제작"), [this]()
+	{
+		ProcPendingCancelJob.Invalidate();
+		UpdateProcessingLive();
+	}, true, 14));
+	ProcConfirmBox->AddChildToVerticalBox(ConfirmRow);
+	WindowContent->AddChildToVerticalBox(ProcConfirmBox)->SetPadding(FMargin(0.f, 6.f));
+
+	// 미수령 완료품 · 수령 (생산과 같은 수령 규칙 · D31)
+	UHorizontalBox* CollectRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+	InfoUnclaimedText = MakeText(FText::GetEmpty(), 17, CozyHud::AccentText);
+	CollectRow->AddChildToHorizontalBox(InfoUnclaimedText)->SetPadding(FMargin(0.f, 0.f, 16.f, 0.f));
+	const FText CollectLabel = Def->CollectButtonLabel.IsEmpty() ? LOCTEXT("CollectDefault", "수령") : Def->CollectButtonLabel;
+	InfoCollectButton = MakeButton(CollectLabel, [this, FacilityId]() { HandleCollectClicked(FacilityId); }, false, 16);
+	CollectRow->AddChildToHorizontalBox(InfoCollectButton);
+	WindowContent->AddChildToVerticalBox(CollectRow)->SetPadding(FMargin(0.f, 12.f, 0.f, 0.f));
+	InfoStorageText = MakeText(FText::GetEmpty(), 14, CozyHud::MutedText);
+	WindowContent->AddChildToVerticalBox(InfoStorageText)->SetPadding(FMargin(0.f, 2.f));
+
+	if (Def->MaxResidents > 0)
+	{
+		WindowContent->AddChildToVerticalBox(MakeButton(LOCTEXT("GoNagaya", "주민 배치 (나가야로)"), [this, FacilityId]()
+		{
+			OpenWindow(ECozyWindowKind::Nagaya, FGuid(), FacilityId);
+		}, true, 14))->SetPadding(FMargin(0.f, 10.f, 0.f, 0.f));
+	}
+
+	// 방금 한 일 (클릭 결과) · 현재 상태와 구분
+	InfoFeedbackText = MakeText(FText::GetEmpty(), 15, CozyHud::AccentText);
+	WindowContent->AddChildToVerticalBox(InfoFeedbackText)->SetPadding(FMargin(0.f, 10.f, 0.f, 0.f));
+	SetFeedback(LastFeedback);
+
+	UpdateProcessingLive();
+}
+
+void UCozyHudWidget::UpdateProcessingLive()
+{
+	UCozyEstateSubsystem* Estate = GetEstate();
+	const FCozyFacilityState* Facility = Estate ? Estate->FindFacility(WindowFacility) : nullptr;
+	const FCozyFacilityRow* Def = Facility ? Estate->GetFacilityDef(Facility->DefinitionId) : nullptr;
+	if (!Def || !ProcRunsText)
+	{
+		return;
+	}
+
+	// 주민
+	if (InfoResidentText)
+	{
+		FString Names;
+		for (const FGuid& ResidentId : Facility->AssignedResidents)
+		{
+			Names += (Names.IsEmpty() ? TEXT("") : TEXT(", ")) + Estate->GetResidentDisplayName(ResidentId).ToString();
+		}
+		InfoResidentText->SetText(FText::Format(LOCTEXT("ProcResidentLine", "주민: {0}  ({1}/{2} · 필요 {3}명)"),
+			Names.IsEmpty() ? LOCTEXT("NoneResident", "없음") : FText::FromString(Names),
+			FText::AsNumber(Facility->AssignedResidents.Num()), FText::AsNumber(Def->MaxResidents), FText::AsNumber(FMath::Max(1, Def->MinResidents))));
+	}
+
+	// 선택한 레시피 · 수량 · 견적 (계산은 서비스의 공통 함수)
+	const FCozyRecipeQuote Quote = Estate->GetRecipeQuote(WindowFacility, ProcSelectedRecipe, ProcSelectedRuns);
+	if (const FCozyRecipeRow* Recipe = Estate->GetRecipeDef(ProcSelectedRecipe))
+	{
+		FString InputsText;
+		for (const TPair<FName, int32>& Input : Recipe->Inputs)
+		{
+			const FCozyItemRow* Item = Estate->GetItemDef(Input.Key);
+			InputsText += FString::Printf(TEXT("%s%s %d"), InputsText.IsEmpty() ? TEXT("") : TEXT(" + "), *(Item ? Item->DisplayName : FText::FromName(Input.Key)).ToString(), Input.Value);
+		}
+		ProcSelectedText->SetText(FText::Format(LOCTEXT("ProcSelected", "선택: {0} → {1} {2}개 · 1회 {3}"),
+			FText::FromString(InputsText), Quote.OutputName, FText::AsNumber(Quote.OutputPerRun), CozyHud::DurationText(Quote.SecondsPerRun)));
+	}
+	else
+	{
+		ProcSelectedText->SetText(LOCTEXT("ProcNoRecipe", "이 시설에서 만들 수 있는 레시피가 없습니다"));
+	}
+
+	ProcRunsText->SetText(FText::Format(LOCTEXT("ProcRuns", "{0}회  →  {1} {2}개"), FText::AsNumber(ProcSelectedRuns), Quote.OutputName, FText::AsNumber(Quote.TotalOutput)));
+	ProcMinusButton->SetIsEnabled(ProcSelectedRuns > 1);
+	ProcPlusButton->SetIsEnabled(ProcSelectedRuns < Quote.MaxRuns);
+	ProcMaxButton->SetIsEnabled(Quote.MaxRuns > 0 && ProcSelectedRuns != Quote.MaxRuns);
+	ProcMaxText->SetText(FText::Format(LOCTEXT("ProcMax", "지금 최대 {0}회  (재료로 {1}회분 · 남은 미수령 공간으로 {2}회분)"),
+		FText::AsNumber(Quote.MaxRuns), FText::AsNumber(Quote.MaxByMaterials), FText::AsNumber(Quote.MaxBySpace)));
+
+	FString InputsNeed;
+	for (const FCozyRecipeQuote::FInput& Input : Quote.Inputs)
+	{
+		const FCozyItemRow* Item = Estate->GetItemDef(Input.ItemId);
+		InputsNeed += FString::Printf(TEXT("%s%s %d개 (보유 %d개)"), InputsNeed.IsEmpty() ? TEXT("") : TEXT(", "), *(Item ? Item->DisplayName : FText::FromName(Input.ItemId)).ToString(), Input.Need, Input.Have);
+	}
+	ProcSummaryText->SetText(FText::Format(LOCTEXT("ProcSummary", "필요 재료: {0}\n완료품: {1} {2}개 (1회마다 {3}개씩 시설에 쌓임)\n예상 시간: {4} (주민 부족으로 멈춘 시간은 제외)"),
+		FText::FromString(InputsNeed), Quote.OutputName, FText::AsNumber(Quote.TotalOutput), FText::AsNumber(Quote.OutputPerRun), CozyHud::DurationText(Quote.TotalSeconds)));
+	ProcBlockText->SetText(Quote.BlockReason);
+	ProcBlockText->SetVisibility(Quote.BlockReason.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+	ProcStartButton->SetIsEnabled(Quote.bCanStart);
+
+	// 🙋 완료품의 공용 창고가 가득해도 시작은 허용하고 안내만 (D35 · 확인 팝업 없음)
+	if (ProcStorageNoteText)
+	{
+		const FCozyRecipeRow* SelectedRecipe = Estate->GetRecipeDef(ProcSelectedRecipe);
+		const bool bStorageFull = SelectedRecipe && Estate->GetStorageSpace(SelectedRecipe->OutputItem) <= 0;
+		ProcStorageNoteText->SetText(bStorageFull
+			? FText::Format(LOCTEXT("ProcStorageFullNote", "창고에 {0} 공간이 없습니다. 완성품은 시설에 보관되며, 수령하려면 창고 공간이 필요합니다"), Quote.OutputName)
+			: FText::GetEmpty());
+		ProcStorageNoteText->SetVisibility(bStorageFull ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+
+	// 가공 칸
+	const TArray<FCozyProcessingJobView> Jobs = Estate->GetProcessingJobs(WindowFacility);
+	for (int32 SlotIndex = 0; SlotIndex < ProcSlotStatusTexts.Num(); ++SlotIndex)
+	{
+		UTextBlock* StatusText = ProcSlotStatusTexts[SlotIndex];
+		UProgressBar* Bar = ProcSlotBars[SlotIndex];
+		UTextBlock* TimeText = ProcSlotTimeTexts[SlotIndex];
+		UButton* CancelButton = ProcSlotCancelButtons[SlotIndex];
+		if (Jobs.IsValidIndex(SlotIndex))
+		{
+			const FCozyProcessingJobView& Job = Jobs[SlotIndex];
+			StatusText->SetText(Job.bPaused
+				? FText::Format(LOCTEXT("SlotPaused", "{0} — {1} · {2}/{3}회 완성 · 현재 회차 진행도 유지"), Job.Status, Job.OutputName, FText::AsNumber(Job.CompletedRuns), FText::AsNumber(Job.TotalRuns))
+				: Job.Status);
+			StatusText->SetColorAndOpacity(FSlateColor(Job.bPaused ? CozyHud::WarningText : FLinearColor::White));
+			Bar->SetPercent(Job.RunProgress01);
+			Bar->SetVisibility(ESlateVisibility::Visible);
+			TimeText->SetText(FText::Format(LOCTEXT("SlotTime", "이번 회 남은 {0} · 전체 남은 {1} · 완성 {2}/{3}회 ({4}개)"),
+				CozyHud::DurationText(Job.RunRemainingSeconds), CozyHud::DurationText(Job.TotalRemainingSeconds),
+				FText::AsNumber(Job.CompletedRuns), FText::AsNumber(Job.TotalRuns), FText::AsNumber(Job.CompletedRuns * Job.OutputPerRun)));
+			TimeText->SetVisibility(ESlateVisibility::Visible);
+			CancelButton->SetVisibility(ESlateVisibility::Visible);
+		}
+		else
+		{
+			StatusText->SetText(FText::Format(LOCTEXT("SlotEmpty", "가공 칸 {0}: 비어 있음"), FText::AsNumber(SlotIndex + 1)));
+			StatusText->SetColorAndOpacity(FSlateColor(CozyHud::MutedText));
+			Bar->SetVisibility(ESlateVisibility::Collapsed);
+			TimeText->SetVisibility(ESlateVisibility::Collapsed);
+			CancelButton->SetVisibility(ESlateVisibility::Collapsed);
+		}
+	}
+
+	// 취소 확인: 안내를 띄운 동안 회차가 끝나도 숫자가 맞도록 매번 다시 씀 · 대상 작업이 이미 끝났으면 닫음
+	const FCozyProcessingJobView* PendingJob = ProcPendingCancelJob.IsValid()
+		? Jobs.FindByPredicate([this](const FCozyProcessingJobView& Job) { return Job.JobId == ProcPendingCancelJob; })
+		: nullptr;
+	const bool bPendingAlive = PendingJob != nullptr;
+	if (!bPendingAlive)
+	{
+		ProcPendingCancelJob.Invalidate();
+	}
+	else if (ProcConfirmText)
+	{
+		ProcConfirmText->SetText(FText::Format(LOCTEXT("ProcConfirm", "취소하면 투입한 재료를 돌려받을 수 없습니다.\n완성된 {0}회분({1}개)은 시설에 남고, 남은 {2}회는 완료품 없이 종료됩니다. 취소할까요?"),
+			FText::AsNumber(PendingJob->CompletedRuns), FText::AsNumber(PendingJob->CompletedRuns * PendingJob->OutputPerRun), FText::AsNumber(PendingJob->TotalRuns - PendingJob->CompletedRuns)));
+	}
+	if (ProcConfirmBox)
+	{
+		ProcConfirmBox->SetVisibility(bPendingAlive ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+
+	// 미수령 · 창고 상태 (생산과 같은 공통 계산)
+	const FCozyUnclaimedView Unclaimed = Estate->GetUnclaimedView(WindowFacility);
+	if (InfoUnclaimedText)
+	{
+		InfoUnclaimedText->SetText(Unclaimed.Reserved > 0
+			? FText::Format(LOCTEXT("ProcUnclaimedReserved", "미수령 {0}: {1} / {2}  · 제작 중 확보 {3}"), Unclaimed.ItemName, FText::AsNumber(Unclaimed.Amount), FText::AsNumber(Unclaimed.Capacity), FText::AsNumber(Unclaimed.Reserved))
+			: FText::Format(LOCTEXT("ProcUnclaimed", "미수령 {0}: {1} / {2}"), Unclaimed.ItemName, FText::AsNumber(Unclaimed.Amount), FText::AsNumber(Unclaimed.Capacity)));
+	}
+	if (InfoCollectButton)
+	{
+		InfoCollectButton->SetIsEnabled(Unclaimed.Amount > 0);
+	}
+	if (InfoStorageText)
+	{
+		if (Unclaimed.Amount <= 0)
+		{
+			InfoStorageText->SetText(LOCTEXT("ProcStorageEmpty", "현재 수령할 완료품이 없습니다"));
+			InfoStorageText->SetColorAndOpacity(FSlateColor(CozyHud::MutedText));
+		}
+		else
+		{
+			const bool bNoSpace = Unclaimed.StorageCap > 0 && Unclaimed.StoredAmount >= Unclaimed.StorageCap;
+			const FText StorageLine = FText::Format(LOCTEXT("InfoStorage", "창고 {0} {1}/{2}"), Unclaimed.ItemName, FText::AsNumber(Unclaimed.StoredAmount), FText::AsNumber(Unclaimed.StorageCap));
+			InfoStorageText->SetText(bNoSpace
+				? FText::Format(LOCTEXT("InfoStorageFull", "현재 {0} — 받을 수 있는 공간이 없습니다"), StorageLine)
+				: FText::Format(LOCTEXT("InfoStorageSpace", "현재 {0} · 지금 수령 가능 {1}개"), StorageLine, FText::AsNumber(Unclaimed.CollectableNow)));
+			InfoStorageText->SetColorAndOpacity(FSlateColor(bNoSpace ? CozyHud::WarningText : CozyHud::MutedText));
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
 // 디버그 메뉴
 
 void UCozyHudWidget::ToggleDebugPanel()
@@ -871,7 +1259,21 @@ void UCozyHudWidget::RefreshDebugPanel()
 			}
 		}, true, 13))->SetPadding(FMargin(0.f, 3.f));
 	};
+	AddResourceButton(LOCTEXT("AddRice", "쌀 +10 (테스트 레시피용)"), TEXT("Rice"), 10);
+	DebugContent->AddChildToVerticalBox(MakeButton(Estate->GetShowTestRecipes() ? LOCTEXT("TestRecipesOn", "테스트 레시피: 보임") : LOCTEXT("TestRecipesOff", "테스트 레시피: 숨김"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			EstateNow->SetShowTestRecipes(!EstateNow->GetShowTestRecipes());
+			if (WindowKind == ECozyWindowKind::Processing)
+			{
+				RefreshWindow();
+			}
+		}
+	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
 	SetResourceButton(LOCTEXT("SetWheat95", "창고 밀 95개로"), TEXT("Wheat"), 95);
+	SetResourceButton(LOCTEXT("SetFlour98", "창고 밀가루 98개로"), TEXT("Flour"), 98);
+	SetResourceButton(LOCTEXT("SetFlour100", "창고 밀가루 100개로 (가득)"), TEXT("Flour"), 100);
 	SetResourceButton(LOCTEXT("SetWheat100", "창고 밀 100개로 (가득)"), TEXT("Wheat"), 100);
 	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("AddTestField", "테스트용 밭 추가"), [this]()
 	{
