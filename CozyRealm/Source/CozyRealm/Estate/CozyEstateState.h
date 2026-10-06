@@ -65,11 +65,15 @@ struct FCozyFacilityState
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Facility")
 	TArray<FGuid> AssignedResidents;
 
-	/** 이 시설에 쌓인 미수령 생산물 (재료 ID → 개수) · 수령하기 전에는 가공·판매·업그레이드에 쓸 수 없음 */
+	/** 미수령 완료품 ID · 한 번에 한 종류만 (D31) · 수량이 0이면 비어 있음 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Facility")
-	TMap<FName, int32> UnclaimedItems;
+	FName UnclaimedItemId;
 
-	/** 진행 중인 작업 ID (작업 기록이 유일한 원본 · 없으면 무효 ID) */
+	/** 미수령 완료품 수량 · 수령하기 전에는 가공·판매·업그레이드에 쓸 수 없음 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Facility")
+	int32 UnclaimedAmount = 0;
+
+	/** 진행 중인 자동 생산 작업 ID (작업 기록이 유일한 원본 · 없으면 무효 ID) · 가공 작업은 작업 기록의 시설 ID로 찾음 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Facility")
 	FGuid ActiveJobId;
 };
@@ -109,7 +113,7 @@ struct FCozyJobRecord
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Job")
 	ECozyJobType Type = ECozyJobType::Production;
 
-	/** 작업 내용 (생산이면 작물 ID) */
+	/** 작업 내용 (생산이면 작물 ID · 가공이면 레시피 ID) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Job")
 	FName ContentId;
 
@@ -136,9 +140,21 @@ struct FCozyJobRecord
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Job")
 	FText HeldReason;
 
-	/** 반복 생산에서 지금까지 미수령분으로 넘긴 주기 수 (같은 주기를 두 번 넘기지 않게 · 6-5) */
+	/** 지금까지 미수령분으로 넘긴 회차 수 (같은 회차를 두 번 넘기지 않게 · 6-5) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Job")
 	int32 PaidCycles = 0;
+
+	/** 가공: 선택한 전체 실행 횟수 (D33 · 한 회씩 순서대로) */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Job")
+	int32 TotalRuns = 0;
+
+	/** 가공: 완료품 ID (다른 품목 제한은 레시피가 아니라 이 값 기준 · D31) */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Job")
+	FName OutputItemId;
+
+	/** 가공: 1회마다 나오는 개수 · 남은 회차 × 이 값만큼 미수령 공간을 확보해 둠 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Job")
+	int32 OutputPerRun = 0;
 };
 
 /** 영지 전체 상태 (한 번에 같은 시점으로 저장할 묶음) */

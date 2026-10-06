@@ -43,6 +43,62 @@ struct FCozyProductionView
 	int32 CollectableNow = 0;
 };
 
+/** 레시피 견적: 선택한 횟수로 시작할 수 있는지 · 최대 횟수 · 총 재료·완료품·시간 (공통 가공 창이 읽음 · D32) */
+struct FCozyRecipeQuote
+{
+	/** 이 시설의 레시피가 맞는가 */
+	bool bValid = false;
+	bool bCanStart = false;
+	/** 선택한 실행 횟수 */
+	int32 Runs = 0;
+	/** 지금 고를 수 있는 최대 횟수 = min(재료, 미수령 공간) · 품목·칸·주민 조건이 안 맞으면 0 */
+	int32 MaxRuns = 0;
+	int32 MaxByMaterials = 0;
+	int32 MaxBySpace = 0;
+	int32 OutputPerRun = 0;
+	int32 TotalOutput = 0;
+	double SecondsPerRun = 0.0;
+	double TotalSeconds = 0.0;
+	/** 재료 ID · 선택 횟수 기준 총 필요량 · 지금 보유량 */
+	struct FInput { FName ItemId; int32 Need = 0; int32 Have = 0; };
+	TArray<FInput> Inputs;
+	FText OutputName;
+	/** 시작할 수 없는 이유 (시작 가능하면 비어 있음) */
+	FText BlockReason;
+};
+
+/** 진행·일시 정지 중인 가공 작업 하나 (가공 창 표시용) */
+struct FCozyProcessingJobView
+{
+	FGuid JobId;
+	FText OutputName;
+	int32 CompletedRuns = 0;
+	int32 TotalRuns = 0;
+	int32 OutputPerRun = 0;
+	bool bPaused = false;
+	float RunProgress01 = 0.f;
+	float RunRemainingSeconds = 0.f;
+	float TotalRemainingSeconds = 0.f;
+	FText Status;
+};
+
+/** 시설의 미수령 보관 상태 (생산·가공 공통 · D31) */
+struct FCozyUnclaimedView
+{
+	/** 지금 이 시설이 맡고 있는 품목 (미수령분 또는 진행 작업의 완료품) · 없으면 NAME_None */
+	FName ItemId;
+	FText ItemName;
+	int32 Amount = 0;
+	int32 Capacity = 0;
+	/** 진행·일시 정지 중인 가공 작업이 확보해 둔 공간 (남은 회차 × 1회 개수) */
+	int32 Reserved = 0;
+	/** 그 품목의 공용 창고 보유량 / 한도 (미수령분은 포함하지 않음) */
+	int32 StoredAmount = 0;
+	int32 StorageCap = 0;
+	/** 지금 수령하면 창고로 옮겨질 수량 = min(미수령, 창고 남은 공간) */
+	int32 CollectableNow = 0;
+};
+
 /** 수령 결과 (UI가 메시지로 보여 줌) */
 struct FCozyCollectResult
 {
@@ -113,8 +169,43 @@ public:
 	/** 시설의 미수령 생산물을 공용 창고로 옮긴다 · 창고에 들어갈 만큼만 옮기고 나머지는 시설에 남김 */
 	FCozyCollectResult CollectUnclaimed(const FGuid& FacilityId);
 
-	/** 시설의 미수령 생산물 합계 */
+	/** 시설의 미수령 생산물 수량 */
 	int32 GetUnclaimedTotal(const FGuid& FacilityId) const;
+
+	/** 시설의 미수령 보관 상태 (품목 · 수량 · 한도 · 확보 공간 · 창고 상태) */
+	FCozyUnclaimedView GetUnclaimedView(const FGuid& FacilityId) const;
+
+	/**
+	 *  이 시설이 ItemId 완료품을 새로 맡을 수 있는가 (생산·가공 공통 · D31).
+	 *  다른 품목이 미수령으로 남아 있거나 다른 품목을 만드는 작업이 진행 중이면 false + 이유.
+	 *  밭 작물 변경도 이 검사를 쓴다 (작물 선택 화면을 만들 때 연결).
+	 */
+	bool CanAcceptOutputItem(const FGuid& FacilityId, FName ItemId, FText& OutReason) const;
+
+	// --- 공통 가공 (D28~D33) ---
+
+	const FCozyRecipeRow* GetRecipeDef(FName Id) const;
+
+	/** 이 시설에서 쓸 수 있는 레시피 ID (데이터 순서) · 테스트 레시피는 '테스트 레시피 보이기'를 켰을 때만 */
+	TArray<FName> GetFacilityRecipes(const FGuid& FacilityId) const;
+
+	/** 선택한 횟수의 견적 · 최대 횟수와 시작할 수 없는 이유까지 계산 (상태를 바꾸지 않음) */
+	FCozyRecipeQuote GetRecipeQuote(const FGuid& FacilityId, FName RecipeId, int32 Runs) const;
+
+	/**
+	 *  가공 시작: 조건 재확인 → 선택 횟수 전체 재료 차감 → 작업 등록을 한 번에 처리.
+	 *  실패하면 아무것도 바꾸지 않고 이유를 돌려줌 · 수량을 임의로 줄여 시작하지 않음.
+	 */
+	bool StartProcessing(const FGuid& FacilityId, FName RecipeId, int32 Runs, FText& OutMessage);
+
+	/** 유저가 직접 취소: 완성된 회차는 미수령분에 그대로, 미완료 회차는 재료 반환·완료품 없이 종료 · 확보 공간 해제 (D29·D33) */
+	bool CancelProcessing(const FGuid& JobId, FText& OutMessage);
+
+	/** 시설의 가공 작업 목록 (시작한 순서) · 여러 가공 칸이 생겨도 같은 함수 */
+	TArray<FCozyProcessingJobView> GetProcessingJobs(const FGuid& FacilityId) const;
+
+	bool GetShowTestRecipes() const { return bShowTestRecipes; }
+	void SetShowTestRecipes(bool bShow);
 
 	// --- 주민 배치 ---
 
@@ -169,8 +260,21 @@ private:
 	double GetProductionDuration(const FCozyFacilityState& Facility, const FCozyCropRow& Crop, const FCozyFacilityRow& Def) const;
 	bool IsFacilityWorking(const FCozyFacilityState& Facility, const FCozyFacilityRow& Def) const;
 
-	/** 🙋 필요 인원이 부족해지면 진행 중인 생산 주기를 취소하고 진행도를 초기화 (이미 지급한 생산물은 유지) */
+	/** 🙋 필요 인원이 부족해지면 진행 중인 생산 주기를 취소하고 진행도를 초기화 (이미 지급한 생산물은 유지 · D26) */
 	void CancelProductionIfUnderstaffed(FCozyFacilityState& Facility);
+
+	/** 🙋 가공은 필요 인원이 부족해지면 현재 회차의 진행도를 유지한 채 일시 정지 · 다시 채워지면 이어서 (D30) */
+	void UpdateProcessingPause(FCozyFacilityState& Facility);
+	void StepProcessing(FCozyFacilityState& Facility, const FCozyFacilityRow& Def);
+	double GetProcessingDuration(const FCozyFacilityState& Facility, const FCozyRecipeRow& Recipe, const FCozyFacilityRow& Def) const;
+
+	/** 진행·일시 정지 중인 가공 작업이 확보한 미수령 공간 */
+	int32 GetReservedUnclaimed(const FCozyFacilityState& Facility) const;
+	/** 지금 이 시설이 맡은 품목 (미수령분 우선, 없으면 진행 작업의 완료품) */
+	FName GetLockedOutputItem(const FCozyFacilityState& Facility) const;
+	/** 미수령분에 더한다 (품목이 비어 있으면 이 품목으로 정함) */
+	void AddUnclaimed(FCozyFacilityState& Facility, FName ItemId, int32 Amount);
+	FText GetItemName(FName ItemId) const;
 	void RemoveResidentFromFacility(FCozyResidentState& Resident);
 
 	FCozyFacilityState* FindFacilityMutable(const FGuid& Id);
@@ -210,4 +314,5 @@ private:
 	float TimeScale = 1.f;
 	double StepAccumulator = 0.0;
 	ECozyNightOverride NightOverride = ECozyNightOverride::Auto;
+	bool bShowTestRecipes = false;
 };

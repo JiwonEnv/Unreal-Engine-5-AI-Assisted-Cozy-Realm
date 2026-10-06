@@ -45,7 +45,9 @@ enum class ECozyWindowKind : uint8
 	/** 아직 내용이 없는 기능 창 틀 (가공 · 판매 · 업그레이드 · 신사) */
 	Placeholder,
 	/** 창고: 재료별 보유량 / 한도 / 받을 수 있는 수량 */
-	Storage
+	Storage,
+	/** 공통 가공: 레시피 → 제작 횟수 → 재료·시간 확인 → 시작 (모든 제작 시설 공통 · D32) */
+	Processing
 };
 
 /**
@@ -89,6 +91,11 @@ private:
 	void UpdateFacilityInfoLive();
 	/** 창고 창의 숫자만 갱신 (창을 다시 만들지 않음) */
 	void UpdateStorageLive();
+	/** 가공 창의 글자·버튼 상태만 갱신 (창을 다시 만들지 않음) */
+	void UpdateProcessingLive();
+	/** 미수령분 수령 버튼 공통 처리 (생산·가공) · 결과는 '방금 한 일'로 */
+	void HandleCollectClicked(const FGuid& FacilityId);
+	void SetFeedback(const FText& Message);
 
 	void RefreshTopBar();
 	/** 시설마다 이름표를 만든다 (시설 액터가 바뀌면 다시) */
@@ -102,6 +109,7 @@ private:
 	void BuildNagayaContent();
 	void BuildPlaceholderContent();
 	void BuildStorageContent();
+	void BuildProcessingContent();
 
 	UTextBlock* MakeText(const FText& Text, int32 FontSize = 16, const FLinearColor& Color = FLinearColor::White);
 	UButton* MakeButton(const FText& Label, TFunction<void()> OnClick, bool bEnabled = true, int32 FontSize = 15);
@@ -150,6 +158,37 @@ private:
 	TObjectPtr<UTextBlock> ClockText;
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> InfoCollectButton;
+	// --- 가공 창 (UpdateProcessingLive가 글자만 바꿈) ---
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> ProcSelectedText;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> ProcRunsText;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> ProcMinusButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> ProcPlusButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> ProcMaxButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> ProcMaxText;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> ProcSummaryText;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> ProcBlockText;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> ProcStartButton;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> ProcSlotStatusTexts;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<class UProgressBar>> ProcSlotBars;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> ProcSlotTimeTexts;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UButton>> ProcSlotCancelButtons;
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> ProcConfirmBox;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> ProcConfirmText;
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> DebugPanel;
 	UPROPERTY(Transient)
@@ -174,6 +213,11 @@ private:
 	FGuid WindowTargetFacility;
 	FText PlaceholderLabel;
 	FText LastFeedback;
+	/** 가공 창에서 고른 레시피 · 제작 횟수 (레시피 실행 횟수) */
+	FName ProcSelectedRecipe;
+	int32 ProcSelectedRuns = 1;
+	/** 취소 확인 중인 작업 */
+	FGuid ProcPendingCancelJob;
 	bool bDebugVisible = false;
 	FDelegateHandle EstateChangedHandle;
 	TArray<TObjectPtr<UCozyUiAction>>* ActionSink = nullptr;
