@@ -47,7 +47,9 @@ enum class ECozyWindowKind : uint8
 	/** 창고: 재료별 보유량 / 한도 / 받을 수 있는 수량 */
 	Storage,
 	/** 공통 가공: 레시피 → 제작 횟수 → 재료·시간 확인 → 시작 (모든 제작 시설 공통 · D32) */
-	Processing
+	Processing,
+	/** 판매소: 재료 선택 → 수량 → 받을 재화 확인 → 판매 */
+	Sales
 };
 
 /**
@@ -93,6 +95,8 @@ private:
 	void UpdateStorageLive();
 	/** 가공 창의 글자·버튼 상태만 갱신 (창을 다시 만들지 않음) */
 	void UpdateProcessingLive();
+	/** 판매소 창의 글자·버튼 상태만 갱신 (창을 다시 만들지 않음) */
+	void UpdateSalesLive();
 	/** 미수령분 수령 버튼 공통 처리 (생산·가공) · 결과는 '방금 한 일'로 */
 	void HandleCollectClicked(const FGuid& FacilityId);
 	void SetFeedback(const FText& Message);
@@ -110,6 +114,7 @@ private:
 	void BuildPlaceholderContent();
 	void BuildStorageContent();
 	void BuildProcessingContent();
+	void BuildSalesContent();
 
 	UTextBlock* MakeText(const FText& Text, int32 FontSize = 16, const FLinearColor& Color = FLinearColor::White);
 	UButton* MakeButton(const FText& Label, TFunction<void()> OnClick, bool bEnabled = true, int32 FontSize = 15);
@@ -192,6 +197,27 @@ private:
 	TObjectPtr<UVerticalBox> ProcConfirmBox;
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> ProcConfirmText;
+	// --- 판매소 창 (UpdateSalesLive가 글자만 바꿈) ---
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> SellListTexts;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UButton>> SellListButtons;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> SellSelectedText;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> SellAmountText;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> SellMinusButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> SellPlusButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> SellMaxButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> SellSummaryText;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> SellBlockText;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> SellButton;
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> DebugPanel;
 	UPROPERTY(Transient)
@@ -221,6 +247,10 @@ private:
 	int32 ProcSelectedRuns = 1;
 	/** 취소 확인 중인 작업 */
 	FGuid ProcPendingCancelJob;
+	/** 판매소 창에서 고른 재료 · 수량 */
+	TArray<FName> SellListItemIds;
+	FName SellSelectedItem;
+	int32 SellSelectedAmount = 1;
 	bool bDebugVisible = false;
 	FDelegateHandle EstateChangedHandle;
 	TArray<TObjectPtr<UCozyUiAction>>* ActionSink = nullptr;

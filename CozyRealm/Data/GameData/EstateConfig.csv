@@ -1,2 +1,2 @@
-﻿---,GridSize,CellSize,GridOrigin,StorageCapPerItem,NightStartHour,NightEndHour,Note
-Default,"(X=12,Y=12)",200,"(X=-1200,Y=-1200,Z=10)",100,18,6,"🤖 영지 12×12칸·칸 200cm·원점(24m 판 중앙 기준) 테스트 값 / 🙋 공용 창고 재료당 100개 (시설의 미수령분은 합산하지 않음·D27) / 🙋 밤 PC 현지 18~6시"
+﻿---,GridSize,CellSize,GridOrigin,StorageCapPerItem,NightStartHour,NightEndHour,SaleCurrencyId,Note
+Default,"(X=12,Y=12)",200,"(X=-1200,Y=-1200,Z=10)",100,18,6,Gold,🤖 영지 12×12칸·칸 200cm·원점(24m 판 중앙 기준) 테스트 값 / 🙋 공용 창고 재료당 100개 (시설의 미수령분은 합산하지 않음·D27) / 🙋 밤 PC 현지 18~6시 / 🙋 판매 대금은 골드(판매소 · D14)

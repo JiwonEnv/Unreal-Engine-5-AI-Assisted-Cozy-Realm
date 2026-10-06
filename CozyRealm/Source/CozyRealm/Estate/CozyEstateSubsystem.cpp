@@ -261,6 +261,11 @@ int32 UCozyEstateSubsystem::ValidateData() const
 		});
 	}
 
+	if (!GetItemDef(Config.SaleCurrencyId))
+	{
+		Warn(FString::Printf(TEXT("영지 설정: 판매 대금 재화 %s가 Items.csv에 없음"), *Config.SaleCurrencyId.ToString()));
+	}
+
 	UE_LOG(LogCozyRealm, Log, TEXT("[데이터 검사] 끝 · 문제 %d개"), Issues);
 	return Issues;
 }
@@ -775,6 +780,94 @@ FCozyCollectResult UCozyEstateSubsystem::CollectUnclaimed(const FGuid& FacilityI
 	UE_LOG(LogCozyRealm, Log, TEXT("수령: %s · 옮김 %d · 남음 %d"), *GetFacilityDisplayName(FacilityId).ToString(), Result.Moved, Result.Remaining);
 	NotifyChanged();
 	return Result;
+}
+
+// ---------------------------------------------------------------------------
+// 판매 (판매소 · 판매가는 Items.csv의 SellPrice · 대금 재화는 EstateConfig.csv의 SaleCurrencyId)
+
+TArray<FName> UCozyEstateSubsystem::GetSaleListItems() const
+{
+	TArray<FName> Result;
+	if (ItemTable)
+	{
+		ItemTable->ForeachRow<FCozyItemRow>(TEXT("Sale"), [&Result](const FName& Key, const FCozyItemRow& Row)
+		{
+			if (Row.Category == ECozyItemCategory::Material)
+			{
+				Result.Add(Key);
+			}
+		});
+	}
+	return Result;
+}
+
+FCozySellQuote UCozyEstateSubsystem::GetSellQuote(const FGuid& ShopFacilityId, FName ItemId, int32 Amount) const
+{
+	FCozySellQuote Quote;
+	Quote.Amount = FMath::Max(0, Amount);
+	Quote.CurrencyName = GetItemName(Config.SaleCurrencyId);
+	const FCozyFacilityState* Facility = FindFacility(ShopFacilityId);
+	const FCozyFacilityRow* Def = Facility ? GetFacilityDef(Facility->DefinitionId) : nullptr;
+	const FCozyItemRow* Item = GetItemDef(ItemId);
+	Quote.ItemName = Item ? Item->DisplayName : FText::FromName(ItemId);
+	if (!Def || !Def->Functions.Contains(ECozyFacilityFunction::Sales))
+	{
+		Quote.BlockReason = LOCTEXT("SellNoShop", "판매소에서만 팔 수 있습니다");
+		return Quote;
+	}
+	if (!IsFacilityWorking(*Facility, *Def))
+	{
+		Quote.BlockReason = LOCTEXT("SellShopIdle", "판매소가 작동하지 않습니다");
+		return Quote;
+	}
+	if (!Item || Item->Category != ECozyItemCategory::Material || Item->SellPrice <= 0)
+	{
+		Quote.BlockReason = FText::Format(LOCTEXT("SellNotAllowed", "{0}은(는) 팔 수 없는 재료입니다"), Quote.ItemName);
+		return Quote;
+	}
+	if (!GetItemDef(Config.SaleCurrencyId))
+	{
+		Quote.BlockReason = LOCTEXT("SellNoCurrency", "판매 대금 재화가 데이터에 없습니다");
+		return Quote;
+	}
+	Quote.UnitPrice = Item->SellPrice;
+	Quote.TotalPrice = Item->SellPrice * Quote.Amount;
+	// 창고에 있는 재료만 판다 (시설의 미수령분은 수령해야 창고 재료가 됨 · D27)
+	Quote.MaxAmount = GetAmount(ItemId);
+	if (Quote.MaxAmount <= 0)
+	{
+		Quote.BlockReason = FText::Format(LOCTEXT("SellNone", "창고에 {0} 재고가 없습니다"), Quote.ItemName);
+	}
+	else if (Quote.Amount < 1)
+	{
+		Quote.BlockReason = LOCTEXT("SellNoAmount", "판매 수량을 1개 이상 골라 주세요");
+	}
+	else if (Quote.Amount > Quote.MaxAmount)
+	{
+		Quote.BlockReason = FText::Format(LOCTEXT("SellOverMax", "선택한 {0}개는 창고 보유량 {1}개보다 많습니다 · 수량을 줄여 주세요"), FText::AsNumber(Quote.Amount), FText::AsNumber(Quote.MaxAmount));
+	}
+	Quote.bCanSell = Quote.BlockReason.IsEmpty();
+	return Quote;
+}
+
+bool UCozyEstateSubsystem::SellItem(const FGuid& ShopFacilityId, FName ItemId, int32 Amount, FText& OutMessage)
+{
+	// 판매 직전 재확인 · 실패하면 재료·재화 모두 그대로
+	const FCozySellQuote Quote = GetSellQuote(ShopFacilityId, ItemId, Amount);
+	if (!Quote.bCanSell)
+	{
+		OutMessage = Quote.BlockReason;
+		UE_LOG(LogCozyRealm, Log, TEXT("판매 실패: %s ×%d · %s"), *ItemId.ToString(), Amount, *OutMessage.ToString());
+		return false;
+	}
+	const int32 Before = GetAmount(Config.SaleCurrencyId);
+	State.Resources.FindOrAdd(ItemId) -= Quote.Amount;
+	AddResource(Config.SaleCurrencyId, Quote.TotalPrice);
+	const int32 After = GetAmount(Config.SaleCurrencyId);
+	OutMessage = FText::Format(LOCTEXT("SellOk", "{0} {1}개를 팔아 {2} {3}을(를) 받았습니다"), Quote.ItemName, FText::AsNumber(Quote.Amount), Quote.CurrencyName, FText::AsNumber(Quote.TotalPrice));
+	UE_LOG(LogCozyRealm, Log, TEXT("판매: %s ×%d · 개당 %d · %s %d → %d (+%d)"), *ItemId.ToString(), Quote.Amount, Quote.UnitPrice, *Config.SaleCurrencyId.ToString(), Before, After, After - Before);
+	NotifyChanged();
+	return true;
 }
 
 // ---------------------------------------------------------------------------

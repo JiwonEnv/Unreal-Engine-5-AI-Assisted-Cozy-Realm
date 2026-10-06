@@ -99,6 +99,21 @@ struct FCozyUnclaimedView
 	int32 CollectableNow = 0;
 };
 
+/** 판매 견적: 고른 재료·수량으로 팔 수 있는지 · 받을 재화 (판매소 창이 읽음) */
+struct FCozySellQuote
+{
+	bool bCanSell = false;
+	int32 Amount = 0;
+	/** 지금 팔 수 있는 최대 수량 = 창고 보유량 (미수령분은 포함하지 않음) */
+	int32 MaxAmount = 0;
+	int32 UnitPrice = 0;
+	int32 TotalPrice = 0;
+	FText ItemName;
+	FText CurrencyName;
+	/** 팔 수 없는 이유 (팔 수 있으면 비어 있음) */
+	FText BlockReason;
+};
+
 /** 수령 결과 (UI가 메시지로 보여 줌) */
 struct FCozyCollectResult
 {
@@ -206,6 +221,17 @@ public:
 
 	bool GetShowTestRecipes() const { return bShowTestRecipes; }
 	void SetShowTestRecipes(bool bShow);
+
+	// --- 판매 (판매소 · 주민 없이 기본 작동 · D4·D14) ---
+
+	/** 판매 목록에 보일 재료 ID (창고 재료 · 데이터 순서) · 판매가 0인 재료는 '판매 불가'로 표시 */
+	TArray<FName> GetSaleListItems() const;
+
+	/** 판매 견적 (상태를 바꾸지 않음) */
+	FCozySellQuote GetSellQuote(const FGuid& ShopFacilityId, FName ItemId, int32 Amount) const;
+
+	/** 판매: 조건 재확인 → 창고에서 재료 차감 → 재화 지급을 한 번에 · 실패하면 아무것도 바뀌지 않음 */
+	bool SellItem(const FGuid& ShopFacilityId, FName ItemId, int32 Amount, FText& OutMessage);
 
 	// --- 주민 배치 ---
 
