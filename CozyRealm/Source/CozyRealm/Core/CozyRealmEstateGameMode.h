@@ -19,4 +19,7 @@ public:
 	ACozyRealmEstateGameMode();
 
 	virtual void RestartPlayer(AController* NewPlayer) override;
+
+	/** 영지 데이터를 읽고 시작 시설·주민·재화를 만든 뒤 플레이를 시작한다 */
+	virtual void StartPlay() override;
 };

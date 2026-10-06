@@ -23,7 +23,7 @@ public class CozyRealm : ModuleRules
 			"Slate"
 		});
 
-		PrivateDependencyModuleNames.AddRange(new string[] { });
+		PrivateDependencyModuleNames.AddRange(new string[] { "SlateCore" });
 
 		PublicIncludePaths.AddRange(new string[] {
 			"CozyRealm"

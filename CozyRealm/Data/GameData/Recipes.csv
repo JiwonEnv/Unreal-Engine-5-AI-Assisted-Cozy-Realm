@@ -1,0 +1,2 @@
+﻿---,FacilityId,Inputs,OutputItem,OutputAmount,Seconds,Note
+Mill_Flour,Mill,"((""Wheat"", 3))",Flour,1,15,🙋 밀 3 → 밀가루 1 (15초) · 기능 2에서 사용

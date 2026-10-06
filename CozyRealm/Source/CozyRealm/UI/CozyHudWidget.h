@@ -1,0 +1,180 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Blueprint/UserWidget.h"
+#include "CozyHudWidget.generated.h"
+
+class UCanvasPanel;
+class UCanvasPanelSlot;
+class UBorder;
+class UButton;
+class UHorizontalBox;
+class UTextBlock;
+class UVerticalBox;
+class UCozyEstateSubsystem;
+class ACozyFacilityActor;
+
+/** 버튼 클릭을 C++ 람다로 넘기는 작은 연결 객체 */
+UCLASS()
+class UCozyUiAction : public UObject
+{
+	GENERATED_BODY()
+
+public:
+
+	TFunction<void()> Callback;
+
+	UFUNCTION()
+	void Fire()
+	{
+		if (Callback)
+		{
+			Callback();
+		}
+	}
+};
+
+/** 화면을 덮는 전용 창의 종류 */
+enum class ECozyWindowKind : uint8
+{
+	None,
+	/** 시설 정보 (생산 상태) */
+	FacilityInfo,
+	/** 나가야: 주민 목록 · 배치 */
+	Nagaya,
+	/** 아직 내용이 없는 기능 창 틀 (가공 · 판매 · 업그레이드 · 신사) */
+	Placeholder,
+	/** 창고: 재료별 보유량 / 한도 / 받을 수 있는 수량 */
+	Storage
+};
+
+/**
+ *  영지 화면 UI (임시 글자 화면 · 디자인은 나중에).
+ *  위쪽 재화 표시 · 선택한 시설 위 기능 아이콘 · 화면을 덮는 전용 창 · 디버그 메뉴(F1).
+ *  상태는 영지 서비스에서 읽고, 버튼은 서비스에 요청만 보낸다 (정리 6-7).
+ */
+UCLASS()
+class UCozyHudWidget : public UUserWidget
+{
+	GENERATED_BODY()
+
+public:
+
+	/** 시설을 선택해 기능 아이콘을 띄운다 */
+	void ShowFacilityIcons(ACozyFacilityActor* FacilityActor);
+
+	/** 선택 해제 (아이콘 숨김) */
+	void HideFacilityIcons();
+
+	/** 전용 창을 연다 · TargetFacility는 나가야 창에서 배치할 시설 */
+	void OpenWindow(ECozyWindowKind Kind, const FGuid& FacilityId, const FGuid& TargetFacility = FGuid());
+
+	void CloseWindow();
+	bool IsWindowOpen() const { return WindowKind != ECozyWindowKind::None; }
+
+	void ToggleDebugPanel();
+
+protected:
+
+	virtual TSharedRef<SWidget> RebuildWidget() override;
+	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+
+private:
+
+	void BuildLayout();
+	void HandleEstateChanged(bool bStructural);
+	/** 시설 정보 창의 진행 바·상태 글자만 갱신 (창을 다시 만들지 않음) */
+	void UpdateFacilityInfoLive();
+	/** 창고 창의 숫자만 갱신 (창을 다시 만들지 않음) */
+	void UpdateStorageLive();
+
+	void RefreshTopBar();
+	/** 시설마다 이름표를 만든다 (시설 액터가 바뀌면 다시) */
+	void RefreshNameLabels();
+	void UpdateNameLabelPositions();
+	void RefreshIcons();
+	void RefreshWindow();
+	void RefreshDebugPanel();
+
+	void BuildFacilityInfoContent();
+	void BuildNagayaContent();
+	void BuildPlaceholderContent();
+	void BuildStorageContent();
+
+	UTextBlock* MakeText(const FText& Text, int32 FontSize = 16, const FLinearColor& Color = FLinearColor::White);
+	UButton* MakeButton(const FText& Label, TFunction<void()> OnClick, bool bEnabled = true, int32 FontSize = 15);
+
+	UCozyEstateSubsystem* GetEstate() const;
+
+	// --- 위젯 ---
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanel> RootCanvas;
+	UPROPERTY(Transient)
+	TObjectPtr<UHorizontalBox> TopBarBox;
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanel> LabelLayer;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> NameLabels;
+	UPROPERTY(Transient)
+	TObjectPtr<UHorizontalBox> IconBox;
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanelSlot> IconSlot;
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> WindowOverlay;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> WindowTitle;
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> WindowContent;
+	UPROPERTY(Transient)
+	TObjectPtr<class UProgressBar> InfoProgressBar;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> InfoStatusText;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> InfoRemainingText;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> InfoUnclaimedText;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> InfoStorageText;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> InfoResidentText;
+	/** 클릭 결과 (방금 한 일) · 현재 상태 줄과 구분 */
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> InfoFeedbackText;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> StorageAmountTexts;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> StorageSpaceTexts;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> ClockText;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> InfoCollectButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> DebugPanel;
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> DebugContent;
+
+	/** 버튼 연결 객체 (가비지 컬렉션 방지) · 창을 다시 그릴 때 비움 */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UCozyUiAction>> FrameActions;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UCozyUiAction>> WindowActions;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UCozyUiAction>> IconActions;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UCozyUiAction>> DebugActions;
+
+	// --- 상태 ---
+	TWeakObjectPtr<ACozyFacilityActor> IconFacility;
+	TArray<TWeakObjectPtr<ACozyFacilityActor>> LabelFacilities;
+	TArray<FName> StorageItemIds;
+	ECozyWindowKind WindowKind = ECozyWindowKind::None;
+	FGuid WindowFacility;
+	FGuid WindowTargetFacility;
+	FText PlaceholderLabel;
+	FText LastFeedback;
+	bool bDebugVisible = false;
+	FDelegateHandle EstateChangedHandle;
+	TArray<TObjectPtr<UCozyUiAction>>* ActionSink = nullptr;
+};

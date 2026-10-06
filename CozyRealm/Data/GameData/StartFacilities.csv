@@ -1,0 +1,7 @@
+﻿---,FacilityId,GridCoord,Rotation,Level,SelectedCrop,Note
+Start_Nagaya,Nagaya,"(X=0,Y=0)",0,1,,"🙋 시작 시설·D5 / 🤖 위치"
+Start_Hushinso,Hushinso,"(X=4,Y=0)",0,1,,"🙋 시작 시설·D5·D6 / 🤖 위치"
+Start_Shop,Shop,"(X=7,Y=0)",0,1,,"🙋 시작 시설·D14 / 🤖 위치"
+Start_Field,Field,"(X=0,Y=8)",0,1,Wheat,"🙋 시작 시설·D16 · 시작 작물 밀·D22 / 🤖 위치"
+Start_Mill,Mill,"(X=3,Y=8)",0,1,,"🙋 시작 시설·D5 / 🤖 위치"
+Start_Shrine,Shrine,"(X=8,Y=8)",0,1,,"🙋 시작 시설·Lv1·D5 / 🤖 위치"
