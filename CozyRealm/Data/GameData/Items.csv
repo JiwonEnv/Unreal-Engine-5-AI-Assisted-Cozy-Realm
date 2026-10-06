@@ -1,0 +1,7 @@
+﻿---,DisplayName,Category,SellPrice,HudOrder,Note
+Gold,골드,Currency,0,1,🙋 재화
+Wheat,밀,Material,0,2,🙋 밀은 판매 불가
+Flour,밀가루,Material,4,3,🙋 판매가 4골드
+TimeTalisman,시간 부적,Currency,0,4,🙋 업그레이드 시간 단축 재화 / ❓ 시작 보유량
+MindShard,심상 조각,Currency,0,0,🤖 외형 업그레이드 재화 (HUD 표시는 외형 기능 때)
+RedBean,팥,Material,0,0,🙋 공통 밭 작물 / 판매가 ❓
