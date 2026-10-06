@@ -220,6 +220,10 @@ void UCozyHudWidget::HandleEstateChanged(bool bStructural)
 	{
 		UpdateProcessingLive();
 	}
+	else if (WindowKind == ECozyWindowKind::Sales)
+	{
+		UpdateSalesLive();
+	}
 	if (!bStructural)
 	{
 		return;
@@ -481,7 +485,7 @@ void UCozyHudWidget::RefreshIcons()
 			AddIcon(LOCTEXT("IconProcess", "가공"), [this, FacilityId]() { OpenWindow(ECozyWindowKind::Processing, FacilityId); });
 			break;
 		case ECozyFacilityFunction::Sales:
-			AddIcon(LOCTEXT("IconSell", "판매"), [this, FacilityId]() { PlaceholderLabel = LOCTEXT("PhSell", "판매"); OpenWindow(ECozyWindowKind::Placeholder, FacilityId); });
+			AddIcon(LOCTEXT("IconSell", "판매"), [this, FacilityId]() { OpenWindow(ECozyWindowKind::Sales, FacilityId); });
 			break;
 		case ECozyFacilityFunction::UpgradeQueue:
 			AddIcon(LOCTEXT("IconUpgrade", "업그레이드"), [this, FacilityId]() { PlaceholderLabel = LOCTEXT("PhUpgrade", "업그레이드"); OpenWindow(ECozyWindowKind::Placeholder, FacilityId); });
@@ -521,6 +525,25 @@ void UCozyHudWidget::OpenWindow(ECozyWindowKind Kind, const FGuid& FacilityId, c
 		ProcSelectedRecipe = Recipes.Num() > 0 ? Recipes[0] : NAME_None;
 		ProcSelectedRuns = 1;
 		ProcPendingCancelJob.Invalidate();
+	}
+	if (Kind == ECozyWindowKind::Sales)
+	{
+		// 처음 열면 팔 수 있는 첫 재료 · 1개
+		UCozyEstateSubsystem* Estate = GetEstate();
+		SellSelectedItem = NAME_None;
+		SellSelectedAmount = 1;
+		if (Estate)
+		{
+			for (const FName& ItemId : Estate->GetSaleListItems())
+			{
+				const FCozyItemRow* Item = Estate->GetItemDef(ItemId);
+				if (Item && Item->SellPrice > 0)
+				{
+					SellSelectedItem = ItemId;
+					break;
+				}
+			}
+		}
 	}
 	if (WindowOverlay)
 	{
@@ -578,6 +601,17 @@ void UCozyHudWidget::RefreshWindow()
 	ProcSlotCancelButtons.Reset();
 	ProcConfirmBox = nullptr;
 	ProcConfirmText = nullptr;
+	SellListTexts.Reset();
+	SellListButtons.Reset();
+	SellListItemIds.Reset();
+	SellSelectedText = nullptr;
+	SellAmountText = nullptr;
+	SellMinusButton = nullptr;
+	SellPlusButton = nullptr;
+	SellMaxButton = nullptr;
+	SellSummaryText = nullptr;
+	SellBlockText = nullptr;
+	SellButton = nullptr;
 	ActionSink = &WindowActions;
 
 	switch (WindowKind)
@@ -597,11 +631,14 @@ void UCozyHudWidget::RefreshWindow()
 	case ECozyWindowKind::Processing:
 		BuildProcessingContent();
 		break;
+	case ECozyWindowKind::Sales:
+		BuildSalesContent();
+		break;
 	default:
 		break;
 	}
 
-	if (!LastFeedback.IsEmpty() && WindowKind != ECozyWindowKind::FacilityInfo && WindowKind != ECozyWindowKind::Processing)
+	if (!LastFeedback.IsEmpty() && WindowKind != ECozyWindowKind::FacilityInfo && WindowKind != ECozyWindowKind::Processing && WindowKind != ECozyWindowKind::Sales)
 	{
 		WindowContent->AddChildToVerticalBox(MakeText(LastFeedback, 16, CozyHud::WarningText))->SetPadding(FMargin(0.f, 12.f, 0.f, 0.f));
 	}
@@ -1187,6 +1224,145 @@ void UCozyHudWidget::UpdateProcessingLive()
 			InfoStorageText->SetColorAndOpacity(FSlateColor(bNoSpace ? CozyHud::WarningText : CozyHud::MutedText));
 		}
 	}
+}
+
+// ---------------------------------------------------------------------------
+// 판매소 창 (재료 선택 → 수량 → 받을 재화 확인 → 판매)
+
+void UCozyHudWidget::BuildSalesContent()
+{
+	UCozyEstateSubsystem* Estate = GetEstate();
+	const FCozyFacilityState* Facility = Estate ? Estate->FindFacility(WindowFacility) : nullptr;
+	const FCozyFacilityRow* Def = Facility ? Estate->GetFacilityDef(Facility->DefinitionId) : nullptr;
+	if (!Def)
+	{
+		CloseWindow();
+		return;
+	}
+	const FGuid FacilityId = WindowFacility;
+	WindowTitle->SetText(FText::Format(LOCTEXT("SellTitle", "{0}  Lv.{1} — 판매"), Def->DisplayName, FText::AsNumber(Facility->Level)));
+	WindowContent->AddChildToVerticalBox(MakeText(LOCTEXT("SellRule", "창고에 있는 재료를 팔아 골드를 받습니다 · 시설의 미수령분은 수령한 뒤에 팔 수 있습니다"), 14, CozyHud::MutedText))->SetPadding(FMargin(0.f, 0.f, 0.f, 8.f));
+
+	// ① 재료 선택 (판매가 0인 재료는 '판매 불가'로 버튼이 꺼짐)
+	WindowContent->AddChildToVerticalBox(MakeText(LOCTEXT("SellStep1", "① 팔 재료"), 17, CozyHud::AccentText))->SetPadding(FMargin(0.f, 4.f));
+	for (const FName& ItemId : Estate->GetSaleListItems())
+	{
+		const FCozyItemRow* Item = Estate->GetItemDef(ItemId);
+		if (!Item)
+		{
+			continue;
+		}
+		UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+		UButton* PickButton = MakeButton(Item->DisplayName, [this, ItemId]()
+		{
+			SellSelectedItem = ItemId;
+			SellSelectedAmount = 1;
+			UpdateSalesLive();
+		}, Item->SellPrice > 0, 14);
+		Row->AddChildToHorizontalBox(PickButton)->SetPadding(FMargin(0.f, 0.f, 10.f, 0.f));
+		UTextBlock* LineText = MakeText(FText::GetEmpty(), 14, CozyHud::MutedText);
+		Row->AddChildToHorizontalBox(LineText)->SetVerticalAlignment(VAlign_Center);
+		WindowContent->AddChildToVerticalBox(Row)->SetPadding(FMargin(0.f, 2.f));
+		SellListItemIds.Add(ItemId);
+		SellListTexts.Add(LineText);
+		SellListButtons.Add(PickButton);
+	}
+	SellSelectedText = MakeText(FText::GetEmpty(), 15);
+	WindowContent->AddChildToVerticalBox(SellSelectedText)->SetPadding(FMargin(0.f, 4.f));
+
+	// ② 수량
+	WindowContent->AddChildToVerticalBox(MakeText(LOCTEXT("SellStep2", "② 판매 수량"), 17, CozyHud::AccentText))->SetPadding(FMargin(0.f, 8.f, 0.f, 2.f));
+	UHorizontalBox* AmountRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+	SellMinusButton = MakeButton(LOCTEXT("SellMinus", " − "), [this]()
+	{
+		SellSelectedAmount = FMath::Max(1, SellSelectedAmount - 1);
+		UpdateSalesLive();
+	}, true, 16);
+	AmountRow->AddChildToHorizontalBox(SellMinusButton)->SetPadding(FMargin(0.f, 0.f, 8.f, 0.f));
+	SellAmountText = MakeText(FText::GetEmpty(), 18);
+	AmountRow->AddChildToHorizontalBox(SellAmountText)->SetVerticalAlignment(VAlign_Center);
+	SellPlusButton = MakeButton(LOCTEXT("SellPlus", " + "), [this]()
+	{
+		++SellSelectedAmount;
+		UpdateSalesLive();
+	}, true, 16);
+	AmountRow->AddChildToHorizontalBox(SellPlusButton)->SetPadding(FMargin(8.f, 0.f, 8.f, 0.f));
+	SellMaxButton = MakeButton(LOCTEXT("SellMax", "전부"), [this, FacilityId]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			SellSelectedAmount = FMath::Max(1, EstateNow->GetSellQuote(FacilityId, SellSelectedItem, 1).MaxAmount);
+			UpdateSalesLive();
+		}
+	}, true, 14);
+	AmountRow->AddChildToHorizontalBox(SellMaxButton);
+	WindowContent->AddChildToVerticalBox(AmountRow)->SetPadding(FMargin(0.f, 2.f));
+
+	// ③ 확인 → 판매
+	WindowContent->AddChildToVerticalBox(MakeText(LOCTEXT("SellStep3", "③ 받을 골드 확인"), 17, CozyHud::AccentText))->SetPadding(FMargin(0.f, 8.f, 0.f, 2.f));
+	SellSummaryText = MakeText(FText::GetEmpty(), 15);
+	WindowContent->AddChildToVerticalBox(SellSummaryText)->SetPadding(FMargin(0.f, 2.f));
+	SellBlockText = MakeText(FText::GetEmpty(), 15, CozyHud::WarningText);
+	WindowContent->AddChildToVerticalBox(SellBlockText)->SetPadding(FMargin(0.f, 2.f));
+	SellButton = MakeButton(LOCTEXT("SellDo", "판매"), [this, FacilityId]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			// 판매 직전에 서비스가 조건을 다시 확인 · 실패하면 아무것도 바뀌지 않음
+			FText Message;
+			EstateNow->SellItem(FacilityId, SellSelectedItem, SellSelectedAmount, Message);
+			SetFeedback(Message);
+			UpdateSalesLive();
+		}
+	}, false, 16);
+	WindowContent->AddChildToVerticalBox(SellButton)->SetPadding(FMargin(0.f, 4.f, 0.f, 0.f));
+
+	// 방금 한 일 (클릭 결과) · 현재 상태와 구분
+	InfoFeedbackText = MakeText(FText::GetEmpty(), 15, CozyHud::AccentText);
+	WindowContent->AddChildToVerticalBox(InfoFeedbackText)->SetPadding(FMargin(0.f, 10.f, 0.f, 0.f));
+	SetFeedback(LastFeedback);
+
+	UpdateSalesLive();
+}
+
+void UCozyHudWidget::UpdateSalesLive()
+{
+	UCozyEstateSubsystem* Estate = GetEstate();
+	if (!Estate || !SellAmountText)
+	{
+		return;
+	}
+
+	// 재료 목록: 창고 보유량 · 개당 가격
+	for (int32 Index = 0; Index < SellListItemIds.Num(); ++Index)
+	{
+		const FCozyItemRow* Item = Estate->GetItemDef(SellListItemIds[Index]);
+		UTextBlock* LineText = SellListTexts.IsValidIndex(Index) ? SellListTexts[Index].Get() : nullptr;
+		if (!Item || !LineText)
+		{
+			continue;
+		}
+		const int32 Have = Estate->GetAmount(SellListItemIds[Index]);
+		LineText->SetText(Item->SellPrice > 0
+			? FText::Format(LOCTEXT("SellLine", "창고 {0}개 · 1개 {1}골드{2}"), FText::AsNumber(Have), FText::AsNumber(Item->SellPrice),
+				SellListItemIds[Index] == SellSelectedItem ? LOCTEXT("SellLineSelected", "  ◀ 선택") : FText::GetEmpty())
+			: FText::Format(LOCTEXT("SellLineBlocked", "창고 {0}개 · 판매 불가"), FText::AsNumber(Have)));
+	}
+
+	const FCozySellQuote Quote = Estate->GetSellQuote(WindowFacility, SellSelectedItem, SellSelectedAmount);
+	SellSelectedText->SetText(SellSelectedItem.IsNone()
+		? LOCTEXT("SellNothing", "팔 수 있는 재료가 없습니다")
+		: FText::Format(LOCTEXT("SellSelected", "선택: {0} · 1개 {1}{2}"), Quote.ItemName, FText::AsNumber(Quote.UnitPrice), Quote.CurrencyName));
+	SellAmountText->SetText(FText::Format(LOCTEXT("SellAmount", "{0}개"), FText::AsNumber(SellSelectedAmount)));
+	SellMinusButton->SetIsEnabled(SellSelectedAmount > 1);
+	SellPlusButton->SetIsEnabled(SellSelectedAmount < Quote.MaxAmount);
+	SellMaxButton->SetIsEnabled(Quote.MaxAmount > 0 && SellSelectedAmount != Quote.MaxAmount);
+	SellSummaryText->SetText(FText::Format(LOCTEXT("SellSummary", "{0} {1}개 × {2} = {3} {4}  (창고 보유 {5}개 · 판매 후 {6}개)"),
+		Quote.ItemName, FText::AsNumber(SellSelectedAmount), FText::AsNumber(Quote.UnitPrice), FText::AsNumber(Quote.TotalPrice), Quote.CurrencyName,
+		FText::AsNumber(Quote.MaxAmount), FText::AsNumber(FMath::Max(0, Quote.MaxAmount - SellSelectedAmount))));
+	SellBlockText->SetText(Quote.BlockReason);
+	SellBlockText->SetVisibility(Quote.BlockReason.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+	SellButton->SetIsEnabled(Quote.bCanSell);
 }
 
 // ---------------------------------------------------------------------------

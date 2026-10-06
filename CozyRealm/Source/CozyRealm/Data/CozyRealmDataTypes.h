@@ -343,6 +343,10 @@ struct FCozyEstateConfigRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Time")
 	int32 NightEndHour = 6;
 
+	/** 판매 대금으로 받는 재화 ID (Items.csv 행 이름) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Sales")
+	FName SaleCurrencyId = TEXT("Gold");
+
 	/** 🙋/🤖/❓ 표시와 메모 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Note")
 	FString Note;
