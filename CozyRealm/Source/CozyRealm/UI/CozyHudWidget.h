@@ -175,6 +175,9 @@ private:
 	TObjectPtr<UTextBlock> ProcSummaryText;
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> ProcBlockText;
+	/** 완료품의 공용 창고가 가득일 때 안내 (시작은 막지 않음 · D35) */
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> ProcStorageNoteText;
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> ProcStartButton;
 	UPROPERTY(Transient)

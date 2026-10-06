@@ -570,6 +570,7 @@ void UCozyHudWidget::RefreshWindow()
 	ProcMaxText = nullptr;
 	ProcSummaryText = nullptr;
 	ProcBlockText = nullptr;
+	ProcStorageNoteText = nullptr;
 	ProcStartButton = nullptr;
 	ProcSlotStatusTexts.Reset();
 	ProcSlotBars.Reset();
@@ -932,6 +933,8 @@ void UCozyHudWidget::BuildProcessingContent()
 	WindowContent->AddChildToVerticalBox(ProcSummaryText)->SetPadding(FMargin(0.f, 2.f));
 	ProcBlockText = MakeText(FText::GetEmpty(), 15, CozyHud::WarningText);
 	WindowContent->AddChildToVerticalBox(ProcBlockText)->SetPadding(FMargin(0.f, 2.f));
+	ProcStorageNoteText = MakeText(FText::GetEmpty(), 15, CozyHud::AccentText);
+	WindowContent->AddChildToVerticalBox(ProcStorageNoteText)->SetPadding(FMargin(0.f, 2.f));
 	ProcStartButton = MakeButton(LOCTEXT("ProcStart", "제작 시작"), [this, FacilityId]()
 	{
 		if (UCozyEstateSubsystem* EstateNow = GetEstate())
@@ -1091,6 +1094,17 @@ void UCozyHudWidget::UpdateProcessingLive()
 	ProcBlockText->SetText(Quote.BlockReason);
 	ProcBlockText->SetVisibility(Quote.BlockReason.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 	ProcStartButton->SetIsEnabled(Quote.bCanStart);
+
+	// 🙋 완료품의 공용 창고가 가득해도 시작은 허용하고 안내만 (D35 · 확인 팝업 없음)
+	if (ProcStorageNoteText)
+	{
+		const FCozyRecipeRow* SelectedRecipe = Estate->GetRecipeDef(ProcSelectedRecipe);
+		const bool bStorageFull = SelectedRecipe && Estate->GetStorageSpace(SelectedRecipe->OutputItem) <= 0;
+		ProcStorageNoteText->SetText(bStorageFull
+			? FText::Format(LOCTEXT("ProcStorageFullNote", "창고에 {0} 공간이 없습니다. 완성품은 시설에 보관되며, 수령하려면 창고 공간이 필요합니다"), Quote.OutputName)
+			: FText::GetEmpty());
+		ProcStorageNoteText->SetVisibility(bStorageFull ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
 
 	// 가공 칸
 	const TArray<FCozyProcessingJobView> Jobs = Estate->GetProcessingJobs(WindowFacility);
@@ -1258,6 +1272,8 @@ void UCozyHudWidget::RefreshDebugPanel()
 		}
 	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
 	SetResourceButton(LOCTEXT("SetWheat95", "창고 밀 95개로"), TEXT("Wheat"), 95);
+	SetResourceButton(LOCTEXT("SetFlour98", "창고 밀가루 98개로"), TEXT("Flour"), 98);
+	SetResourceButton(LOCTEXT("SetFlour100", "창고 밀가루 100개로 (가득)"), TEXT("Flour"), 100);
 	SetResourceButton(LOCTEXT("SetWheat100", "창고 밀 100개로 (가득)"), TEXT("Wheat"), 100);
 	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("AddTestField", "테스트용 밭 추가"), [this]()
 	{
