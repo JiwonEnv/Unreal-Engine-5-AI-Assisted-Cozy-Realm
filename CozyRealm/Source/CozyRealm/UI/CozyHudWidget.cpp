@@ -1530,7 +1530,16 @@ void UCozyHudWidget::BuildUpgradeContent()
 	// 진행 중인 업그레이드 (후신소 동시 작업 수만큼)
 	UpgradeSlotText = MakeText(FText::GetEmpty(), 17, CozyHud::AccentText);
 	WindowContent->AddChildToVerticalBox(UpgradeSlotText)->SetPadding(FMargin(0.f, 2.f));
-	for (int32 SlotIndex = 0; SlotIndex < FMath::Max(1, Estate->GetUpgradeSlotCount()); ++SlotIndex)
+	UpgradeSpeedRows.Reset();
+	UpgradeSpeedCountTexts.Reset();
+	UpgradeSpeedPreviewTexts.Reset();
+	UpgradeSpeedApplyButtons.Reset();
+	const int32 SlotCount = FMath::Max(1, Estate->GetUpgradeSlotCount());
+	if (UpgradeSpeedCounts.Num() != SlotCount)
+	{
+		UpgradeSpeedCounts.Init(1, SlotCount);
+	}
+	for (int32 SlotIndex = 0; SlotIndex < SlotCount; ++SlotIndex)
 	{
 		UTextBlock* JobText = MakeText(FText::GetEmpty(), 15);
 		WindowContent->AddChildToVerticalBox(JobText)->SetPadding(FMargin(0.f, 2.f));
@@ -1539,6 +1548,51 @@ void UCozyHudWidget::BuildUpgradeContent()
 		WindowContent->AddChildToVerticalBox(Bar)->SetPadding(FMargin(0.f, 2.f));
 		UpgradeJobTexts.Add(JobText);
 		UpgradeJobBars.Add(Bar);
+
+		// 시간 단축: 부적 수 고르기 → 미리보기(아래 글자) → '단축 확정'
+		UHorizontalBox* SpeedRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+		SpeedRow->AddChildToHorizontalBox(MakeText(LOCTEXT("SpeedLabel", "시간 부적:"), 14, CozyHud::MutedText))->SetPadding(FMargin(0.f, 0.f, 6.f, 0.f));
+		auto ChangeCount = [this, SlotIndex](int32 Delta, bool bToMax)
+		{
+			UCozyEstateSubsystem* EstateNow = GetEstate();
+			const TArray<FCozyUpgradeJobView> JobsNow = EstateNow ? EstateNow->GetUpgradeJobs() : TArray<FCozyUpgradeJobView>();
+			if (!JobsNow.IsValidIndex(SlotIndex) || !UpgradeSpeedCounts.IsValidIndex(SlotIndex))
+			{
+				return;
+			}
+			const FCozySpeedupQuote Quote = EstateNow->GetSpeedupQuote(JobsNow[SlotIndex].JobId, 1);
+			const int32 Limit = FMath::Max(1, FMath::Max(Quote.Owned, Quote.MaxUseful));
+			UpgradeSpeedCounts[SlotIndex] = bToMax ? FMath::Max(1, FMath::Min(Quote.Owned, Quote.MaxUseful))
+				: FMath::Clamp(UpgradeSpeedCounts[SlotIndex] + Delta, 1, Limit);
+			UpdateUpgradeLive();
+		};
+		SpeedRow->AddChildToHorizontalBox(MakeButton(FText::FromString(TEXT("-")), [ChangeCount]() { ChangeCount(-1, false); }, true, 13))->SetPadding(FMargin(2.f, 0.f));
+		UTextBlock* CountText = MakeText(FText::GetEmpty(), 14);
+		SpeedRow->AddChildToHorizontalBox(CountText)->SetPadding(FMargin(6.f, 0.f));
+		SpeedRow->AddChildToHorizontalBox(MakeButton(FText::FromString(TEXT("+")), [ChangeCount]() { ChangeCount(1, false); }, true, 13))->SetPadding(FMargin(2.f, 0.f));
+		SpeedRow->AddChildToHorizontalBox(MakeButton(LOCTEXT("SpeedFit", "딱 맞게"), [ChangeCount]() { ChangeCount(0, true); }, true, 13))->SetPadding(FMargin(2.f, 0.f));
+		UButton* ApplyButton = MakeButton(LOCTEXT("SpeedApply", "단축 확정"), [this, SlotIndex]()
+		{
+			UCozyEstateSubsystem* EstateNow = GetEstate();
+			const TArray<FCozyUpgradeJobView> JobsNow = EstateNow ? EstateNow->GetUpgradeJobs() : TArray<FCozyUpgradeJobView>();
+			if (JobsNow.IsValidIndex(SlotIndex) && UpgradeSpeedCounts.IsValidIndex(SlotIndex))
+			{
+				// 확정할 때 서비스가 다시 계산 · 실패하면 부적·시간 그대로
+				FText Message;
+				EstateNow->ApplySpeedup(JobsNow[SlotIndex].JobId, UpgradeSpeedCounts[SlotIndex], Message);
+				UpgradeSpeedCounts[SlotIndex] = 1;
+				SetFeedback(Message);
+				UpdateUpgradeLive();
+			}
+		}, false, 13);
+		SpeedRow->AddChildToHorizontalBox(ApplyButton)->SetPadding(FMargin(10.f, 0.f, 0.f, 0.f));
+		WindowContent->AddChildToVerticalBox(SpeedRow)->SetPadding(FMargin(0.f, 2.f));
+		UTextBlock* PreviewText = MakeText(FText::GetEmpty(), 13, CozyHud::MutedText);
+		WindowContent->AddChildToVerticalBox(PreviewText);
+		UpgradeSpeedRows.Add(SpeedRow);
+		UpgradeSpeedCountTexts.Add(CountText);
+		UpgradeSpeedPreviewTexts.Add(PreviewText);
+		UpgradeSpeedApplyButtons.Add(ApplyButton);
 	}
 
 	// 업그레이드할 시설 (성장 설정표에 행이 있는 시설)
@@ -1628,12 +1682,38 @@ void UCozyHudWidget::UpdateUpgradeLive()
 			UpgradeJobTexts[Index]->SetColorAndOpacity(FSlateColor(FLinearColor::White));
 			UpgradeJobBars[Index]->SetPercent(Jobs[Index].Progress01);
 			UpgradeJobBars[Index]->SetVisibility(ESlateVisibility::Visible);
+			if (UpgradeSpeedRows.IsValidIndex(Index))
+			{
+				const FCozySpeedupQuote Speed = Estate->GetSpeedupQuote(Jobs[Index].JobId, UpgradeSpeedCounts[Index]);
+				UpgradeSpeedRows[Index]->SetVisibility(ESlateVisibility::Visible);
+				UpgradeSpeedCountTexts[Index]->SetText(FText::Format(LOCTEXT("SpeedCount", "{0}장 (보유 {1}장)"), FText::AsNumber(Speed.Count), FText::AsNumber(Speed.Owned)));
+				FString Preview = FString::Printf(TEXT("미리보기: 1장 = %s 단축 · %d장 → %s 단축 · 남은 시간 %s → %s"),
+					*CozyHud::DurationText(Speed.SecondsPerItem).ToString(), Speed.Count, *CozyHud::DurationText(Speed.Reduce).ToString(),
+					*CozyHud::DurationText(Speed.RemainingBefore).ToString(), *CozyHud::DurationText(Speed.RemainingAfter).ToString());
+				if (Speed.Wasted > 0.f)
+				{
+					Preview += FString::Printf(TEXT(" · 남은 시간보다 많아 %s은 버려집니다"), *CozyHud::DurationText(Speed.Wasted).ToString());
+				}
+				if (!Speed.BlockReason.IsEmpty())
+				{
+					Preview += TEXT(" · ") + Speed.BlockReason.ToString();
+				}
+				UpgradeSpeedPreviewTexts[Index]->SetText(FText::FromString(Preview));
+				UpgradeSpeedPreviewTexts[Index]->SetVisibility(ESlateVisibility::Visible);
+				UpgradeSpeedApplyButtons[Index]->SetIsEnabled(Speed.bCanApply);
+			}
 		}
 		else
 		{
 			UpgradeJobTexts[Index]->SetText(FText::Format(LOCTEXT("UpJobEmpty", "작업 칸 {0}: 비어 있음"), FText::AsNumber(Index + 1)));
 			UpgradeJobTexts[Index]->SetColorAndOpacity(FSlateColor(CozyHud::MutedText));
 			UpgradeJobBars[Index]->SetVisibility(ESlateVisibility::Collapsed);
+			if (UpgradeSpeedRows.IsValidIndex(Index))
+			{
+				UpgradeSpeedRows[Index]->SetVisibility(ESlateVisibility::Collapsed);
+				UpgradeSpeedPreviewTexts[Index]->SetVisibility(ESlateVisibility::Collapsed);
+				UpgradeSpeedCounts[Index] = 1;
+			}
 		}
 	}
 
@@ -1837,6 +1917,17 @@ void UCozyHudWidget::RefreshDebugPanel()
 	AddResourceButton(LOCTEXT("AddGold", "골드 +100"), TEXT("Gold"), 100);
 	AddResourceButton(LOCTEXT("AddWheat", "밀 +10"), TEXT("Wheat"), 10);
 	AddResourceButton(LOCTEXT("AddFlour", "밀가루 +10"), TEXT("Flour"), 10);
+	AddResourceButton(LOCTEXT("AddTalisman", "시간 부적 +5"), TEXT("TimeTalisman"), 5);
+	// 튜토리얼 일회성 보상 구조 검증용 (지급 시점은 튜토리얼 기능에서 연결 · ❓)
+	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("GrantTutorial", "튜토리얼 보상 받기 (한 번만)"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			FText Message;
+			EstateNow->GrantOneTimeReward(TEXT("Tutorial_FirstSpeedup"), Message);
+			SetFeedback(Message);
+		}
+	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
 
 	// 수령 검증용: 창고 거의 참 / 가득 참 · 같은 재료 시설 하나 더
 	auto SetResourceButton = [this](const FText& Label, FName ItemId, int32 Amount)

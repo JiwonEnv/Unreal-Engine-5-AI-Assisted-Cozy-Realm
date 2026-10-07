@@ -155,6 +155,24 @@ struct FCozyUpgradeQuote
 	FText BlockReason;
 };
 
+/** 시간 단축 미리보기 (D10~D12 · 확정 전에 보여 주고, 확정할 때 다시 계산) */
+struct FCozySpeedupQuote
+{
+	bool bValid = false;
+	bool bCanApply = false;
+	int32 Count = 0;
+	int32 Owned = 0;
+	/** 남은 시간을 다 줄이는 데 필요한 최소 장수 (더 쓰면 초과분은 버려짐) */
+	int32 MaxUseful = 0;
+	float SecondsPerItem = 0.f;
+	float RemainingBefore = 0.f;
+	float Reduce = 0.f;
+	float RemainingAfter = 0.f;
+	/** 남은 시간보다 많이 써서 버려지는 시간 (D12) */
+	float Wasted = 0.f;
+	FText BlockReason;
+};
+
 /** 진행 중인 업그레이드 하나 (후신소 창 표시용) */
 struct FCozyUpgradeJobView
 {
@@ -304,6 +322,20 @@ public:
 	bool StartUpgrade(const FGuid& FacilityId, FText& OutMessage);
 
 	TArray<FCozyUpgradeJobView> GetUpgradeJobs() const;
+
+	// --- 시간 단축 (D10~D12 · 업그레이드 작업만) ---
+
+	/** 부적 Count장을 쓸 때의 결과 미리보기 */
+	FCozySpeedupQuote GetSpeedupQuote(const FGuid& JobId, int32 Count) const;
+	/** 확정: 다시 계산해 부적 차감 + 남은 시간 단축을 한 번에 · 실패하면 아무것도 바뀌지 않음 */
+	bool ApplySpeedup(const FGuid& JobId, int32 Count, FText& OutMessage);
+
+	// --- 일회성 보상 (정리 7-11) ---
+
+	/** 이미 받은 보상인가 */
+	bool HasGrantedReward(FName RewardId) const;
+	/** 보상을 한 번만 지급 (지급 기록은 상태에 남아 저장된다) · 이미 받았거나 없는 보상이면 false */
+	bool GrantOneTimeReward(FName RewardId, FText& OutMessage);
 	/** 동시에 진행할 수 있는 업그레이드 수 (후신소 데이터) */
 	int32 GetUpgradeSlotCount() const;
 	bool IsFacilityUpgrading(const FGuid& FacilityId) const;
@@ -439,6 +471,9 @@ private:
 	TObjectPtr<UDataTable> StartResidentTable;
 	UPROPERTY(Transient)
 	TObjectPtr<UDataTable> StartResourceTable;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UDataTable> RewardTable;
 
 	FCozyEstateConfigRow Config;
 

@@ -1,3 +1,4 @@
 ﻿---,ItemId,Amount,Note
-Start_Gold,Gold,0,"🙋 골드 0·D8"
-Start_MindShard,MindShard,0,"🙋 심상 조각 0·D8 / 시간 부적 시작 보유량은 ❓라 행 없음(0으로 보임)"
+Start_Gold,Gold,0,🙋 골드 0·D8
+Start_MindShard,MindShard,0,🙋 심상 조각 0·D8
+Start_TimeTalisman,TimeTalisman,0,🙋 시간 부적 시작 보유량 0 (D44) · 튜토리얼 1장은 Rewards.csv의 Tutorial_FirstSpeedup
