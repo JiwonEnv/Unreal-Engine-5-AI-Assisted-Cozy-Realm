@@ -81,6 +81,11 @@ public:
 
 	void CloseWindow();
 	bool IsWindowOpen() const { return WindowKind != ECozyWindowKind::None; }
+	/** 화면 위쪽에 잠깐 보이는 알림 (단축키 결과 등) */
+	void ShowToast(const FText& Message);
+	/** 단축키: Tab 주민 목록(나가야) · I 창고 · 이미 열려 있으면 닫음 */
+	void ToggleNagayaWindow();
+	void ToggleStorageWindow();
 
 	void ToggleDebugPanel();
 
@@ -155,6 +160,9 @@ private:
 	TObjectPtr<UTextBlock> WindowTitle;
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> WindowContent;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> ToastText;
+	float ToastRemaining = 0.f;
 	/** 창 내용이 화면보다 길면 스크롤 (높이는 화면 크기에 맞춰 RefreshWindow 때 정함) */
 	UPROPERTY(Transient)
 	TObjectPtr<class USizeBox> WindowContentSize;

@@ -3,6 +3,7 @@
 #include "UI/CozyHudWidget.h"
 #include "Estate/CozyEstateSubsystem.h"
 #include "EngineUtils.h"
+#include "Camera/CozyRealmCameraPawn.h"
 
 ACozyRealmEstatePlayerController::ACozyRealmEstatePlayerController()
 {
@@ -46,6 +47,52 @@ void ACozyRealmEstatePlayerController::PlayerTick(float DeltaTime)
 	{
 		Hud->ToggleDebugPanel();
 	}
+	// 단축키 (기획서 4 조작 · 3주차 기능 3) · 창 안의 글자 입력은 아직 없어 그대로 받음
+	if (Hud && WasInputKeyJustPressed(EKeys::SpaceBar))
+	{
+		if (UCozyEstateSubsystem* Estate = GetWorld()->GetSubsystem<UCozyEstateSubsystem>())
+		{
+			Hud->ShowToast(Estate->CollectAllProduction());
+		}
+	}
+	if (Hud && WasInputKeyJustPressed(EKeys::Tab))
+	{
+		ClearSelection();
+		Hud->ToggleNagayaWindow();
+	}
+	if (Hud && WasInputKeyJustPressed(EKeys::I))
+	{
+		ClearSelection();
+		Hud->ToggleStorageWindow();
+	}
+
+	// 카메라: 휠 줌 · 휠 버튼 드래그 회전 (창이 열려 있으면 창 스크롤이 우선)
+	if (ACozyRealmCameraPawn* CameraPawn = Cast<ACozyRealmCameraPawn>(GetPawn()))
+	{
+		if (!Hud || !Hud->IsWindowOpen())
+		{
+			if (WasInputKeyJustPressed(EKeys::MouseScrollUp))
+			{
+				CameraPawn->Zoom(1.f);
+			}
+			if (WasInputKeyJustPressed(EKeys::MouseScrollDown))
+			{
+				CameraPawn->Zoom(-1.f);
+			}
+		}
+		if (IsInputKeyDown(EKeys::MiddleMouseButton))
+		{
+			float DeltaX = 0.f;
+			float DeltaY = 0.f;
+			GetInputMouseDelta(DeltaX, DeltaY);
+			if (!FMath::IsNearlyZero(DeltaX))
+			{
+				// 마우스 델타는 축 감도가 곱해진 값이라 픽셀로 되돌림 (DefaultInput MouseX 0.07)
+				CameraPawn->RotateByPixels(DeltaX / 0.07f);
+			}
+		}
+	}
+
 	if (WasInputKeyJustPressed(EKeys::Escape) && Hud)
 	{
 		if (Hud->IsWindowOpen())

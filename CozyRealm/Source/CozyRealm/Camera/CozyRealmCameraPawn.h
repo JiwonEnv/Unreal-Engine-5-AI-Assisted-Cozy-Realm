@@ -41,6 +41,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Camera")
 	void ApplySettings();
 
+	/** 마우스 휠 줌 (Steps > 0 가까이) · 최소·최대 거리 안에서만 */
+	void Zoom(float Steps);
+	/** 휠 버튼 드래그 회전 (마우스 이동 픽셀) */
+	void RotateByPixels(float DeltaX);
+
 protected:
 
 	virtual void OnConstruction(const FTransform& Transform) override;
@@ -55,6 +60,10 @@ private:
 	void BindToSettings();
 	void UnbindFromSettings();
 	void HandleSettingsChanged(const UCozyRealmCameraSettings* ChangedSettings);
+
+	/** 플레이 중 줌·회전 값 (설정 에셋은 바꾸지 않음) */
+	float CurrentDistance = 8500.f;
+	float CurrentYaw = 45.f;
 
 	/** Settings asset the change delegate is currently bound to */
 	TWeakObjectPtr<UCozyRealmCameraSettings> BoundSettings;

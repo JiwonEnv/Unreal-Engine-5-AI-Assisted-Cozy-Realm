@@ -17,6 +17,7 @@
 #include "Components/ScrollBox.h"
 #include "Components/SizeBox.h"
 #include "Styling/CoreStyle.h"
+#include "Framework/Application/SlateApplication.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 
@@ -119,6 +120,17 @@ void UCozyHudWidget::BuildLayout()
 	}
 	IconBox->SetVisibility(ESlateVisibility::Collapsed);
 
+	// 단축키 결과 알림 (위쪽 가운데 · 잠깐 보였다 사라짐)
+	ToastText = MakeText(FText::GetEmpty(), 17, CozyHud::AccentText);
+	if (UCanvasPanelSlot* ToastSlot = RootCanvas->AddChildToCanvas(ToastText))
+	{
+		ToastSlot->SetAnchors(FAnchors(0.5f, 0.f));
+		ToastSlot->SetAlignment(FVector2D(0.5f, 0.f));
+		ToastSlot->SetPosition(FVector2D(0.f, 52.f));
+		ToastSlot->SetAutoSize(true);
+	}
+	ToastText->SetVisibility(ESlateVisibility::Collapsed);
+
 	// 화면을 덮는 전용 창
 	WindowOverlay = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("WindowOverlay"));
 	WindowOverlay->SetBrushColor(CozyHud::OverlayColor);
@@ -199,6 +211,15 @@ void UCozyHudWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 
 	UpdateNameLabelPositions();
 
+	if (ToastRemaining > 0.f)
+	{
+		ToastRemaining -= InDeltaTime;
+		if (ToastRemaining <= 0.f && ToastText)
+		{
+			ToastText->SetVisibility(ESlateVisibility::Collapsed);
+		}
+	}
+
 	// 아이콘을 선택한 시설 위에 따라 붙임
 	if (IconSlot && IconFacility.IsValid() && IconBox->GetVisibility() != ESlateVisibility::Collapsed)
 	{
@@ -214,6 +235,51 @@ UCozyEstateSubsystem* UCozyHudWidget::GetEstate() const
 {
 	const UWorld* World = GetWorld();
 	return World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
+}
+
+void UCozyHudWidget::ShowToast(const FText& Message)
+{
+	if (ToastText)
+	{
+		ToastText->SetText(Message);
+		ToastText->SetVisibility(ESlateVisibility::HitTestInvisible);
+		ToastRemaining = 3.f;
+	}
+}
+
+void UCozyHudWidget::ToggleNagayaWindow()
+{
+	if (WindowKind == ECozyWindowKind::Nagaya)
+	{
+		CloseWindow();
+		return;
+	}
+	UCozyEstateSubsystem* Estate = GetEstate();
+	if (!Estate)
+	{
+		return;
+	}
+	for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
+	{
+		const FCozyFacilityRow* Def = Estate->GetFacilityDef(Facility.DefinitionId);
+		if (Def && Def->Functions.Contains(ECozyFacilityFunction::ResidentHousing))
+		{
+			HideFacilityIcons();
+			OpenWindow(ECozyWindowKind::Nagaya, Facility.InstanceId);
+			return;
+		}
+	}
+}
+
+void UCozyHudWidget::ToggleStorageWindow()
+{
+	if (WindowKind == ECozyWindowKind::Storage)
+	{
+		CloseWindow();
+		return;
+	}
+	HideFacilityIcons();
+	OpenWindow(ECozyWindowKind::Storage, FGuid());
 }
 
 void UCozyHudWidget::ShowPendingOfflineReport()
@@ -465,7 +531,15 @@ UButton* UCozyHudWidget::MakeButton(const FText& Label, TFunction<void()> OnClic
 	Button->SetIsEnabled(bEnabled);
 
 	UCozyUiAction* Action = NewObject<UCozyUiAction>(this);
-	Action->Callback = MoveTemp(OnClick);
+	// 누른 뒤 키보드 포커스를 게임 화면으로 돌림 · 버튼에 남아 있으면 Space 단축키(전부 수확)가 그 버튼을 다시 누름
+	Action->Callback = [Click = MoveTemp(OnClick)]()
+	{
+		Click();
+		if (FSlateApplication::IsInitialized())
+		{
+			FSlateApplication::Get().SetAllUserFocusToGameViewport();
+		}
+	};
 	Button->OnClicked.AddDynamic(Action, &UCozyUiAction::Fire);
 	if (ActionSink)
 	{

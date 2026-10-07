@@ -3,11 +3,14 @@
 #   powershell -ExecutionPolicy Bypass -File ue_input.ps1 check            # 입력 없이 대상 창 확인만
 #   powershell -ExecutionPolicy Bypass -File ue_input.ps1 click 500 420    # 1280×720 기준 좌표 클릭
 #   powershell -ExecutionPolicy Bypass -File ue_input.ps1 key F1           # 키 (F1·Enter·Space·숫자 코드 등)
+#   powershell -ExecutionPolicy Bypass -File ue_input.ps1 wheel 3 640 360  # 그 좌표에서 휠 3칸 (음수면 아래로)
+#   powershell -ExecutionPolicy Bypass -File ue_input.ps1 mdrag 200 640 360 # 그 좌표에서 가운데 버튼 누른 채 오른쪽으로 200픽셀
 # 주의: PIE 중 Esc는 열린 게임 창이 아니라 PIE 자체를 끈다 → 게임 창은 화면의 '닫기' 버튼으로 닫는다.
 param(
-    [Parameter(Position = 0, Mandatory = $true)][ValidateSet('check', 'click', 'key')][string]$Action,
+    [Parameter(Position = 0, Mandatory = $true)][ValidateSet('check', 'click', 'key', 'wheel', 'mdrag')][string]$Action,
     [Parameter(Position = 1)][string]$A,
     [Parameter(Position = 2)][double]$B = 0,
+    [Parameter(Position = 3)][double]$C = 0,
     [string]$Project,
     [int]$RefWidth = 1280,
     [int]$RefHeight = 720
@@ -30,6 +33,31 @@ switch ($Action) {
         Start-Sleep -Milliseconds 80
         [UeGuardNative]::mouse_event(0x4, 0, 0, 0, [UIntPtr]::Zero)
         Write-Output "ok: click $A,$B → 화면 $($p[0]),$($p[1])"
+    }
+    'wheel' {
+        $p = Convert-UePoint $proc $B $C $RefWidth $RefHeight
+        [UeGuardNative]::SetCursorPos($p[0], $p[1]) | Out-Null
+        Start-Sleep -Milliseconds 120
+        $n = [int]$A
+        for ($i = 0; $i -lt [Math]::Abs($n); $i++) {
+            $delta = if ($n -gt 0) { 120 } else { [uint32]4294967176 }   # -120 (부호 없는 정수로)
+            [UeGuardNative]::mouse_event(0x0800, 0, 0, $delta, [UIntPtr]::Zero)
+            Start-Sleep -Milliseconds 120
+        }
+        Write-Output "ok: wheel $A at $B,$C"
+    }
+    'mdrag' {
+        $p = Convert-UePoint $proc $B $C $RefWidth $RefHeight
+        [UeGuardNative]::SetCursorPos($p[0], $p[1]) | Out-Null
+        Start-Sleep -Milliseconds 120
+        [UeGuardNative]::mouse_event(0x20, 0, 0, 0, [UIntPtr]::Zero)
+        $dx = [int]$A
+        for ($i = 1; $i -le 20; $i++) {
+            [UeGuardNative]::SetCursorPos($p[0] + [int]($dx * $i / 20), $p[1]) | Out-Null
+            Start-Sleep -Milliseconds 25
+        }
+        [UeGuardNative]::mouse_event(0x40, 0, 0, 0, [UIntPtr]::Zero)
+        Write-Output "ok: mdrag $A from $B,$C"
     }
     'key' {
         if (-not $A) { throw 'key 에는 키 이름이 필요합니다' }

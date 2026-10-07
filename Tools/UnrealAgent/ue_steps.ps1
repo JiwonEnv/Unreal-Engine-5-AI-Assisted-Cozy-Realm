@@ -28,7 +28,7 @@ foreach ($step in $Steps) {
             if ($LASTEXITCODE -ne 0) { Write-Output "중단: 캡처 실패 · $r"; exit 5 }
             Write-Output "cap $out"
         }
-        { $_ -in 'click', 'key' } {
+        { $_ -in 'click', 'key', 'wheel', 'mdrag' } {
             $args2 = @($parts[0]) + $parts[1..($parts.Count - 1)]
             if ($Project) { $args2 += @('-Project', $Project) }
             $args2 += @('-RefWidth', $RefWidth, '-RefHeight', $RefHeight)
