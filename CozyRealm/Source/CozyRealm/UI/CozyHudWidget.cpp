@@ -1,5 +1,7 @@
 #include "UI/CozyHudWidget.h"
 #include "Estate/CozyEstateSubsystem.h"
+#include "UI/Kit/CozyUiScreen.h"
+#include "UI/Kit/CozyUiTheme.h"
 #include "Core/CozyRealmEstatePlayerController.h"
 #include "Facilities/CozyFacilityActor.h"
 #include "Blueprint/WidgetTree.h"
@@ -99,6 +101,24 @@ void UCozyHudWidget::BuildLayout()
 	{
 		TopSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 0.f));
 		TopSlot->SetOffsets(FMargin(0.f, 0.f, 0.f, 44.f));
+	}
+	LegacyTopBar = TopBar;
+
+	// 편집 가능한 HUD 화면 (Widget Blueprint) · 프로젝트 설정 'Cozy UI'에 지정돼 있으면 기존 위쪽 바 대신 씀
+	if (UClass* ScreenClass = UCozyUiSettings::Get()->HudScreenClass.LoadSynchronous())
+	{
+		HudScreen = CreateWidget<UCozyUiScreen>(this, ScreenClass);
+		if (HudScreen)
+		{
+			if (UCanvasPanelSlot* ScreenSlot = RootCanvas->AddChildToCanvas(HudScreen))
+			{
+				ScreenSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
+				ScreenSlot->SetOffsets(FMargin(0.f));
+				ScreenSlot->SetZOrder(-10);
+			}
+			HudScreen->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+			TopBar->SetVisibility(ESlateVisibility::Collapsed);
+		}
 	}
 
 	// 시설 이름표 (3D 글자 기본 글꼴에 한글이 없어 UI 글자로 그림)
@@ -2366,6 +2386,36 @@ void UCozyHudWidget::RefreshDebugPanel()
 		}, true, 13))->SetPadding(FMargin(0.f, 0.f, 3.f, 0.f));
 	}
 	DebugContent->AddChildToVerticalBox(SkipRow)->SetPadding(FMargin(0.f, 3.f));
+
+	// UI 미리보기 (편집 가능한 화면만 · 실제 재료를 쓰지 않음 · 상태를 바꿔 가며 확인)
+	if (HudScreen)
+	{
+		DebugContent->AddChildToVerticalBox(MakeButton(HudScreen->bPreview ? LOCTEXT("UiPreviewOff", "UI 미리보기 끄기") : LOCTEXT("UiPreviewOn", "UI 미리보기 켜기 (재료 안 씀)"), [this]()
+		{
+			if (HudScreen)
+			{
+				HudScreen->SetPreview(!HudScreen->bPreview);
+				ShowToast(HudScreen->bPreview ? LOCTEXT("UiPreviewOnToast", "UI 미리보기 켜짐 · 버튼은 알림만 띄웁니다") : LOCTEXT("UiPreviewOffToast", "UI 미리보기 꺼짐 · 실제 값으로 돌아갑니다"));
+				RefreshDebugPanel();
+			}
+		}, true, 13))->SetPadding(FMargin(0.f, 3.f));
+		if (HudScreen->bPreview)
+		{
+			UHorizontalBox* StateRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+			for (const ECozyUiPreviewState State : { ECozyUiPreviewState::Progress, ECozyUiPreviewState::Paused, ECozyUiPreviewState::Full, ECozyUiPreviewState::Locked, ECozyUiPreviewState::Claimable, ECozyUiPreviewState::Empty })
+			{
+				StateRow->AddChildToHorizontalBox(MakeButton(UCozyUiScreen::GetPreviewStateName(State), [this, State]()
+				{
+					if (HudScreen)
+					{
+						HudScreen->SetPreviewState(State);
+						ShowToast(FText::Format(LOCTEXT("UiPreviewState", "미리보기 상태: {0}"), UCozyUiScreen::GetPreviewStateName(State)));
+					}
+				}, HudScreen->PreviewState != State, 12))->SetPadding(FMargin(0.f, 0.f, 2.f, 0.f));
+			}
+			DebugContent->AddChildToVerticalBox(StateRow)->SetPadding(FMargin(0.f, 3.f));
+		}
+	}
 
 	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("Restart", "새 게임 다시 시작"), [this]()
 	{
