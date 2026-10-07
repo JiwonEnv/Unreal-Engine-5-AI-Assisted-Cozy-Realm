@@ -14,6 +14,8 @@
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
+#include "Components/ScrollBox.h"
+#include "Components/SizeBox.h"
 #include "Styling/CoreStyle.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -139,8 +141,13 @@ void UCozyHudWidget::BuildLayout()
 	WindowTitle = MakeText(FText::GetEmpty(), 26, CozyHud::AccentText);
 	WindowBody->AddChildToVerticalBox(WindowTitle)->SetPadding(FMargin(0.f, 0.f, 0.f, 16.f));
 
+	// 내용이 길면(후신소 창처럼 시설이 늘어나는 창) 화면 안에서 스크롤
+	WindowContentSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("WindowContentSize"));
+	UScrollBox* WindowScroll = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("WindowScroll"));
+	WindowContentSize->SetContent(WindowScroll);
 	WindowContent = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("WindowContent"));
-	WindowBody->AddChildToVerticalBox(WindowContent)->SetPadding(FMargin(0.f, 0.f, 0.f, 20.f));
+	WindowScroll->AddChild(WindowContent);
+	WindowBody->AddChildToVerticalBox(WindowContentSize)->SetPadding(FMargin(0.f, 0.f, 0.f, 20.f));
 
 	ActionSink = &FrameActions; // 닫기 버튼은 창을 다시 그려도 유지
 	UButton* CloseButton = MakeButton(LOCTEXT("Close", "닫기 (Esc)"), [this]() { CloseWindow(); });
@@ -673,6 +680,13 @@ void UCozyHudWidget::RefreshWindow()
 	}
 	WindowContent->ClearChildren();
 	WindowActions.Reset();
+	if (WindowContentSize)
+	{
+		// 제목·닫기 버튼·여백을 뺀 높이까지만 (화면 단위 = 픽셀 / DPI 배율)
+		const float Scale = FMath::Max(0.1f, UWidgetLayoutLibrary::GetViewportScale(this));
+		const float ViewHeight = UWidgetLayoutLibrary::GetViewportSize(this).Y / Scale;
+		WindowContentSize->SetMaxDesiredHeight(FMath::Max(200.f, ViewHeight - 190.f));
+	}
 	InfoProgressBar = nullptr;
 	InfoStatusText = nullptr;
 	InfoRemainingText = nullptr;

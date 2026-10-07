@@ -150,6 +150,9 @@ private:
 	TObjectPtr<UTextBlock> WindowTitle;
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> WindowContent;
+	/** 창 내용이 화면보다 길면 스크롤 (높이는 화면 크기에 맞춰 RefreshWindow 때 정함) */
+	UPROPERTY(Transient)
+	TObjectPtr<class USizeBox> WindowContentSize;
 	UPROPERTY(Transient)
 	TObjectPtr<class UProgressBar> InfoProgressBar;
 	UPROPERTY(Transient)
