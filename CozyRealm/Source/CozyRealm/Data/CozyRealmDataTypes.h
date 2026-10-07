@@ -404,6 +404,10 @@ struct FCozyEstateConfigRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Speedup")
 	float SpeedupSecondsPerItem = 60.f;
 
+	/** 자동 저장 간격 (실제 초 · 🙋 1분마다 + 종료 시) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Save")
+	float AutosaveSeconds = 60.f;
+
 	/** 🙋/🤖/❓ 표시와 메모 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Note")
 	FString Note;

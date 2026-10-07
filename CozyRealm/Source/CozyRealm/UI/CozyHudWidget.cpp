@@ -14,6 +14,8 @@
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
+#include "Components/ScrollBox.h"
+#include "Components/SizeBox.h"
 #include "Styling/CoreStyle.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -139,8 +141,13 @@ void UCozyHudWidget::BuildLayout()
 	WindowTitle = MakeText(FText::GetEmpty(), 26, CozyHud::AccentText);
 	WindowBody->AddChildToVerticalBox(WindowTitle)->SetPadding(FMargin(0.f, 0.f, 0.f, 16.f));
 
+	// 내용이 길면(후신소 창처럼 시설이 늘어나는 창) 화면 안에서 스크롤
+	WindowContentSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("WindowContentSize"));
+	UScrollBox* WindowScroll = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("WindowScroll"));
+	WindowContentSize->SetContent(WindowScroll);
 	WindowContent = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("WindowContent"));
-	WindowBody->AddChildToVerticalBox(WindowContent)->SetPadding(FMargin(0.f, 0.f, 0.f, 20.f));
+	WindowScroll->AddChild(WindowContent);
+	WindowBody->AddChildToVerticalBox(WindowContentSize)->SetPadding(FMargin(0.f, 0.f, 0.f, 20.f));
 
 	ActionSink = &FrameActions; // 닫기 버튼은 창을 다시 그려도 유지
 	UButton* CloseButton = MakeButton(LOCTEXT("Close", "닫기 (Esc)"), [this]() { CloseWindow(); });
@@ -673,6 +680,13 @@ void UCozyHudWidget::RefreshWindow()
 	}
 	WindowContent->ClearChildren();
 	WindowActions.Reset();
+	if (WindowContentSize)
+	{
+		// 제목·닫기 버튼·여백을 뺀 높이까지만 (화면 단위 = 픽셀 / DPI 배율)
+		const float Scale = FMath::Max(0.1f, UWidgetLayoutLibrary::GetViewportScale(this));
+		const float ViewHeight = UWidgetLayoutLibrary::GetViewportSize(this).Y / Scale;
+		WindowContentSize->SetMaxDesiredHeight(FMath::Max(200.f, ViewHeight - 190.f));
+	}
 	InfoProgressBar = nullptr;
 	InfoStatusText = nullptr;
 	InfoRemainingText = nullptr;
@@ -2018,6 +2032,40 @@ void UCozyHudWidget::RefreshDebugPanel()
 			EstateNow->ValidateData();
 		}
 	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
+
+	// 저장 · 불러오기 (2주차 기능 3) · 저장 시각 당기기는 방치 보상 검증용
+	UHorizontalBox* SaveRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+	SaveRow->AddChildToHorizontalBox(MakeButton(LOCTEXT("SaveNow", "저장"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			EstateNow->SaveEstate(TEXT("디버그"));
+		}
+	}, true, 13))->SetPadding(FMargin(0.f, 0.f, 3.f, 0.f));
+	SaveRow->AddChildToHorizontalBox(MakeButton(LOCTEXT("ReloadSave", "불러오기"), [this]()
+	{
+		HideFacilityIcons();
+		CloseWindow();
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			EstateNow->DebugReloadFromSave();
+		}
+	}, true, 13))->SetPadding(FMargin(0.f, 0.f, 3.f, 0.f));
+	SaveRow->AddChildToHorizontalBox(MakeButton(LOCTEXT("ShiftSave1h", "저장 시각 -1시간"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			EstateNow->DebugShiftSaveTime(3600.0);
+		}
+	}, true, 13))->SetPadding(FMargin(0.f, 0.f, 3.f, 0.f));
+	SaveRow->AddChildToHorizontalBox(MakeButton(LOCTEXT("ShiftSave13h", "-13시간"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			EstateNow->DebugShiftSaveTime(13.0 * 3600.0);
+		}
+	}, true, 13));
+	DebugContent->AddChildToVerticalBox(SaveRow)->SetPadding(FMargin(0.f, 3.f));
 
 	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("Restart", "새 게임 다시 시작"), [this]()
 	{

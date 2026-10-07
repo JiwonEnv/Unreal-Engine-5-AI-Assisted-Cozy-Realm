@@ -395,8 +395,20 @@ public:
 	void DebugSetResource(FName ItemId, int32 Amount);
 	/** 테스트용으로 같은 종류 시설을 빈 칸에 하나 더 놓는다 (추가 건설 규칙과 무관한 디버그 기능) */
 	bool DebugAddFacility(FName DefinitionId);
-	/** 상태를 지우고 시작 설정으로 새 게임을 다시 만든다 */
+	/** 상태를 지우고 시작 설정으로 새 게임을 다시 만든다 (저장 파일도 새 게임으로 덮어씀) */
 	void DebugRestartNewGame();
+
+	// --- 저장 / 불러오기 (2주차 기능 3 · 슬롯 1개 · 자동 저장 1분마다 + 종료 시) ---
+
+	/** 지금 상태를 저장 (Reason은 로그용) */
+	bool SaveEstate(const FString& Reason);
+	bool HasSaveFile() const;
+	/** 마지막으로 저장한 실제 시각 (UTC) */
+	FDateTime GetLastSavedUtc() const { return LastSavedUtc; }
+	/** 디버그: 저장 파일에서 다시 불러오기 (재접속과 같은 흐름) */
+	void DebugReloadFromSave();
+	/** 디버그: 저장 파일의 저장 시각을 Seconds만큼 과거로 (현재 상태는 그대로 · 방치 검증용) */
+	void DebugShiftSaveTime(double Seconds);
 
 	/** 상태가 바뀔 때마다 알림 (UI 새로 고침용) */
 	FOnCozyEstateChanged OnEstateChanged;
@@ -405,10 +417,15 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual TStatId GetStatId() const override;
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
+	virtual void Deinitialize() override;
 
 private:
 
 	bool LoadAllData(FString& OutErrors);
+	/** 저장 파일을 읽어 State에 넣는다 · 없거나 읽을 수 없으면 false (상태는 그대로) */
+	bool LoadEstateFromSave(FDateTime& OutSavedUtc);
+	/** 불러온 상태에서 데이터에 없는 시설·주민·작업·재료 참조를 정리 (정리 6-6 · 지운 개수를 로그) */
+	void SanitizeLoadedState();
 	UDataTable* LoadCsvTable(const FString& FileName, UScriptStruct* RowStruct, FString& OutErrors);
 	void BuildNewGameState();
 	void SpawnFacilityActors();
@@ -490,4 +507,7 @@ private:
 	bool bShowTestRecipes = false;
 	/** 이번 Tick에 업그레이드가 끝나 구조가 바뀌었는가 (UI가 해금·레벨 표시를 갱신) */
 	bool bStructuralPending = false;
+	/** 마지막 저장 시각 (UTC) · 자동 저장까지 흐른 실제 시간 */
+	FDateTime LastSavedUtc;
+	double AutosaveAccumulator = 0.0;
 };

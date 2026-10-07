@@ -5,6 +5,9 @@
 #include "Engine/World.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "Estate/CozyEstateSaveGame.h"
+#include "Kismet/GameplayStatics.h"
+#include "HAL/FileManager.h"
 
 #define LOCTEXT_NAMESPACE "CozyEstate"
 
@@ -37,10 +40,172 @@ void UCozyEstateSubsystem::StartEstate()
 	}
 
 	ValidateData();
-	BuildNewGameState();
+	// 저장 파일이 있으면 이어서, 없으면(또는 읽을 수 없으면) 새 게임
+	FDateTime SavedUtc;
+	const bool bLoaded = LoadEstateFromSave(SavedUtc);
+	if (!bLoaded)
+	{
+		BuildNewGameState();
+	}
 	SpawnFacilityActors();
 	bStarted = true;
-	NotifyChanged();
+	SaveEstate(bLoaded ? TEXT("불러온 직후") : TEXT("새 게임"));
+	NotifyChanged(true);
+}
+
+namespace CozyEstate
+{
+	static const TCHAR* SaveSlotName = TEXT("CozyRealm_Slot1");
+	static constexpr int32 SaveUserIndex = 0;
+	static constexpr int32 CurrentSaveFileVersion = 1;
+}
+
+bool UCozyEstateSubsystem::HasSaveFile() const
+{
+	return UGameplayStatics::DoesSaveGameExist(CozyEstate::SaveSlotName, CozyEstate::SaveUserIndex);
+}
+
+bool UCozyEstateSubsystem::SaveEstate(const FString& Reason)
+{
+	UCozyEstateSaveGame* Save = Cast<UCozyEstateSaveGame>(UGameplayStatics::CreateSaveGameObject(UCozyEstateSaveGame::StaticClass()));
+	if (!Save)
+	{
+		return false;
+	}
+	Save->FileVersion = CozyEstate::CurrentSaveFileVersion;
+	Save->SavedUtc = FDateTime::UtcNow();
+	Save->State = State;
+	if (!UGameplayStatics::SaveGameToSlot(Save, CozyEstate::SaveSlotName, CozyEstate::SaveUserIndex))
+	{
+		UE_LOG(LogCozyRealm, Error, TEXT("저장 실패 (%s)"), *Reason);
+		return false;
+	}
+	LastSavedUtc = Save->SavedUtc;
+	AutosaveAccumulator = 0.0;
+	UE_LOG(LogCozyRealm, Log, TEXT("저장: %s · 게임 시간 %.0f초 · 시설 %d · 작업 %d · %s(UTC)"), *Reason, State.GameSeconds, State.Facilities.Num(), State.Jobs.Num(), *LastSavedUtc.ToString());
+	return true;
+}
+
+bool UCozyEstateSubsystem::LoadEstateFromSave(FDateTime& OutSavedUtc)
+{
+	if (!HasSaveFile())
+	{
+		return false;
+	}
+	UCozyEstateSaveGame* Save = Cast<UCozyEstateSaveGame>(UGameplayStatics::LoadGameFromSlot(CozyEstate::SaveSlotName, CozyEstate::SaveUserIndex));
+	if (!Save || Save->FileVersion > CozyEstate::CurrentSaveFileVersion)
+	{
+		// 읽을 수 없는 파일은 지우지 않고 옆에 사본을 남긴 뒤 새 게임으로 (사용자 데이터 보호)
+		const FString Path = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"), FString(CozyEstate::SaveSlotName) + TEXT(".sav"));
+		const FString Backup = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"), FString::Printf(TEXT("%s_unreadable_%s.sav"), CozyEstate::SaveSlotName, *FDateTime::Now().ToString(TEXT("%Y%m%d_%H%M%S"))));
+		IFileManager::Get().Copy(*Backup, *Path);
+		UE_LOG(LogCozyRealm, Error, TEXT("저장 파일을 읽을 수 없어 새 게임으로 시작합니다 · 원본 사본: %s"), *Backup);
+		return false;
+	}
+	State = Save->State;
+	OutSavedUtc = Save->SavedUtc;
+	LastSavedUtc = Save->SavedUtc;
+	SanitizeLoadedState();
+	UE_LOG(LogCozyRealm, Log, TEXT("불러오기: 게임 시간 %.0f초 · 시설 %d · 주민 %d · 작업 %d · 저장 시각 %s(UTC)"), State.GameSeconds, State.Facilities.Num(), State.Residents.Num(), State.Jobs.Num(), *OutSavedUtc.ToString());
+	return true;
+}
+
+void UCozyEstateSubsystem::SanitizeLoadedState()
+{
+	int32 Removed = 0;
+	Removed += State.Facilities.RemoveAll([this](const FCozyFacilityState& Facility) { return !GetFacilityDef(Facility.DefinitionId); });
+	Removed += State.Residents.RemoveAll([this](const FCozyResidentState& Resident) { return !GetResidentDef(Resident.DefinitionId); });
+	for (FCozyResidentState& Resident : State.Residents)
+	{
+		if (Resident.AssignedFacility.IsValid() && !FindFacility(Resident.AssignedFacility))
+		{
+			Resident.AssignedFacility.Invalidate();
+			++Removed;
+		}
+	}
+	for (FCozyFacilityState& Facility : State.Facilities)
+	{
+		Removed += Facility.AssignedResidents.RemoveAll([this](const FGuid& ResidentId)
+		{
+			return !State.Residents.ContainsByPredicate([&ResidentId](const FCozyResidentState& Resident) { return Resident.InstanceId == ResidentId; });
+		});
+	}
+	Removed += State.Jobs.RemoveAll([this](const FCozyJobRecord& Job)
+	{
+		if (!FindFacility(Job.FacilityId))
+		{
+			return true;
+		}
+		if (Job.Type == ECozyJobType::Growth)
+		{
+			return !GrowthTable || !GrowthTable->FindRow<FCozyGrowthRow>(Job.ContentId, TEXT(""), false);
+		}
+		if (Job.Type == ECozyJobType::Processing)
+		{
+			return !GetRecipeDef(Job.ContentId);
+		}
+		return false;
+	});
+	TArray<FName> UnknownItems;
+	for (const TPair<FName, int32>& Pair : State.Resources)
+	{
+		if (!GetItemDef(Pair.Key))
+		{
+			UnknownItems.Add(Pair.Key);
+		}
+	}
+	for (const FName& ItemId : UnknownItems)
+	{
+		State.Resources.Remove(ItemId);
+		++Removed;
+	}
+	if (Removed > 0)
+	{
+		UE_LOG(LogCozyRealm, Warning, TEXT("[불러오기 검사] 데이터에 없는 참조 %d개를 정리했습니다"), Removed);
+	}
+}
+
+void UCozyEstateSubsystem::DebugReloadFromSave()
+{
+	if (!HasSaveFile())
+	{
+		UE_LOG(LogCozyRealm, Warning, TEXT("불러올 저장 파일이 없습니다"));
+		return;
+	}
+	DestroyFacilityActors();
+	FDateTime SavedUtc;
+	if (!LoadEstateFromSave(SavedUtc))
+	{
+		BuildNewGameState();
+	}
+	SpawnFacilityActors();
+	StepAccumulator = 0.0;
+	SaveEstate(TEXT("불러온 직후"));
+	NotifyChanged(true);
+}
+
+void UCozyEstateSubsystem::DebugShiftSaveTime(double Seconds)
+{
+	UCozyEstateSaveGame* Save = HasSaveFile() ? Cast<UCozyEstateSaveGame>(UGameplayStatics::LoadGameFromSlot(CozyEstate::SaveSlotName, CozyEstate::SaveUserIndex)) : nullptr;
+	if (!Save)
+	{
+		UE_LOG(LogCozyRealm, Warning, TEXT("저장 시각을 바꿀 저장 파일이 없습니다"));
+		return;
+	}
+	Save->SavedUtc -= FTimespan::FromSeconds(Seconds);
+	UGameplayStatics::SaveGameToSlot(Save, CozyEstate::SaveSlotName, CozyEstate::SaveUserIndex);
+	UE_LOG(LogCozyRealm, Log, TEXT("디버그: 저장 시각을 %.0f초 과거로 · %s(UTC)"), Seconds, *Save->SavedUtc.ToString());
+}
+
+void UCozyEstateSubsystem::Deinitialize()
+{
+	// 게임 종료 · PIE 종료 시 저장
+	if (bStarted)
+	{
+		SaveEstate(TEXT("종료"));
+		bStarted = false;
+	}
+	Super::Deinitialize();
 }
 
 UDataTable* UCozyEstateSubsystem::LoadCsvTable(const FString& FileName, UScriptStruct* RowStruct, FString& OutErrors)
@@ -1205,6 +1370,13 @@ void UCozyEstateSubsystem::Tick(float DeltaTime)
 	if (!bStarted)
 	{
 		return;
+	}
+
+	// 자동 저장은 실제 시간 기준 (배속과 무관)
+	AutosaveAccumulator += DeltaTime;
+	if (Config.AutosaveSeconds > 0.f && AutosaveAccumulator >= Config.AutosaveSeconds)
+	{
+		SaveEstate(TEXT("자동"));
 	}
 
 	StepAccumulator += static_cast<double>(DeltaTime) * TimeScale;
@@ -2381,6 +2553,7 @@ void UCozyEstateSubsystem::DebugRestartNewGame()
 	BuildNewGameState();
 	SpawnFacilityActors();
 	StepAccumulator = 0.0;
+	SaveEstate(TEXT("새 게임"));
 	NotifyChanged();
 }
 
