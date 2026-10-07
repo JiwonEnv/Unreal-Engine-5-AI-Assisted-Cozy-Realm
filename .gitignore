@@ -60,3 +60,6 @@
 
 # 작업 스크린샷 (노션 카드·블로그용, 레포에는 안 올림)
 Captures/
+
+# 패키지 빌드 결과물 (RunUAT -archive 대상 · 배포용 zip)
+/Builds/
