@@ -33,6 +33,14 @@ namespace CozyHud
 		return FText::Format(LOCTEXT("TimeScale", "×{0}"), FText::AsNumber(FMath::RoundToInt(Scale)));
 	}
 
+	FText MultiplierText(float Value)
+	{
+		FNumberFormattingOptions Fmt;
+		Fmt.MinimumFractionalDigits = 1;
+		Fmt.MaximumFractionalDigits = 2;
+		return FText::AsNumber(Value, &Fmt);
+	}
+
 	/** 초 → "45초" / "1분 30초" */
 	FText DurationText(double Seconds)
 	{
@@ -361,7 +369,9 @@ void UCozyHudWidget::UpdateFacilityInfoLive()
 	}
 	if (InfoRemainingText)
 	{
-		InfoRemainingText->SetText(FText::Format(LOCTEXT("NextHarvest", "다음 생산 완료까지 {0}초"), FText::AsNumber(FMath::CeilToInt(View.RemainingSeconds))));
+		InfoRemainingText->SetText(View.CycleSeconds > 0.f
+			? FText::Format(LOCTEXT("NextHarvestCycle", "다음 생산 완료까지 {0}초 · 이번 주기 {1}초"), FText::AsNumber(FMath::CeilToInt(View.RemainingSeconds)), CozyHud::MultiplierText(View.CycleSeconds))
+			: FText::Format(LOCTEXT("NextHarvest", "다음 생산 완료까지 {0}초"), FText::AsNumber(FMath::CeilToInt(View.RemainingSeconds))));
 		InfoRemainingText->SetVisibility(View.bWorking ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
 }
@@ -1487,17 +1497,6 @@ void UCozyHudWidget::UpdateSalesLive()
 
 // ---------------------------------------------------------------------------
 // 후신소 창 (신사·시설·밭 관리 시설 업그레이드 · 공통 성장 처리 · D9·D25·D36~D40)
-
-namespace CozyHud
-{
-	FText MultiplierText(float Value)
-	{
-		FNumberFormattingOptions Fmt;
-		Fmt.MinimumFractionalDigits = 1;
-		Fmt.MaximumFractionalDigits = 2;
-		return FText::AsNumber(Value, &Fmt);
-	}
-}
 
 void UCozyHudWidget::BuildUpgradeContent()
 {

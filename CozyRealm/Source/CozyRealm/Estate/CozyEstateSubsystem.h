@@ -43,6 +43,8 @@ struct FCozyProductionView
 	int32 CollectableNow = 0;
 	/** 공통 성장 효과로 받는 생산 속도 배율 (D39 · 진행 중인 주기에는 다음 주기부터 적용 · D40) */
 	float SpeedMultiplier = 1.f;
+	/** 진행 중인 주기의 길이 (초 · 시작할 때 정해짐) */
+	float CycleSeconds = 0.f;
 	/** 성장 효과를 주는 관리 시설 이름 · 레벨 (관리 시설이 정해지지 않은 시설이면 비어 있음 · 레벨 0이면 아직 없음) */
 	FText GrowthSourceName;
 	int32 GrowthSourceLevel = 0;

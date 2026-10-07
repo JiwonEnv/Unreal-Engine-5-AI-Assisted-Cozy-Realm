@@ -560,6 +560,7 @@ FCozyProductionView UCozyEstateSubsystem::GetProductionView(const FGuid& Facilit
 	}
 
 	View.bWorking = true;
+	View.CycleSeconds = static_cast<float>(Job->DurationSeconds);
 	const double Elapsed = FMath::Max(0.0, State.GameSeconds - Job->StartGameSeconds - Job->PausedSeconds);
 	const double IntoCycle = Elapsed - Job->PaidCycles * Job->DurationSeconds;
 	View.Progress01 = Job->DurationSeconds > 0.0 ? FMath::Clamp(static_cast<float>(IntoCycle / Job->DurationSeconds), 0.f, 1.f) : 0.f;
@@ -1122,6 +1123,8 @@ void UCozyEstateSubsystem::StepProduction(FCozyFacilityState& Facility, const FC
 		NewJob.StartGameSeconds = State.GameSeconds;
 		NewJob.DurationSeconds = GetProductionDuration(Facility, *Crop, Def);
 		Facility.ActiveJobId = NewJob.JobId;
+		UE_LOG(LogCozyRealm, Log, TEXT("생산 주기 시작: %s(%s) %s · 한 주기 %.2f초 (속도 ×%.2f)"), *GetFacilityDisplayName(Facility.InstanceId).ToString(),
+			*Facility.GridCoord.ToString(), *Facility.SelectedCropId.ToString(), NewJob.DurationSeconds, GetSpeedMultiplier(Facility, Def));
 		State.Jobs.Add(NewJob);
 		return;
 	}
@@ -1147,6 +1150,7 @@ void UCozyEstateSubsystem::StepProduction(FCozyFacilityState& Facility, const FC
 
 	const double Elapsed = State.GameSeconds - Job->StartGameSeconds - Job->PausedSeconds;
 	const int32 DueCycles = Job->DurationSeconds > 0.0 ? FMath::FloorToInt32(Elapsed / Job->DurationSeconds) : 0;
+	const int32 PaidBefore = Job->PaidCycles;
 	while (Job->PaidCycles < DueCycles)
 	{
 		// 🙋 이 시설의 미수령 공간이 꽉 차면 이 시설만 생산을 멈춘다 (D27 · 공용 창고 한도와 별개)
@@ -1160,6 +1164,26 @@ void UCozyEstateSubsystem::StepProduction(FCozyFacilityState& Facility, const FC
 		// 완료분은 보유 재료가 아니라 시설의 미수령분으로 · 주기 기록과 함께 (같은 주기를 두 번 넘기지 않음)
 		AddUnclaimed(Facility, Crop->ProducedItem, Crop->ProducedAmount);
 		++Job->PaidCycles;
+	}
+	// 🙋 공통 성장 효과가 바뀌었으면 진행 중인 주기는 그대로 끝내고, 다음 주기는 새 속도로 새 작업을 시작 (D40)
+	// 이번 단계에서 주기가 실제로 끝났을 때만 교체 → 진행 중인 주기의 시간·진행도는 바뀌지 않음
+	if (Job->State == ECozyJobState::Running && Job->PaidCycles > PaidBefore
+		&& !FMath::IsNearlyEqual(Job->DurationSeconds, GetProductionDuration(Facility, *Crop, Def), 0.001))
+	{
+		const double CycleStart = Job->StartGameSeconds + Job->PausedSeconds + Job->PaidCycles * Job->DurationSeconds;
+		const FGuid OldJobId = Job->JobId;
+		State.Jobs.RemoveAll([&OldJobId](const FCozyJobRecord& J) { return J.JobId == OldJobId; });
+		FCozyJobRecord NewJob;
+		NewJob.JobId = FGuid::NewGuid();
+		NewJob.FacilityId = Facility.InstanceId;
+		NewJob.Type = ECozyJobType::Production;
+		NewJob.ContentId = Facility.SelectedCropId;
+		NewJob.StartGameSeconds = CycleStart;
+		NewJob.DurationSeconds = GetProductionDuration(Facility, *Crop, Def);
+		Facility.ActiveJobId = NewJob.JobId;
+		State.Jobs.Add(NewJob);
+		UE_LOG(LogCozyRealm, Log, TEXT("생산 주기 시작(새 속도 적용): %s(%s) %s · 한 주기 %.2f초 (속도 ×%.2f)"), *GetFacilityDisplayName(Facility.InstanceId).ToString(),
+			*Facility.GridCoord.ToString(), *Facility.SelectedCropId.ToString(), NewJob.DurationSeconds, GetSpeedMultiplier(Facility, Def));
 	}
 }
 
