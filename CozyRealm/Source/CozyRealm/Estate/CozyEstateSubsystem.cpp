@@ -49,6 +49,11 @@ void UCozyEstateSubsystem::StartEstate()
 	}
 	SpawnFacilityActors();
 	bStarted = true;
+	if (bLoaded)
+	{
+		// 저장 시각부터 지금까지 정산 → 바로 저장해 같은 시간을 두 번 받지 않게 함
+		ApplyOfflineProgress((FDateTime::UtcNow() - SavedUtc).GetTotalSeconds(), TEXT("시작"));
+	}
 	SaveEstate(bLoaded ? TEXT("불러온 직후") : TEXT("새 게임"));
 	NotifyChanged(true);
 }
@@ -174,14 +179,94 @@ void UCozyEstateSubsystem::DebugReloadFromSave()
 	}
 	DestroyFacilityActors();
 	FDateTime SavedUtc;
-	if (!LoadEstateFromSave(SavedUtc))
+	const bool bLoaded = LoadEstateFromSave(SavedUtc);
+	if (!bLoaded)
 	{
 		BuildNewGameState();
 	}
 	SpawnFacilityActors();
 	StepAccumulator = 0.0;
+	if (bLoaded)
+	{
+		ApplyOfflineProgress((FDateTime::UtcNow() - SavedUtc).GetTotalSeconds(), TEXT("불러오기"));
+	}
 	SaveEstate(TEXT("불러온 직후"));
 	NotifyChanged(true);
+}
+
+void UCozyEstateSubsystem::ApplyOfflineProgress(double AwaySeconds, const TCHAR* Source)
+{
+	OfflineReport = FCozyOfflineReport();
+	OfflineReport.AwaySeconds = FMath::Max(0.0, AwaySeconds); // 시계를 되돌린 경우 0
+	OfflineReport.AppliedSeconds = FMath::Min<double>(OfflineReport.AwaySeconds, FMath::Max(0.f, Config.OfflineMaxSeconds));
+	OfflineReport.bClamped = OfflineReport.AwaySeconds > OfflineReport.AppliedSeconds;
+	const int32 Steps = FMath::FloorToInt(OfflineReport.AppliedSeconds);
+	if (Steps < 1)
+	{
+		UE_LOG(LogCozyRealm, Log, TEXT("방치 정산(%s): 꺼 둔 시간 %.1f초 · 정산할 시간 없음"), Source, OfflineReport.AwaySeconds);
+		return;
+	}
+
+	// 정산 전 상태 (결과 표시용)
+	TMap<FGuid, TPair<FName, int32>> UnclaimedBefore;
+	TMap<FGuid, int32> LevelBefore;
+	for (const FCozyFacilityState& Facility : State.Facilities)
+	{
+		UnclaimedBefore.Add(Facility.InstanceId, TPair<FName, int32>(Facility.UnclaimedItemId, Facility.UnclaimedAmount));
+		LevelBefore.Add(Facility.InstanceId, Facility.Level);
+	}
+
+	// 접속 중과 같은 규칙으로 1초씩 진행: 주민 조건 · 미수령 한도 · 가공은 선택한 남은 회차까지 · 업그레이드는 시간이 지나면 완료 (D44)
+	for (int32 Step = 0; Step < Steps; ++Step)
+	{
+		State.GameSeconds += 1.0;
+		StepJobs();
+	}
+
+	// 방치 재화 (🤖 2시간당 시간 부적 1 · 1시간당 심상 조각 1 · 남는 시간은 다음으로 이어지지 않음)
+	const int32 Talismans = Config.OfflineTalismanEverySeconds > 0.f ? FMath::FloorToInt(OfflineReport.AppliedSeconds / Config.OfflineTalismanEverySeconds) : 0;
+	const int32 Shards = Config.OfflineMindShardEverySeconds > 0.f ? FMath::FloorToInt(OfflineReport.AppliedSeconds / Config.OfflineMindShardEverySeconds) : 0;
+	if (Talismans > 0)
+	{
+		AddResource(Config.SpeedupItemId, Talismans);
+		OfflineReport.Lines.Add(FText::Format(LOCTEXT("OffTalisman", "{0} +{1}"), GetItemName(Config.SpeedupItemId), FText::AsNumber(Talismans)));
+	}
+	if (Shards > 0)
+	{
+		AddResource(TEXT("MindShard"), Shards);
+		OfflineReport.Lines.Add(FText::Format(LOCTEXT("OffShard", "{0} +{1}"), GetItemName(TEXT("MindShard")), FText::AsNumber(Shards)));
+	}
+
+	// 시설별 결과: 미수령분 증가 · 업그레이드 완료
+	for (const FCozyFacilityState& Facility : State.Facilities)
+	{
+		const FText Name = GetFacilityDisplayName(Facility.InstanceId);
+		const TPair<FName, int32>* Before = UnclaimedBefore.Find(Facility.InstanceId);
+		const int32 BeforeAmount = Before && Before->Key == Facility.UnclaimedItemId ? Before->Value : 0;
+		if (Facility.UnclaimedAmount > BeforeAmount)
+		{
+			const FCozyFacilityRow* Def = GetFacilityDef(Facility.DefinitionId);
+			OfflineReport.Lines.Add(FText::Format(LOCTEXT("OffUnclaimed", "{0}: 미수령 {1} +{2} (지금 {3}/{4} · 수확·수령해야 창고로)"),
+				Name, GetItemName(Facility.UnclaimedItemId), FText::AsNumber(Facility.UnclaimedAmount - BeforeAmount), FText::AsNumber(Facility.UnclaimedAmount), FText::AsNumber(Def ? Def->UnclaimedCapacity : 0)));
+		}
+		const int32* OldLevel = LevelBefore.Find(Facility.InstanceId);
+		if (OldLevel && Facility.Level > *OldLevel)
+		{
+			OfflineReport.Lines.Add(FText::Format(LOCTEXT("OffLevel", "{0}: 업그레이드 완료 Lv{1} → Lv{2}"), Name, FText::AsNumber(*OldLevel), FText::AsNumber(Facility.Level)));
+		}
+	}
+	// 받은 것이 있을 때만 팝업 (잠깐 껐다 켠 경우 등은 로그만)
+	bOfflineReportPending = OfflineReport.Lines.Num() > 0;
+	UE_LOG(LogCozyRealm, Log, TEXT("방치 정산(%s): 꺼 둔 시간 %.0f초 · 정산 %d초%s · 시간 부적 +%d · 심상 조각 +%d · 결과 %d줄"),
+		Source, OfflineReport.AwaySeconds, Steps, OfflineReport.bClamped ? TEXT(" (최대 12시간)") : TEXT(""), Talismans, Shards, OfflineReport.Lines.Num());
+	bStructuralPending = false;
+	NotifyChanged(true);
+}
+
+void UCozyEstateSubsystem::DebugSkipOffline(double Seconds)
+{
+	ApplyOfflineProgress(Seconds, TEXT("디버그 건너뛰기"));
+	SaveEstate(TEXT("방치 정산 직후"));
 }
 
 void UCozyEstateSubsystem::DebugShiftSaveTime(double Seconds)

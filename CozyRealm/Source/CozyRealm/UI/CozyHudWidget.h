@@ -53,7 +53,9 @@ enum class ECozyWindowKind : uint8
 	/** 후신소: 신사·시설·관리 시설 업그레이드 (공통 성장 처리 · D9) */
 	Upgrade,
 	/** 밭 관리 시설: 관리 단계 · 모든 밭 효과 · 해금 작물 (D37·D39) */
-	FieldManagement
+	FieldManagement,
+	/** 방치 보상: 꺼 둔 동안 정산한 결과 (D44) */
+	OfflineReport
 };
 
 /**
@@ -125,6 +127,9 @@ private:
 	void BuildSalesContent();
 	void BuildUpgradeContent();
 	void BuildFieldManagementContent();
+	void BuildOfflineReportContent();
+	/** 보여 주지 않은 방치 보상이 있으면 창을 연다 */
+	void ShowPendingOfflineReport();
 
 	UTextBlock* MakeText(const FText& Text, int32 FontSize = 16, const FLinearColor& Color = FLinearColor::White);
 	UButton* MakeButton(const FText& Label, TFunction<void()> OnClick, bool bEnabled = true, int32 FontSize = 15);

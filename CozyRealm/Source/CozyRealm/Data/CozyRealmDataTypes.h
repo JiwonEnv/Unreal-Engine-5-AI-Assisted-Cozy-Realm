@@ -408,6 +408,18 @@ struct FCozyEstateConfigRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Save")
 	float AutosaveSeconds = 60.f;
 
+	/** 방치 보상으로 정산하는 최대 시간 (실제 초 · 🙋 최대 12시간) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Offline")
+	float OfflineMaxSeconds = 43200.f;
+
+	/** 방치 보상 시간 부적: 이 시간마다 1개 (🤖 2시간 · 0이면 없음 · 남는 시간은 이어지지 않음) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Offline")
+	float OfflineTalismanEverySeconds = 7200.f;
+
+	/** 방치 보상 심상 조각: 이 시간마다 1개 (🤖 1시간 · 0이면 없음) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Offline")
+	float OfflineMindShardEverySeconds = 3600.f;
+
 	/** 🙋/🤖/❓ 표시와 메모 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Note")
 	FString Note;
