@@ -1,2 +1,2 @@
-﻿---,GridSize,CellSize,GridOrigin,StorageCapPerItem,NightStartHour,NightEndHour,SaleCurrencyId,SpeedupItemId,SpeedupSecondsPerItem,Note
-Default,"(X=12,Y=12)",200,"(X=-1200,Y=-1200,Z=10)",100,18,6,Gold,TimeTalisman,60,🤖 영지 12×12칸·칸 200cm·원점(24m 판 중앙 기준) 테스트 값 / 🙋 공용 창고 재료당 100개 (시설의 미수령분은 합산하지 않음·D27) / 🙋 밤 PC 현지 18~6시 / 🙋 판매 대금은 골드(판매소 · D14) / 🙋 시간 단축: 부적 1장 = 60초 고정 · 시설 레벨과 무관 (D44 · 🤖 T1 테스트 값 · 정식 밸런스 ❓)
+﻿---,GridSize,CellSize,GridOrigin,StorageCapPerItem,NightStartHour,NightEndHour,SaleCurrencyId,SpeedupItemId,SpeedupSecondsPerItem,AutosaveSeconds,Note
+Default,"(X=12,Y=12)",200,"(X=-1200,Y=-1200,Z=10)",100,18,6,Gold,TimeTalisman,60,60,🤖 영지 12×12칸·칸 200cm·원점(24m 판 중앙 기준) 테스트 값 / 🙋 공용 창고 재료당 100개 (시설의 미수령분은 합산하지 않음·D27) / 🙋 밤 PC 현지 18~6시 / 🙋 판매 대금은 골드(판매소 · D14) / 🙋 시간 단축: 부적 1장 = 60초 고정 · 시설 레벨과 무관 (D44 · 🤖 T1 테스트 값 · 정식 밸런스 ❓) / 🙋 자동 저장 1분마다 + 종료 시 · 저장 슬롯 1개

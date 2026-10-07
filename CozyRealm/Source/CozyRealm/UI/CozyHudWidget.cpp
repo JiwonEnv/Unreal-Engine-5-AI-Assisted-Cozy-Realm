@@ -2033,6 +2033,40 @@ void UCozyHudWidget::RefreshDebugPanel()
 		}
 	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
 
+	// 저장 · 불러오기 (2주차 기능 3) · 저장 시각 당기기는 방치 보상 검증용
+	UHorizontalBox* SaveRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+	SaveRow->AddChildToHorizontalBox(MakeButton(LOCTEXT("SaveNow", "저장"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			EstateNow->SaveEstate(TEXT("디버그"));
+		}
+	}, true, 13))->SetPadding(FMargin(0.f, 0.f, 3.f, 0.f));
+	SaveRow->AddChildToHorizontalBox(MakeButton(LOCTEXT("ReloadSave", "불러오기"), [this]()
+	{
+		HideFacilityIcons();
+		CloseWindow();
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			EstateNow->DebugReloadFromSave();
+		}
+	}, true, 13))->SetPadding(FMargin(0.f, 0.f, 3.f, 0.f));
+	SaveRow->AddChildToHorizontalBox(MakeButton(LOCTEXT("ShiftSave1h", "저장 시각 -1시간"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			EstateNow->DebugShiftSaveTime(3600.0);
+		}
+	}, true, 13))->SetPadding(FMargin(0.f, 0.f, 3.f, 0.f));
+	SaveRow->AddChildToHorizontalBox(MakeButton(LOCTEXT("ShiftSave13h", "-13시간"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			EstateNow->DebugShiftSaveTime(13.0 * 3600.0);
+		}
+	}, true, 13));
+	DebugContent->AddChildToVerticalBox(SaveRow)->SetPadding(FMargin(0.f, 3.f));
+
 	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("Restart", "새 게임 다시 시작"), [this]()
 	{
 		HideFacilityIcons();
