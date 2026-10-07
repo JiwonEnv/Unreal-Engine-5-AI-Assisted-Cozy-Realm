@@ -41,6 +41,14 @@ struct FCozyProductionView
 	int32 StorageCap = 0;
 	/** 지금 수령하면 창고로 옮겨질 수량 = min(미수령, 창고 남은 공간) */
 	int32 CollectableNow = 0;
+	/** 공통 성장 효과로 받는 생산 속도 배율 (D39 · 진행 중인 주기에는 다음 주기부터 적용 · D40) */
+	float SpeedMultiplier = 1.f;
+	/** 진행 중인 주기의 길이 (초 · 시작할 때 정해짐) */
+	float CycleSeconds = 0.f;
+	/** 성장 효과를 주는 관리 시설 이름 · 레벨 (관리 시설이 정해지지 않은 시설이면 비어 있음 · 레벨 0이면 아직 없음) */
+	FText GrowthSourceName;
+	int32 GrowthSourceLevel = 0;
+	bool bHasGrowthSource = false;
 };
 
 /** 레시피 견적: 선택한 횟수로 시작할 수 있는지 · 최대 횟수 · 총 재료·완료품·시간 (공통 가공 창이 읽음 · D32) */
@@ -112,6 +120,57 @@ struct FCozySellQuote
 	FText CurrencyName;
 	/** 팔 수 없는 이유 (팔 수 있으면 비어 있음) */
 	FText BlockReason;
+};
+
+/** 업그레이드 견적 (후신소 창이 읽음 · D9·D25·D36·D38) */
+struct FCozyUpgradeQuote
+{
+	/** 이 시설에 다음 단계 성장 행이 있는가 */
+	bool bValid = false;
+	bool bCanStart = false;
+	bool bUpgrading = false;
+	FName GrowthRowId;
+	int32 FromLevel = 0;
+	int32 ToLevel = 0;
+	double Seconds = 0.0;
+	int32 RequiredShrineLevel = 0;
+	struct FAmount { FName ItemId; int32 Amount = 0; int32 Have = 0; };
+	/** 시작 비용 */
+	TArray<FAmount> Costs;
+	/** D36: 종료되는 가공의 미완료 회차 재료 (반환) */
+	TArray<FAmount> Refunds;
+	/** D36: 종료되는 가공 설명 (완성된 회차는 미수령분에 남음) */
+	TArray<FText> EndingJobs;
+	/** 이 단계가 끝나면 해금되는 작물 이름 (D37) */
+	TArray<FText> UnlockCropNames;
+	/** 관리 시설이면 완료 후 모든 밭의 속도 배율 (0이면 해당 없음 · D39) */
+	float NextFieldSpeedMultiplier = 0.f;
+	/** 시작할 수 없는 이유 (시작 가능하면 비어 있음) */
+	FText BlockReason;
+};
+
+/** 진행 중인 업그레이드 하나 (후신소 창 표시용) */
+struct FCozyUpgradeJobView
+{
+	FGuid JobId;
+	FGuid FacilityId;
+	FText FacilityName;
+	int32 ToLevel = 0;
+	float Progress01 = 0.f;
+	float RemainingSeconds = 0.f;
+};
+
+/** 밭 관리 시설 상태 (관리 창 표시용 · D37·D39) */
+struct FCozyFieldManagementView
+{
+	int32 Level = 0;
+	float CurrentMultiplier = 1.f;
+	/** 다음 단계 배율 (0이면 다음 단계 없음) */
+	float NextMultiplier = 0.f;
+	TArray<FText> UnlockedCrops;
+	TArray<FText> NextUnlockCrops;
+	int32 ManagedFacilities = 0;
+	bool bUpgrading = false;
 };
 
 /** 수령 결과 (UI가 메시지로 보여 줌) */
@@ -222,6 +281,40 @@ public:
 	bool GetShowTestRecipes() const { return bShowTestRecipes; }
 	void SetShowTestRecipes(bool bShow);
 
+	// --- 공통 성장 · 업그레이드 (후신소 · D9·D25·D36~D40) ---
+
+	/** 업그레이드할 수 있는 시설 (성장 설정표에 행이 있는 시설 · 놓인 순서) */
+	TArray<FGuid> GetUpgradableFacilities() const;
+
+	/** 업그레이드 견적 (상태를 바꾸지 않음) */
+	FCozyUpgradeQuote GetUpgradeQuote(const FGuid& FacilityId) const;
+
+	/**
+	 *  업그레이드 시작: 조건 재확인 → 비용 차감 + (가공 시설이면) 가공 종료·미완료 재료 반환·예약 공간 해제 + 작업 등록을 한 번에.
+	 *  실패하면 아무것도 바꾸지 않음 (D36·D38).
+	 */
+	bool StartUpgrade(const FGuid& FacilityId, FText& OutMessage);
+
+	TArray<FCozyUpgradeJobView> GetUpgradeJobs() const;
+	/** 동시에 진행할 수 있는 업그레이드 수 (후신소 데이터) */
+	int32 GetUpgradeSlotCount() const;
+	bool IsFacilityUpgrading(const FGuid& FacilityId) const;
+	/** 신사 레벨 (신사가 없으면 0) */
+	int32 GetShrineLevel() const;
+
+	/** 밭 관리 시설 상태 */
+	FCozyFieldManagementView GetFieldManagementView(const FGuid& ManagerFacilityId) const;
+
+	// --- 작물 선택 (개별 밭 · D37) ---
+
+	/** 해금된 작물인가 (처음부터 열림 또는 관리 시설 단계로 해금) */
+	bool IsCropUnlocked(FName CropId) const;
+	/** 잠긴 작물의 해금 안내 (예: '밭 관리 시설 Lv2에서 해금') */
+	FText GetCropUnlockHint(FName CropId) const;
+	/** 이 밭의 작물을 지금 바꿀 수 있는가 · 미수령분·진행 주기가 있으면 불가 (D31) */
+	bool CanSelectCrop(const FGuid& FacilityId, FName CropId, FText& OutReason) const;
+	bool SelectCrop(const FGuid& FacilityId, FName CropId, FText& OutMessage);
+
 	// --- 판매 (판매소 · 주민 없이 기본 작동 · D4·D14) ---
 
 	/** 판매 목록에 보일 재료 ID (창고 재료 · 데이터 순서) · 판매가 0인 재료는 '판매 불가'로 표시 */
@@ -301,6 +394,15 @@ private:
 	/** 미수령분에 더한다 (품목이 비어 있으면 이 품목으로 정함) */
 	void AddUnclaimed(FCozyFacilityState& Facility, FName ItemId, int32 Amount);
 	FText GetItemName(FName ItemId) const;
+
+	/** 성장 설정표에서 이 시설 정의·레벨의 다음 단계 행 */
+	const FCozyGrowthRow* FindGrowthRow(FName DefinitionId, int32 FromLevel, FName* OutRowId = nullptr) const;
+	/** 생산·가공 속도 배율 · 관리 시설이 정해진 시설은 관리 시설 단계의 효과 (D39) */
+	double GetSpeedMultiplier(const FCozyFacilityState& Facility, const FCozyFacilityRow& Def) const;
+	/** 이 정의의 시설 중 가장 높은 레벨 (없으면 0) */
+	int32 GetHighestLevelOf(FName DefinitionId) const;
+	/** 시간이 다 된 업그레이드를 완료 처리 */
+	void StepGrowth();
 	void RemoveResidentFromFacility(FCozyResidentState& Resident);
 
 	FCozyFacilityState* FindFacilityMutable(const FGuid& Id);
@@ -341,4 +443,6 @@ private:
 	double StepAccumulator = 0.0;
 	ECozyNightOverride NightOverride = ECozyNightOverride::Auto;
 	bool bShowTestRecipes = false;
+	/** 이번 Tick에 업그레이드가 끝나 구조가 바뀌었는가 (UI가 해금·레벨 표시를 갱신) */
+	bool bStructuralPending = false;
 };

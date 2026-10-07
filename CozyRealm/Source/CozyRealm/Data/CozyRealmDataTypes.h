@@ -25,7 +25,9 @@ enum class ECozyFacilityFunction : uint8
 	/** 업그레이드 공통 슬롯을 제공한다 (후신소) */
 	UpgradeQueue,
 	/** 영지 레벨 · 다른 시설의 레벨 상한 (신사) */
-	ShrineCore
+	ShrineCore,
+	/** 관리 대상 생산 시설(밭) 전체의 공통 성장·작물 해금 (밭 관리 시설 · D37·D39) */
+	FieldManagement
 };
 
 /** 재료·재화 구분 */
@@ -96,6 +98,14 @@ struct FCozyFacilityRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Processing")
 	int32 ProcessingSlots = 0;
 
+	/** 이 시설의 성장 효과를 주는 관리 시설 정의 ID (밭 → 밭 관리 시설 · D39) · 비어 있으면 자기 레벨의 효과를 받음 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Growth")
+	FName ManagerFacilityId;
+
+	/** 동시에 진행할 수 있는 업그레이드 수 (후신소 · 0이면 업그레이드 대기열 아님 · D9·D25) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Growth")
+	int32 UpgradeSlots = 0;
+
 	/** 미수령 생산물을 창고로 옮기는 버튼 이름 (예: 수확 · 수령) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Production")
 	FText CollectButtonLabel;
@@ -130,6 +140,10 @@ struct FCozyCropRow : public FTableRowBase
 	/** 재배 외형 ID (작물 모습 · D18) · 비어 있으면 회색 상자만 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crop")
 	FName CultivationLookId;
+
+	/** 처음부터 고를 수 있는 작물인가 · 아니면 성장 설정표의 '해금 작물'로 열림 (D37) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crop")
+	bool bStartUnlocked = false;
 
 	/** 🙋/🤖/❓ 표시와 메모 · 해금 조건은 ❓라 아직 칸 없음 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Note")
@@ -242,6 +256,10 @@ struct FCozyGrowthRow : public FTableRowBase
 	/** 기본 시간 (초) · 0이면 즉시 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Growth")
 	float Seconds = 0.f;
+
+	/** 이 단계가 끝나면 해금되는 작물 ID (Crops.csv 행 이름 · D37) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Growth")
+	TArray<FName> UnlockCrops;
 
 	/** 🙋/🤖/❓ 표시와 메모 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Note")

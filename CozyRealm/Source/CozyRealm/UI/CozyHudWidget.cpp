@@ -33,6 +33,14 @@ namespace CozyHud
 		return FText::Format(LOCTEXT("TimeScale", "×{0}"), FText::AsNumber(FMath::RoundToInt(Scale)));
 	}
 
+	FText MultiplierText(float Value)
+	{
+		FNumberFormattingOptions Fmt;
+		Fmt.MinimumFractionalDigits = 1;
+		Fmt.MaximumFractionalDigits = 2;
+		return FText::AsNumber(Value, &Fmt);
+	}
+
 	/** 초 → "45초" / "1분 30초" */
 	FText DurationText(double Seconds)
 	{
@@ -224,14 +232,53 @@ void UCozyHudWidget::HandleEstateChanged(bool bStructural)
 	{
 		UpdateSalesLive();
 	}
+	else if (WindowKind == ECozyWindowKind::Upgrade)
+	{
+		UpdateUpgradeLive();
+	}
+	else if (WindowKind == ECozyWindowKind::FieldManagement)
+	{
+		UpdateFieldManagementLive();
+	}
 	if (!bStructural)
 	{
 		return;
+	}
+	// 업그레이드 완료로 레벨이 바뀌면 열린 창의 제목(Lv)도 바꿈 · 창은 다시 만들지 않음
+	if (WindowKind == ECozyWindowKind::Processing || WindowKind == ECozyWindowKind::Sales || WindowKind == ECozyWindowKind::FacilityInfo)
+	{
+		UCozyEstateSubsystem* EstateNow = GetEstate();
+		const FCozyFacilityState* Facility = EstateNow ? EstateNow->FindFacility(WindowFacility) : nullptr;
+		const FCozyFacilityRow* Def = Facility ? EstateNow->GetFacilityDef(Facility->DefinitionId) : nullptr;
+		if (Def && WindowTitle)
+		{
+			if (WindowKind == ECozyWindowKind::Processing)
+			{
+				WindowTitle->SetText(FText::Format(LOCTEXT("ProcTitle", "{0}  Lv.{1} — 가공"), Def->DisplayName, FText::AsNumber(Facility->Level)));
+			}
+			else if (WindowKind == ECozyWindowKind::Sales)
+			{
+				WindowTitle->SetText(FText::Format(LOCTEXT("SellTitle", "{0}  Lv.{1} — 판매"), Def->DisplayName, FText::AsNumber(Facility->Level)));
+			}
+			else if (Def->ManagerFacilityId.IsNone())
+			{
+				WindowTitle->SetText(FText::Format(LOCTEXT("InfoTitle", "{0}  Lv.{1}"), Def->DisplayName, FText::AsNumber(Facility->Level)));
+			}
+		}
 	}
 	// 버튼 구성이 바뀌는 창(나가야: 배치 가능 여부)만 다시 그림
 	if (WindowKind == ECozyWindowKind::Nagaya || WindowKind == ECozyWindowKind::Placeholder)
 	{
 		RefreshWindow();
+	}
+	// 후신소 창은 업그레이드할 시설 목록이 바뀐 경우(시설 추가 등)만 다시 그림
+	if (WindowKind == ECozyWindowKind::Upgrade)
+	{
+		UCozyEstateSubsystem* EstateNow = GetEstate();
+		if (EstateNow && EstateNow->GetUpgradableFacilities() != UpgradeFacilityIds)
+		{
+			RefreshWindow();
+		}
 	}
 	if (bDebugVisible)
 	{
@@ -247,6 +294,56 @@ void UCozyHudWidget::UpdateFacilityInfoLive()
 		return;
 	}
 	const FCozyProductionView View = Estate->GetProductionView(WindowFacility);
+
+	// 작물 · 공통 성장 효과 · 작물 선택 버튼 (해금·변경 가능 여부는 서비스 판단)
+	if (const FCozyFacilityState* CropFacility = Estate->FindFacility(WindowFacility))
+	{
+		const FCozyCropRow* Crop = Estate->GetCropDef(CropFacility->SelectedCropId);
+		if (InfoCropText)
+		{
+			InfoCropText->SetText(FText::Format(LOCTEXT("CropLine", "키우는 작물: {0}"), Crop ? Crop->DisplayName : LOCTEXT("NoneCrop", "없음")));
+		}
+		FString Reasons;
+		for (int32 Index = 0; Index < InfoCropIds.Num() && Index < InfoCropButtons.Num(); ++Index)
+		{
+			const FName CropId = InfoCropIds[Index];
+			const FCozyCropRow* Option = Estate->GetCropDef(CropId);
+			FText Reason;
+			const bool bCan = Estate->CanSelectCrop(WindowFacility, CropId, Reason);
+			const bool bCurrent = CropFacility->SelectedCropId == CropId;
+			const bool bUnlocked = Estate->IsCropUnlocked(CropId);
+			UButton* Button = InfoCropButtons[Index];
+			Button->SetIsEnabled(bCan);
+			if (UTextBlock* Label = Cast<UTextBlock>(Button->GetContent()))
+			{
+				const FText Name = Option ? Option->DisplayName : FText::FromName(CropId);
+				Label->SetText(bCurrent ? FText::Format(LOCTEXT("CropBtnCurrent", "{0} (키우는 중)"), Name)
+					: bUnlocked ? Name : FText::Format(LOCTEXT("CropBtnLocked", "{0} (잠김)"), Name));
+			}
+			if (!bCurrent && !bCan)
+			{
+				Reasons += (Reasons.IsEmpty() ? TEXT("") : TEXT("\n")) + Reason.ToString();
+			}
+		}
+		if (InfoCropReasonText)
+		{
+			InfoCropReasonText->SetText(FText::FromString(Reasons));
+			InfoCropReasonText->SetVisibility(Reasons.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+		}
+	}
+	if (InfoGrowthText)
+	{
+		FNumberFormattingOptions Fmt;
+		Fmt.MinimumFractionalDigits = 1;
+		Fmt.MaximumFractionalDigits = 2;
+		const FText Multiplier = FText::AsNumber(View.SpeedMultiplier, &Fmt);
+		InfoGrowthText->SetText(!View.bHasGrowthSource ? FText::GetEmpty()
+			: View.GrowthSourceLevel > 0
+				? FText::Format(LOCTEXT("GrowthLine", "공통 관리 효과: 생산 속도 ×{0} ({1} Lv{2}) · 단계가 오르면 다음 주기부터 적용"), Multiplier, View.GrowthSourceName, FText::AsNumber(View.GrowthSourceLevel))
+				: FText::Format(LOCTEXT("GrowthLineNone", "공통 관리 효과: 기본 속도 ×{0} ({1}이 아직 없습니다)"), Multiplier, View.GrowthSourceName));
+		InfoGrowthText->SetVisibility(View.bHasGrowthSource ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+
 	if (InfoResidentText)
 	{
 		const FCozyFacilityState* Facility = Estate->FindFacility(WindowFacility);
@@ -294,7 +391,9 @@ void UCozyHudWidget::UpdateFacilityInfoLive()
 	}
 	if (InfoRemainingText)
 	{
-		InfoRemainingText->SetText(FText::Format(LOCTEXT("NextHarvest", "다음 생산 완료까지 {0}초"), FText::AsNumber(FMath::CeilToInt(View.RemainingSeconds))));
+		InfoRemainingText->SetText(View.CycleSeconds > 0.f
+			? FText::Format(LOCTEXT("NextHarvestCycle", "다음 생산 완료까지 {0}초 · 이번 주기 {1}초"), FText::AsNumber(FMath::CeilToInt(View.RemainingSeconds)), CozyHud::MultiplierText(View.CycleSeconds))
+			: FText::Format(LOCTEXT("NextHarvest", "다음 생산 완료까지 {0}초"), FText::AsNumber(FMath::CeilToInt(View.RemainingSeconds))));
 		InfoRemainingText->SetVisibility(View.bWorking ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
 }
@@ -488,10 +587,13 @@ void UCozyHudWidget::RefreshIcons()
 			AddIcon(LOCTEXT("IconSell", "판매"), [this, FacilityId]() { OpenWindow(ECozyWindowKind::Sales, FacilityId); });
 			break;
 		case ECozyFacilityFunction::UpgradeQueue:
-			AddIcon(LOCTEXT("IconUpgrade", "업그레이드"), [this, FacilityId]() { PlaceholderLabel = LOCTEXT("PhUpgrade", "업그레이드"); OpenWindow(ECozyWindowKind::Placeholder, FacilityId); });
+			AddIcon(LOCTEXT("IconUpgrade", "업그레이드"), [this, FacilityId]() { OpenWindow(ECozyWindowKind::Upgrade, FacilityId); });
 			break;
 		case ECozyFacilityFunction::ShrineCore:
 			AddIcon(LOCTEXT("IconShrine", "신사"), [this, FacilityId]() { PlaceholderLabel = LOCTEXT("PhShrine", "신사"); OpenWindow(ECozyWindowKind::Placeholder, FacilityId); });
+			break;
+		case ECozyFacilityFunction::FieldManagement:
+			AddIcon(LOCTEXT("IconFieldMgmt", "밭 관리"), [this, FacilityId]() { OpenWindow(ECozyWindowKind::FieldManagement, FacilityId); });
 			break;
 		default:
 			break;
@@ -612,6 +714,20 @@ void UCozyHudWidget::RefreshWindow()
 	SellSummaryText = nullptr;
 	SellBlockText = nullptr;
 	SellButton = nullptr;
+	UpgradeSlotText = nullptr;
+	UpgradeJobTexts.Reset();
+	UpgradeJobBars.Reset();
+	UpgradeTitleTexts.Reset();
+	UpgradeDetailTexts.Reset();
+	UpgradeBlockTexts.Reset();
+	UpgradeButtons.Reset();
+	UpgradeFacilityIds.Reset();
+	FieldMgmtText = nullptr;
+	InfoCropText = nullptr;
+	InfoGrowthText = nullptr;
+	InfoCropButtons.Reset();
+	InfoCropReasonText = nullptr;
+	InfoCropIds.Reset();
 	ActionSink = &WindowActions;
 
 	switch (WindowKind)
@@ -634,11 +750,17 @@ void UCozyHudWidget::RefreshWindow()
 	case ECozyWindowKind::Sales:
 		BuildSalesContent();
 		break;
+	case ECozyWindowKind::Upgrade:
+		BuildUpgradeContent();
+		break;
+	case ECozyWindowKind::FieldManagement:
+		BuildFieldManagementContent();
+		break;
 	default:
 		break;
 	}
 
-	if (!LastFeedback.IsEmpty() && WindowKind != ECozyWindowKind::FacilityInfo && WindowKind != ECozyWindowKind::Processing && WindowKind != ECozyWindowKind::Sales)
+	if (!LastFeedback.IsEmpty() && WindowKind != ECozyWindowKind::FacilityInfo && WindowKind != ECozyWindowKind::Processing && WindowKind != ECozyWindowKind::Sales && WindowKind != ECozyWindowKind::Upgrade)
 	{
 		WindowContent->AddChildToVerticalBox(MakeText(LastFeedback, 16, CozyHud::WarningText))->SetPadding(FMargin(0.f, 12.f, 0.f, 0.f));
 	}
@@ -656,10 +778,40 @@ void UCozyHudWidget::BuildFacilityInfoContent()
 		return;
 	}
 
-	WindowTitle->SetText(FText::Format(LOCTEXT("InfoTitle", "{0}  Lv.{1}"), Def->DisplayName, FText::AsNumber(Facility->Level)));
+	// 관리 시설의 효과를 받는 시설(밭)은 개별 레벨이 없음 (D39)
+	WindowTitle->SetText(Def->ManagerFacilityId.IsNone()
+		? FText::Format(LOCTEXT("InfoTitle", "{0}  Lv.{1}"), Def->DisplayName, FText::AsNumber(Facility->Level))
+		: Def->DisplayName);
 
-	const FCozyCropRow* Crop = Estate->GetCropDef(Facility->SelectedCropId);
-	WindowContent->AddChildToVerticalBox(MakeText(FText::Format(LOCTEXT("CropLine", "키우는 작물: {0}"), Crop ? Crop->DisplayName : LOCTEXT("NoneCrop", "없음"))));
+	// 키우는 작물 · 작물 선택 (해금된 작물만 고를 수 있음 · D37) · UpdateFacilityInfoLive가 갱신
+	InfoCropText = MakeText(FText::GetEmpty());
+	WindowContent->AddChildToVerticalBox(InfoCropText);
+	if (Def->bProductionItemSelectable && Def->ProductionItems.Num() > 0)
+	{
+		UHorizontalBox* CropRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+		CropRow->AddChildToHorizontalBox(MakeText(LOCTEXT("CropPick", "작물 바꾸기:"), 14, CozyHud::MutedText))->SetPadding(FMargin(0.f, 0.f, 8.f, 0.f));
+		const FGuid FacilityId = WindowFacility;
+		for (const FName& CropId : Def->ProductionItems)
+		{
+			UButton* CropButton = MakeButton(FText::FromName(CropId), [this, FacilityId, CropId]()
+			{
+				if (UCozyEstateSubsystem* EstateNow = GetEstate())
+				{
+					FText Message;
+					EstateNow->SelectCrop(FacilityId, CropId, Message);
+					SetFeedback(Message);
+				}
+			}, false, 14);
+			CropRow->AddChildToHorizontalBox(CropButton)->SetPadding(FMargin(0.f, 0.f, 6.f, 0.f));
+			InfoCropIds.Add(CropId);
+			InfoCropButtons.Add(CropButton);
+		}
+		WindowContent->AddChildToVerticalBox(CropRow)->SetPadding(FMargin(0.f, 4.f));
+		InfoCropReasonText = MakeText(FText::GetEmpty(), 13, CozyHud::MutedText);
+		WindowContent->AddChildToVerticalBox(InfoCropReasonText);
+	}
+	InfoGrowthText = MakeText(FText::GetEmpty(), 14, CozyHud::AccentText);
+	WindowContent->AddChildToVerticalBox(InfoGrowthText)->SetPadding(FMargin(0.f, 4.f, 0.f, 0.f));
 
 	// 배치된 주민 (UpdateFacilityInfoLive가 최신 값으로 갱신)
 	InfoResidentText = MakeText(FText::GetEmpty());
@@ -1366,6 +1518,227 @@ void UCozyHudWidget::UpdateSalesLive()
 }
 
 // ---------------------------------------------------------------------------
+// 후신소 창 (신사·시설·밭 관리 시설 업그레이드 · 공통 성장 처리 · D9·D25·D36~D40)
+
+void UCozyHudWidget::BuildUpgradeContent()
+{
+	UCozyEstateSubsystem* Estate = GetEstate();
+	if (!Estate)
+	{
+		return;
+	}
+	WindowTitle->SetText(FText::Format(LOCTEXT("UpTitle", "{0} — 업그레이드"), Estate->GetFacilityDisplayName(WindowFacility)));
+	WindowContent->AddChildToVerticalBox(MakeText(LOCTEXT("UpRule", "신사·시설 업그레이드는 여기서 합니다 · 시작 비용은 시작할 때 내고, 시간이 지나면 완료됩니다"), 14, CozyHud::MutedText))->SetPadding(FMargin(0.f, 0.f, 0.f, 8.f));
+
+	// 진행 중인 업그레이드 (후신소 동시 작업 수만큼)
+	UpgradeSlotText = MakeText(FText::GetEmpty(), 17, CozyHud::AccentText);
+	WindowContent->AddChildToVerticalBox(UpgradeSlotText)->SetPadding(FMargin(0.f, 2.f));
+	for (int32 SlotIndex = 0; SlotIndex < FMath::Max(1, Estate->GetUpgradeSlotCount()); ++SlotIndex)
+	{
+		UTextBlock* JobText = MakeText(FText::GetEmpty(), 15);
+		WindowContent->AddChildToVerticalBox(JobText)->SetPadding(FMargin(0.f, 2.f));
+		UProgressBar* Bar = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass());
+		Bar->SetFillColorAndOpacity(CozyHud::AccentText);
+		WindowContent->AddChildToVerticalBox(Bar)->SetPadding(FMargin(0.f, 2.f));
+		UpgradeJobTexts.Add(JobText);
+		UpgradeJobBars.Add(Bar);
+	}
+
+	// 업그레이드할 시설 (성장 설정표에 행이 있는 시설)
+	WindowContent->AddChildToVerticalBox(MakeText(LOCTEXT("UpList", "업그레이드할 시설"), 17, CozyHud::AccentText))->SetPadding(FMargin(0.f, 12.f, 0.f, 2.f));
+	UpgradeFacilityIds = Estate->GetUpgradableFacilities();
+	for (const FGuid& FacilityId : UpgradeFacilityIds)
+	{
+		UHorizontalBox* Header = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+		UTextBlock* TitleText = MakeText(FText::GetEmpty(), 16);
+		UHorizontalBoxSlot* TitleSlot = Header->AddChildToHorizontalBox(TitleText);
+		TitleSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+		TitleSlot->SetVerticalAlignment(VAlign_Center);
+		UButton* StartButton = MakeButton(LOCTEXT("UpStart", "업그레이드 시작"), [this, FacilityId]()
+		{
+			if (UCozyEstateSubsystem* EstateNow = GetEstate())
+			{
+				// 시작 직전에 서비스가 최신 상태로 다시 검사 · 실패하면 아무것도 바뀌지 않음 (D38)
+				FText Message;
+				EstateNow->StartUpgrade(FacilityId, Message);
+				SetFeedback(Message);
+				UpdateUpgradeLive();
+			}
+		}, false, 14);
+		Header->AddChildToHorizontalBox(StartButton)->SetPadding(FMargin(12.f, 0.f, 0.f, 0.f));
+		WindowContent->AddChildToVerticalBox(Header)->SetPadding(FMargin(0.f, 8.f, 0.f, 2.f));
+		UTextBlock* DetailText = MakeText(FText::GetEmpty(), 14, CozyHud::MutedText);
+		WindowContent->AddChildToVerticalBox(DetailText);
+		UTextBlock* BlockText = MakeText(FText::GetEmpty(), 14, CozyHud::WarningText);
+		WindowContent->AddChildToVerticalBox(BlockText);
+		UpgradeTitleTexts.Add(TitleText);
+		UpgradeDetailTexts.Add(DetailText);
+		UpgradeBlockTexts.Add(BlockText);
+		UpgradeButtons.Add(StartButton);
+	}
+
+	// 방금 한 일 (클릭 결과) · 현재 상태와 구분
+	InfoFeedbackText = MakeText(FText::GetEmpty(), 15, CozyHud::AccentText);
+	WindowContent->AddChildToVerticalBox(InfoFeedbackText)->SetPadding(FMargin(0.f, 10.f, 0.f, 0.f));
+	SetFeedback(LastFeedback);
+
+	UpdateUpgradeLive();
+}
+
+void UCozyHudWidget::UpdateUpgradeLive()
+{
+	UCozyEstateSubsystem* Estate = GetEstate();
+	if (!Estate || !UpgradeSlotText)
+	{
+		return;
+	}
+
+	const TArray<FCozyUpgradeJobView> Jobs = Estate->GetUpgradeJobs();
+	UpgradeSlotText->SetText(FText::Format(LOCTEXT("UpSlots", "진행 중인 업그레이드 {0} / {1}"), FText::AsNumber(Jobs.Num()), FText::AsNumber(Estate->GetUpgradeSlotCount())));
+	for (int32 Index = 0; Index < UpgradeJobTexts.Num(); ++Index)
+	{
+		if (Jobs.IsValidIndex(Index))
+		{
+			UpgradeJobTexts[Index]->SetText(FText::Format(LOCTEXT("UpJob", "{0} → Lv{1} · 남은 {2}"), Jobs[Index].FacilityName, FText::AsNumber(Jobs[Index].ToLevel), CozyHud::DurationText(Jobs[Index].RemainingSeconds)));
+			UpgradeJobTexts[Index]->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+			UpgradeJobBars[Index]->SetPercent(Jobs[Index].Progress01);
+			UpgradeJobBars[Index]->SetVisibility(ESlateVisibility::Visible);
+		}
+		else
+		{
+			UpgradeJobTexts[Index]->SetText(FText::Format(LOCTEXT("UpJobEmpty", "작업 칸 {0}: 비어 있음"), FText::AsNumber(Index + 1)));
+			UpgradeJobTexts[Index]->SetColorAndOpacity(FSlateColor(CozyHud::MutedText));
+			UpgradeJobBars[Index]->SetVisibility(ESlateVisibility::Collapsed);
+		}
+	}
+
+	for (int32 Index = 0; Index < UpgradeFacilityIds.Num(); ++Index)
+	{
+		const FCozyUpgradeQuote Quote = Estate->GetUpgradeQuote(UpgradeFacilityIds[Index]);
+		const FText Name = Estate->GetFacilityDisplayName(UpgradeFacilityIds[Index]);
+		UpgradeTitleTexts[Index]->SetText(Quote.bValid
+			? FText::Format(LOCTEXT("UpRowTitle", "{0}   Lv{1} → Lv{2}"), Name, FText::AsNumber(Quote.FromLevel), FText::AsNumber(Quote.ToLevel))
+			: FText::Format(LOCTEXT("UpRowTitleMax", "{0}   Lv{1}"), Name, FText::AsNumber(Quote.FromLevel)));
+
+		FString Detail;
+		if (Quote.bValid)
+		{
+			FString Costs;
+			for (const FCozyUpgradeQuote::FAmount& Cost : Quote.Costs)
+			{
+				const FCozyItemRow* Item = Estate->GetItemDef(Cost.ItemId);
+				Costs += FString::Printf(TEXT("%s%s %d개 (보유 %d)"), Costs.IsEmpty() ? TEXT("") : TEXT(" · "), *(Item ? Item->DisplayName : FText::FromName(Cost.ItemId)).ToString(), Cost.Amount, Cost.Have);
+			}
+			Detail = FString::Printf(TEXT("비용: %s · 시간: %s"), Costs.IsEmpty() ? TEXT("없음") : *Costs, *CozyHud::DurationText(Quote.Seconds).ToString());
+			if (Quote.RequiredShrineLevel > 0)
+			{
+				Detail += FString::Printf(TEXT(" · 필요 신사 Lv%d"), Quote.RequiredShrineLevel);
+			}
+			if (Quote.NextFieldSpeedMultiplier > 0.f)
+			{
+				Detail += FString::Printf(TEXT("\n효과: 모든 밭 생산 속도 ×%s (진행 중인 주기는 그대로, 다음 주기부터)"), *CozyHud::MultiplierText(Quote.NextFieldSpeedMultiplier).ToString());
+			}
+			if (Quote.UnlockCropNames.Num() > 0)
+			{
+				FString Crops;
+				for (const FText& Crop : Quote.UnlockCropNames)
+				{
+					Crops += (Crops.IsEmpty() ? TEXT("") : TEXT(", ")) + Crop.ToString();
+				}
+				Detail += FString::Printf(TEXT("\n해금 작물: %s (각 밭의 작물 선택에 표시 · 자동으로 바뀌지 않음)"), *Crops);
+			}
+			// D36: 시작하면 종료될 가공과 반환될 재료
+			if (Quote.EndingJobs.Num() > 0)
+			{
+				FString Ending;
+				for (const FText& Line : Quote.EndingJobs)
+				{
+					Ending += (Ending.IsEmpty() ? TEXT("") : TEXT(" / ")) + Line.ToString();
+				}
+				FString Refunds;
+				for (const FCozyUpgradeQuote::FAmount& Refund : Quote.Refunds)
+				{
+					const FCozyItemRow* Item = Estate->GetItemDef(Refund.ItemId);
+					Refunds += FString::Printf(TEXT("%s%s %d개"), Refunds.IsEmpty() ? TEXT("") : TEXT(", "), *(Item ? Item->DisplayName : FText::FromName(Refund.ItemId)).ToString(), Refund.Amount);
+				}
+				Detail += FString::Printf(TEXT("\n시작하면 진행 중인 가공이 종료됩니다: %s\n미완료 회차 재료 반환: %s · 완성된 가공품은 시설에 남습니다"), *Ending, Refunds.IsEmpty() ? TEXT("없음") : *Refunds);
+			}
+		}
+		UpgradeDetailTexts[Index]->SetText(FText::FromString(Detail));
+		UpgradeDetailTexts[Index]->SetVisibility(Detail.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+		UpgradeBlockTexts[Index]->SetText(Quote.BlockReason);
+		UpgradeBlockTexts[Index]->SetVisibility(Quote.BlockReason.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+		UpgradeButtons[Index]->SetIsEnabled(Quote.bCanStart);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 밭 관리 창 (관리 단계 · 모든 밭 공통 효과 · 해금 작물 · 업그레이드는 후신소에서)
+
+void UCozyHudWidget::BuildFieldManagementContent()
+{
+	UCozyEstateSubsystem* Estate = GetEstate();
+	const FCozyFacilityState* Facility = Estate ? Estate->FindFacility(WindowFacility) : nullptr;
+	const FCozyFacilityRow* Def = Facility ? Estate->GetFacilityDef(Facility->DefinitionId) : nullptr;
+	if (!Def)
+	{
+		CloseWindow();
+		return;
+	}
+	WindowTitle->SetText(FText::Format(LOCTEXT("FieldMgmtTitle", "{0} — 밭 관리"), Def->DisplayName));
+	FieldMgmtText = MakeText(FText::GetEmpty(), 16);
+	WindowContent->AddChildToVerticalBox(FieldMgmtText)->SetPadding(FMargin(0.f, 0.f, 0.f, 10.f));
+
+	// 업그레이드는 후신소에서 (역할 구분 · D37)
+	FGuid QueueFacility;
+	for (const FCozyFacilityState& Other : Estate->GetState().Facilities)
+	{
+		const FCozyFacilityRow* OtherDef = Estate->GetFacilityDef(Other.DefinitionId);
+		if (OtherDef && OtherDef->Functions.Contains(ECozyFacilityFunction::UpgradeQueue))
+		{
+			QueueFacility = Other.InstanceId;
+			break;
+		}
+	}
+	WindowContent->AddChildToVerticalBox(MakeButton(LOCTEXT("GoUpgrade", "업그레이드 (후신소로)"), [this, QueueFacility]()
+	{
+		OpenWindow(ECozyWindowKind::Upgrade, QueueFacility);
+	}, QueueFacility.IsValid(), 14));
+	UpdateFieldManagementLive();
+}
+
+void UCozyHudWidget::UpdateFieldManagementLive()
+{
+	UCozyEstateSubsystem* Estate = GetEstate();
+	if (!Estate || !FieldMgmtText)
+	{
+		return;
+	}
+	const FCozyFieldManagementView View = Estate->GetFieldManagementView(WindowFacility);
+	auto Join = [](const TArray<FText>& Items)
+	{
+		FString Out;
+		for (const FText& Item : Items)
+		{
+			Out += (Out.IsEmpty() ? TEXT("") : TEXT(", ")) + Item.ToString();
+		}
+		return Out.IsEmpty() ? FString(TEXT("없음")) : Out;
+	};
+	FString Text = FString::Printf(TEXT("관리 단계 Lv%d%s\n모든 밭 생산 속도 ×%s (관리하는 밭 %d개 · 새로 지은 밭도 같은 효과)\n고를 수 있는 작물: %s"),
+		View.Level, View.bUpgrading ? TEXT(" (업그레이드 중 · 밭은 지금 효과로 계속 생산)") : TEXT(""),
+		*CozyHud::MultiplierText(View.CurrentMultiplier).ToString(), View.ManagedFacilities, *Join(View.UnlockedCrops));
+	if (View.NextMultiplier > 0.f)
+	{
+		Text += FString::Printf(TEXT("\n다음 단계: 속도 ×%s · 해금 작물 %s"), *CozyHud::MultiplierText(View.NextMultiplier).ToString(), *Join(View.NextUnlockCrops));
+	}
+	else
+	{
+		Text += TEXT("\n다음 단계: 아직 없음");
+	}
+	FieldMgmtText->SetText(FText::FromString(Text));
+}
+
+// ---------------------------------------------------------------------------
 // 디버그 메뉴
 
 void UCozyHudWidget::ToggleDebugPanel()
@@ -1447,15 +1820,46 @@ void UCozyHudWidget::RefreshDebugPanel()
 			}
 		}
 	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
-	SetResourceButton(LOCTEXT("SetWheat95", "창고 밀 95개로"), TEXT("Wheat"), 95);
+	SetResourceButton(LOCTEXT("SetWheat90", "창고 밀 90개로"), TEXT("Wheat"), 90);
+	// 업그레이드 반환 공간 경계값 검증용 (D38: 비용을 뺀 뒤의 최종 재고 기준)
+	SetResourceButton(LOCTEXT("SetWheat97", "창고 밀 97개로"), TEXT("Wheat"), 97);
+	SetResourceButton(LOCTEXT("SetWheat98", "창고 밀 98개로"), TEXT("Wheat"), 98);
 	SetResourceButton(LOCTEXT("SetFlour98", "창고 밀가루 98개로"), TEXT("Flour"), 98);
 	SetResourceButton(LOCTEXT("SetFlour100", "창고 밀가루 100개로 (가득)"), TEXT("Flour"), 100);
 	SetResourceButton(LOCTEXT("SetWheat100", "창고 밀 100개로 (가득)"), TEXT("Wheat"), 100);
+	// 시작 직전 재검사 검증용: 화면에서 버튼이 켜진 뒤 조건이 바뀐 상황을 한 번에 만든다
+	// (창고 밀을 가득 채운 직후 제분소 업그레이드 시작을 시도 · 실패하면 비용·가공·예약 공간이 그대로여야 함)
+	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("RecheckTest", "재검사 시험: 밀 100으로 바꾼 직후 제분소 업그레이드 시작"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			for (const FGuid& FacilityId : EstateNow->GetUpgradableFacilities())
+			{
+				const FCozyFacilityState* Facility = EstateNow->FindFacility(FacilityId);
+				if (Facility && Facility->DefinitionId == TEXT("Mill"))
+				{
+					EstateNow->DebugSetResource(TEXT("Wheat"), 100);
+					FText Message;
+					EstateNow->StartUpgrade(FacilityId, Message);
+					SetFeedback(Message);
+					break;
+				}
+			}
+		}
+	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
 	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("AddTestField", "테스트용 밭 추가"), [this]()
 	{
 		if (UCozyEstateSubsystem* EstateNow = GetEstate())
 		{
 			EstateNow->DebugAddFacility(TEXT("Field"));
+		}
+	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
+	// 밭 관리 시설은 시작 배치가 미정(❓)이라 검증할 때만 디버그로 놓음
+	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("AddFieldOffice", "테스트용 밭 관리 시설 추가"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			EstateNow->DebugAddFacility(TEXT("FieldOffice"));
 		}
 	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
 

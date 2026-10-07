@@ -1,7 +1,8 @@
-﻿---,DisplayName,Size,GreyboxHeight,GreyboxColor,Functions,bRequiresResidents,MinResidents,MaxResidents,ProductionItems,bProductionItemSelectable,SpeedBonusPerLevel,UnclaimedCapacity,CollectButtonLabel,ProcessingSlots,Note
-Shrine,신사,"(X=3,Y=3)",320,"(R=0.75,G=0.28,B=0.22,A=1)",(ShrineCore),False,0,0,(),False,0,0,,0,🙋 중심 시설·D5 / 🤖 크기·높이·색 / ❓ 주민 인원 수치(D4)
-Nagaya,나가야,"(X=3,Y=2)",180,"(R=0.55,G=0.45,B=0.35,A=1)",(ResidentHousing),False,0,0,(),False,0,0,,0,🙋 주민 관리·D5 / 🤖 크기·높이·색 / ❓ 주민 인원 수치(D4)
-Hushinso,후신소,"(X=2,Y=2)",200,"(R=0.62,G=0.55,B=0.38,A=1)",(UpgradeQueue),False,0,0,(),False,0,0,,0,🙋 업그레이드·D6·D9 / 🤖 크기·높이·색 · Lv1 슬롯 1개는 성장 기능에서
-Shop,판매소,"(X=2,Y=2)",170,"(R=0.35,G=0.5,B=0.65,A=1)",(Sales),False,0,0,(),False,0,0,,0,🙋 판매·주민 없이 작동·D4·D14 / 🤖 크기·높이·색
-Field,밭,"(X=2,Y=2)",40,"(R=0.45,G=0.62,B=0.32,A=1)",(Production),True,1,1,(Wheat),True,0.2,20,수확,0,🙋 공통 밭·D16 / 🙋 주민 있어야 작동·D4 / 🙋 레벨당 속도 +20% / 🤖 주민 최소 1·최대 1(테스트 값) · 크기 2×2 / 다른 작물은 해금 조건(❓)이 정해지면 ProductionItems에 추가 / 🙋 생산 완료분은 밭의 미수령분으로 쌓이고 '수확'으로 창고에 옮김·D27 / 🤖 미수령 한도 20 (테스트 값)
-Mill,제분소,"(X=2,Y=2)",220,"(R=0.7,G=0.68,B=0.6,A=1)",(Processing),True,1,1,(),False,0,10,수령,1,🙋 가공·주민 있어야 작동·D4 / 🤖 주민 최소 1·최대 1 · 크기·높이·색 / 🙋 가공 완료품도 미수령분으로 쌓이고 '수령'으로 창고에 옮김·한 종류만·D31 / 🙋 동시 가공 Lv1 1개 / 🤖 미수령 한도 10 (테스트 값)
+﻿---,DisplayName,Size,GreyboxHeight,GreyboxColor,Functions,bRequiresResidents,MinResidents,MaxResidents,ProductionItems,bProductionItemSelectable,SpeedBonusPerLevel,UnclaimedCapacity,CollectButtonLabel,ProcessingSlots,ManagerFacilityId,UpgradeSlots,Note
+Shrine,신사,"(X=3,Y=3)",320,"(R=0.75,G=0.28,B=0.22,A=1)",(ShrineCore),False,0,0,(),False,0,0,,0,,0,🙋 중심 시설·D5 / 🤖 크기·높이·색 / ❓ 주민 인원 수치(D4)
+Nagaya,나가야,"(X=3,Y=2)",180,"(R=0.55,G=0.45,B=0.35,A=1)",(ResidentHousing),False,0,0,(),False,0,0,,0,,0,🙋 주민 관리·D5 / 🤖 크기·높이·색 / ❓ 주민 인원 수치(D4)
+Hushinso,후신소,"(X=2,Y=2)",200,"(R=0.62,G=0.55,B=0.38,A=1)",(UpgradeQueue),False,0,0,(),False,0,0,,0,,1,🙋 업그레이드·D6·D9 / 🤖 크기·높이·색 · Lv1 슬롯 1개는 성장 기능에서 / 🤖 동시 업그레이드 1개(Lv1 · 기획서 후신소 Lv1 1개)
+Shop,판매소,"(X=2,Y=2)",170,"(R=0.35,G=0.5,B=0.65,A=1)",(Sales),False,0,0,(),False,0,0,,0,,0,🙋 판매·주민 없이 작동·D4·D14 / 🤖 크기·높이·색
+Field,밭,"(X=2,Y=2)",40,"(R=0.45,G=0.62,B=0.32,A=1)",(Production),True,1,1,"(Wheat,RedBean)",True,0,20,수확,0,FieldOffice,0,🙋 공통 밭·D16 / 🙋 주민 있어야 작동·D4 / 🙋 레벨당 속도 +20% / 🤖 주민 최소 1·최대 1(테스트 값) · 크기 2×2 / 다른 작물은 해금 조건(❓)이 정해지면 ProductionItems에 추가 / 🙋 생산 완료분은 밭의 미수령분으로 쌓이고 '수확'으로 창고에 옮김·D27 / 🤖 미수령 한도 20 (테스트 값) / 🙋 개별 밭 업그레이드 없음 · 속도는 밭 관리 시설 단계 효과를 받음(D39) · 작물은 해금된 것 중 선택(D37) · 진행 중 주기·미수령분이 있으면 작물 변경 불가(D31)
+Mill,제분소,"(X=2,Y=2)",220,"(R=0.7,G=0.68,B=0.6,A=1)",(Processing),True,1,1,(),False,0,10,수령,1,,0,🙋 가공·주민 있어야 작동·D4 / 🤖 주민 최소 1·최대 1 · 크기·높이·색 / 🙋 가공 완료품도 미수령분으로 쌓이고 '수령'으로 창고에 옮김·한 종류만·D31 / 🙋 동시 가공 Lv1 1개 / 🤖 미수령 한도 10 (테스트 값)
+FieldOffice,밭 관리 시설,"(X=2,Y=2)",120,"(R=0.52,G=0.6,B=0.42,A=1)",(FieldManagement),False,0,0,(),False,0.2,0,,0,,0,🙋 별도 밭 관리 시설 · 모든 밭의 생산 강화와 작물 해금(D37·D39) / ❓ 이름·외형·시작 배치 여부·레벨별 해금 작물 / 🙋 당분간 표시 이름 '밭 관리 시설'(최종 이름·외형 ❓) · 🤖 회색 상자·크기·높이·색 / 🤖 단계당 모든 밭 속도 +20%(기존 '밭 레벨당 +20%'를 옮긴 값) / 🙋 첫 테스트용으로 새 게임에 Lv1 1개 배치(최종 시작 구성 확정 아님) · 차밭은 공통 밭 강화 대상 아님
