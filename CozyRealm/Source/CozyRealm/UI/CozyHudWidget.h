@@ -84,6 +84,9 @@ public:
 	/** 배치 모드 안내·보관함 패널과 미리보기 옆 버튼 (D45) */
 	void SetPlacementMode(bool bEnable);
 
+	/** 편집 가능한 HUD 화면 (프로젝트 설정 'Cozy UI'에서 고름 · 없으면 기존 임시 위쪽 바) */
+	class UCozyUiScreen* GetHudScreen() const { return HudScreen; }
+
 	/** 화면 위쪽에 잠깐 보이는 알림 (단축키 결과 등) */
 	void ShowToast(const FText& Message);
 	/** 단축키: Tab 주민 목록(나가야) · I 창고 · 이미 열려 있으면 닫음 */
@@ -184,6 +187,11 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UCozyUiAction>> PlacementActions;
 	TArray<FGuid> PlacementStoredIds;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UCozyUiScreen> HudScreen;
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> LegacyTopBar;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> ToastText;
