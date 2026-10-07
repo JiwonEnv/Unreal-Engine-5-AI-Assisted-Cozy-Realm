@@ -244,6 +244,28 @@ void UCozyHudWidget::HandleEstateChanged(bool bStructural)
 	{
 		return;
 	}
+	// 업그레이드 완료로 레벨이 바뀌면 열린 창의 제목(Lv)도 바꿈 · 창은 다시 만들지 않음
+	if (WindowKind == ECozyWindowKind::Processing || WindowKind == ECozyWindowKind::Sales || WindowKind == ECozyWindowKind::FacilityInfo)
+	{
+		UCozyEstateSubsystem* EstateNow = GetEstate();
+		const FCozyFacilityState* Facility = EstateNow ? EstateNow->FindFacility(WindowFacility) : nullptr;
+		const FCozyFacilityRow* Def = Facility ? EstateNow->GetFacilityDef(Facility->DefinitionId) : nullptr;
+		if (Def && WindowTitle)
+		{
+			if (WindowKind == ECozyWindowKind::Processing)
+			{
+				WindowTitle->SetText(FText::Format(LOCTEXT("ProcTitle", "{0}  Lv.{1} — 가공"), Def->DisplayName, FText::AsNumber(Facility->Level)));
+			}
+			else if (WindowKind == ECozyWindowKind::Sales)
+			{
+				WindowTitle->SetText(FText::Format(LOCTEXT("SellTitle", "{0}  Lv.{1} — 판매"), Def->DisplayName, FText::AsNumber(Facility->Level)));
+			}
+			else if (Def->ManagerFacilityId.IsNone())
+			{
+				WindowTitle->SetText(FText::Format(LOCTEXT("InfoTitle", "{0}  Lv.{1}"), Def->DisplayName, FText::AsNumber(Facility->Level)));
+			}
+		}
+	}
 	// 버튼 구성이 바뀌는 창(나가야: 배치 가능 여부)만 다시 그림
 	if (WindowKind == ECozyWindowKind::Nagaya || WindowKind == ECozyWindowKind::Placeholder)
 	{
@@ -1799,10 +1821,32 @@ void UCozyHudWidget::RefreshDebugPanel()
 		}
 	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
 	SetResourceButton(LOCTEXT("SetWheat90", "창고 밀 90개로"), TEXT("Wheat"), 90);
-	SetResourceButton(LOCTEXT("SetWheat95", "창고 밀 95개로"), TEXT("Wheat"), 95);
+	// 업그레이드 반환 공간 경계값 검증용 (D38: 비용을 뺀 뒤의 최종 재고 기준)
+	SetResourceButton(LOCTEXT("SetWheat97", "창고 밀 97개로"), TEXT("Wheat"), 97);
+	SetResourceButton(LOCTEXT("SetWheat98", "창고 밀 98개로"), TEXT("Wheat"), 98);
 	SetResourceButton(LOCTEXT("SetFlour98", "창고 밀가루 98개로"), TEXT("Flour"), 98);
 	SetResourceButton(LOCTEXT("SetFlour100", "창고 밀가루 100개로 (가득)"), TEXT("Flour"), 100);
 	SetResourceButton(LOCTEXT("SetWheat100", "창고 밀 100개로 (가득)"), TEXT("Wheat"), 100);
+	// 시작 직전 재검사 검증용: 화면에서 버튼이 켜진 뒤 조건이 바뀐 상황을 한 번에 만든다
+	// (창고 밀을 가득 채운 직후 제분소 업그레이드 시작을 시도 · 실패하면 비용·가공·예약 공간이 그대로여야 함)
+	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("RecheckTest", "재검사 시험: 밀 100으로 바꾼 직후 제분소 업그레이드 시작"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			for (const FGuid& FacilityId : EstateNow->GetUpgradableFacilities())
+			{
+				const FCozyFacilityState* Facility = EstateNow->FindFacility(FacilityId);
+				if (Facility && Facility->DefinitionId == TEXT("Mill"))
+				{
+					EstateNow->DebugSetResource(TEXT("Wheat"), 100);
+					FText Message;
+					EstateNow->StartUpgrade(FacilityId, Message);
+					SetFeedback(Message);
+					break;
+				}
+			}
+		}
+	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
 	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("AddTestField", "테스트용 밭 추가"), [this]()
 	{
 		if (UCozyEstateSubsystem* EstateNow = GetEstate())
