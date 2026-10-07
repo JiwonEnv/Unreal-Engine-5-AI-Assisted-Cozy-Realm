@@ -1174,6 +1174,38 @@ FText UCozyEstateSubsystem::GetItemName(FName ItemId) const
 	return ItemDef ? ItemDef->DisplayName : FText::FromName(ItemId);
 }
 
+FText UCozyEstateSubsystem::CollectAllProduction()
+{
+	int32 Facilities = 0;
+	int32 Moved = 0;
+	int32 Left = 0;
+	TArray<FGuid> Targets;
+	for (const FCozyFacilityState& Facility : State.Facilities)
+	{
+		const FCozyFacilityRow* Def = GetFacilityDef(Facility.DefinitionId);
+		if (Def && Def->Functions.Contains(ECozyFacilityFunction::Production) && Facility.UnclaimedAmount > 0)
+		{
+			Targets.Add(Facility.InstanceId);
+		}
+	}
+	for (const FGuid& Id : Targets)
+	{
+		// 시설 하나씩 같은 수령 규칙 (창고에 들어갈 만큼만 · 나머지는 시설에 남김)
+		const FCozyCollectResult Result = CollectUnclaimed(Id);
+		Moved += Result.Moved;
+		Left += Result.Remaining;
+		Facilities += Result.Moved > 0 ? 1 : 0;
+	}
+	UE_LOG(LogCozyRealm, Log, TEXT("전부 수확: 시설 %d곳 · %d개 수령 · 남은 미수령 %d개"), Facilities, Moved, Left);
+	if (Targets.Num() == 0)
+	{
+		return LOCTEXT("CollectAllNone", "수확할 생산물이 없습니다");
+	}
+	return Left > 0
+		? FText::Format(LOCTEXT("CollectAllPart", "전부 수확: {0}곳에서 {1}개 · 창고 공간이 부족해 {2}개는 시설에 남았습니다"), FText::AsNumber(Facilities), FText::AsNumber(Moved), FText::AsNumber(Left))
+		: FText::Format(LOCTEXT("CollectAllOk", "전부 수확: {0}곳에서 {1}개"), FText::AsNumber(Facilities), FText::AsNumber(Moved));
+}
+
 FCozyCollectResult UCozyEstateSubsystem::CollectUnclaimed(const FGuid& FacilityId)
 {
 	FCozyCollectResult Result;

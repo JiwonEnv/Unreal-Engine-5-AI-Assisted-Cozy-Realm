@@ -61,6 +61,22 @@ struct FCozyRealmCameraConfig
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Framing", meta=(ClampMin="100.0"))
 	float Distance = 8500.f;
+
+	/** 마우스 휠 줌: 가장 가까운 거리(cm) · 🤖 테스트 값 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Control", meta=(ClampMin="100.0"))
+	float MinDistance = 3500.f;
+
+	/** 마우스 휠 줌: 가장 먼 거리(cm) · 🤖 테스트 값 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Control", meta=(ClampMin="100.0"))
+	float MaxDistance = 12000.f;
+
+	/** 휠 한 칸에 바뀌는 거리 비율 (0.1 = 10%) · 🤖 테스트 값 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Control", meta=(ClampMin="0.01", ClampMax="0.5"))
+	float ZoomStepRatio = 0.1f;
+
+	/** 휠 버튼 드래그 회전: 마우스 1픽셀당 도 · 🤖 테스트 값 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Control", meta=(ClampMin="0.01"))
+	float RotateDegreesPerPixel = 0.25f;
 };
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnCozyRealmCameraSettingsChanged, const class UCozyRealmCameraSettings*);

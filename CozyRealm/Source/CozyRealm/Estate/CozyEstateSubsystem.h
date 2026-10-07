@@ -279,6 +279,8 @@ public:
 
 	/** 시설의 미수령 생산물을 공용 창고로 옮긴다 · 창고에 들어갈 만큼만 옮기고 나머지는 시설에 남김 */
 	FCozyCollectResult CollectUnclaimed(const FGuid& FacilityId);
+	/** Space 전부 수확: 모든 자동 생산 시설의 미수령분을 같은 수령 규칙으로 (D27) · 결과 한 줄 */
+	FText CollectAllProduction();
 
 	/** 시설의 미수령 생산물 수량 */
 	int32 GetUnclaimedTotal(const FGuid& FacilityId) const;
