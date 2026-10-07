@@ -339,6 +339,29 @@ struct FCozyStartResourceRow : public FTableRowBase
 	FString Note;
 };
 
+/** 일회성 보상 (같은 RewardId 의 행들이 한 보상 · 한 번만 지급 · 정리 7-11) */
+USTRUCT(BlueprintType)
+struct FCozyRewardRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	/** 보상 ID (예: Tutorial_FirstSpeedup) · 지급 기록은 이 ID로 저장 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Reward")
+	FName RewardId;
+
+	/** 지급할 재료·재화 ID */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Reward")
+	FName ItemId;
+
+	/** 지급량 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Reward")
+	int32 Amount = 0;
+
+	/** 🙋/🤖/❓ 표시와 메모 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Note")
+	FString Note;
+};
+
 /** 영지 공통 설정 (Default 1행) */
 USTRUCT(BlueprintType)
 struct FCozyEstateConfigRow : public FTableRowBase
@@ -372,6 +395,14 @@ struct FCozyEstateConfigRow : public FTableRowBase
 	/** 판매 대금으로 받는 재화 ID (Items.csv 행 이름) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Sales")
 	FName SaleCurrencyId = TEXT("Gold");
+
+	/** 시간 단축 재화 ID (Items.csv 행 이름) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Speedup")
+	FName SpeedupItemId = TEXT("TimeTalisman");
+
+	/** 부적 1장이 줄이는 시간 (초) · 시설 레벨과 무관하게 고정 (D44 · 🤖 T1 테스트 값 60초 · 정식 밸런스 ❓) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Speedup")
+	float SpeedupSecondsPerItem = 60.f;
 
 	/** 🙋/🤖/❓ 표시와 메모 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Note")

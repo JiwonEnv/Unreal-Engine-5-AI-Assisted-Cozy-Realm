@@ -74,6 +74,7 @@ bool UCozyEstateSubsystem::LoadAllData(FString& OutErrors)
 	StartFacilityTable = LoadCsvTable(TEXT("StartFacilities.csv"), FCozyStartFacilityRow::StaticStruct(), OutErrors);
 	StartResidentTable = LoadCsvTable(TEXT("StartResidents.csv"), FCozyStartResidentRow::StaticStruct(), OutErrors);
 	StartResourceTable = LoadCsvTable(TEXT("StartResources.csv"), FCozyStartResourceRow::StaticStruct(), OutErrors);
+	RewardTable = LoadCsvTable(TEXT("Rewards.csv"), FCozyRewardRow::StaticStruct(), OutErrors);
 
 	FString ConfigErrors;
 	if (UDataTable* ConfigTable = LoadCsvTable(TEXT("EstateConfig.csv"), FCozyEstateConfigRow::StaticStruct(), ConfigErrors))
@@ -290,6 +291,20 @@ int32 UCozyEstateSubsystem::ValidateData() const
 		});
 	}
 
+	if (!GetItemDef(Config.SpeedupItemId) || Config.SpeedupSecondsPerItem <= 0.f)
+	{
+		Warn(FString::Printf(TEXT("영지 설정: 시간 단축 재화 %s가 없거나 1장당 시간(%.0f초)이 0 이하"), *Config.SpeedupItemId.ToString(), Config.SpeedupSecondsPerItem));
+	}
+	if (RewardTable)
+	{
+		RewardTable->ForeachRow<FCozyRewardRow>(TEXT("Validate"), [&](const FName& Key, const FCozyRewardRow& Row)
+		{
+			if (Row.RewardId.IsNone() || !GetItemDef(Row.ItemId) || Row.Amount <= 0)
+			{
+				Warn(FString::Printf(TEXT("보상 %s: 보상 ID가 비었거나 없는 재료(%s)·0 이하 수량"), *Key.ToString(), *Row.ItemId.ToString()));
+			}
+		});
+	}
 	if (!GetItemDef(Config.SaleCurrencyId))
 	{
 		Warn(FString::Printf(TEXT("영지 설정: 판매 대금 재화 %s가 Items.csv에 없음"), *Config.SaleCurrencyId.ToString()));
@@ -1978,6 +1993,111 @@ TArray<FCozyUpgradeJobView> UCozyEstateSubsystem::GetUpgradeJobs() const
 		View.RemainingSeconds = static_cast<float>(FMath::Max(0.0, Job.DurationSeconds - Elapsed));
 	}
 	return Result;
+}
+
+FCozySpeedupQuote UCozyEstateSubsystem::GetSpeedupQuote(const FGuid& JobId, int32 Count) const
+{
+	FCozySpeedupQuote Quote;
+	Quote.Count = Count;
+	Quote.Owned = GetAmount(Config.SpeedupItemId);
+	Quote.SecondsPerItem = Config.SpeedupSecondsPerItem;
+	const FCozyJobRecord* Job = State.Jobs.FindByPredicate([&JobId](const FCozyJobRecord& Each) { return Each.JobId == JobId; });
+	if (!Job || Job->Type != ECozyJobType::Growth)
+	{
+		Quote.BlockReason = LOCTEXT("SpeedNoJob", "단축할 업그레이드가 없습니다");
+		return Quote;
+	}
+	if (Quote.SecondsPerItem <= 0.f)
+	{
+		Quote.BlockReason = LOCTEXT("SpeedNoConfig", "시간 단축 설정이 없습니다");
+		return Quote;
+	}
+	Quote.bValid = true;
+	Quote.RemainingBefore = static_cast<float>(FMath::Max(0.0, Job->DurationSeconds - (State.GameSeconds - Job->StartGameSeconds)));
+	Quote.MaxUseful = FMath::CeilToInt(Quote.RemainingBefore / Quote.SecondsPerItem);
+	const float Wanted = Quote.SecondsPerItem * FMath::Max(0, Count);
+	Quote.Reduce = FMath::Min(Wanted, Quote.RemainingBefore);
+	Quote.RemainingAfter = Quote.RemainingBefore - Quote.Reduce;
+	Quote.Wasted = Wanted - Quote.Reduce;
+	if (Count < 1)
+	{
+		Quote.BlockReason = LOCTEXT("SpeedZero", "쓸 부적 수를 골라 주세요");
+	}
+	else if (Quote.RemainingBefore <= 0.f)
+	{
+		Quote.BlockReason = LOCTEXT("SpeedDone", "이미 끝난 업그레이드입니다");
+	}
+	else if (Quote.Owned < Count)
+	{
+		Quote.BlockReason = FText::Format(LOCTEXT("SpeedNoItem", "시간 부적이 부족합니다 · {0}장 필요 (보유 {1}장)"), FText::AsNumber(Count), FText::AsNumber(Quote.Owned));
+	}
+	Quote.bCanApply = Quote.BlockReason.IsEmpty();
+	return Quote;
+}
+
+bool UCozyEstateSubsystem::ApplySpeedup(const FGuid& JobId, int32 Count, FText& OutMessage)
+{
+	// 확정 직전에 다시 계산 · 실패하면 부적·시간 모두 그대로 (D10~D12)
+	const FCozySpeedupQuote Quote = GetSpeedupQuote(JobId, Count);
+	if (!Quote.bCanApply)
+	{
+		OutMessage = Quote.BlockReason;
+		return false;
+	}
+	FCozyJobRecord* Job = State.Jobs.FindByPredicate([&JobId](const FCozyJobRecord& Each) { return Each.JobId == JobId; });
+	State.Resources.FindOrAdd(Config.SpeedupItemId) -= Count;
+	Job->DurationSeconds -= Quote.Reduce;
+	const FText Name = GetFacilityDisplayName(Job->FacilityId);
+	OutMessage = Quote.Wasted > 0.f
+		? FText::Format(LOCTEXT("SpeedDoneWaste", "{0} 업그레이드를 부적 {1}장으로 {2}초 줄였습니다 · 남은 시간보다 많아 {3}초는 버려졌습니다"), Name, FText::AsNumber(Count), FText::AsNumber(FMath::RoundToInt(Quote.Reduce)), FText::AsNumber(FMath::RoundToInt(Quote.Wasted)))
+		: FText::Format(LOCTEXT("SpeedDoneOk", "{0} 업그레이드를 부적 {1}장으로 {2}초 줄였습니다"), Name, FText::AsNumber(Count), FText::AsNumber(FMath::RoundToInt(Quote.Reduce)));
+	UE_LOG(LogCozyRealm, Log, TEXT("시간 단축: %s · 부적 %d장 · %.0f초 단축 · 남은 %.0f→%.0f초 · 버림 %.0f초"), *Name.ToString(), Count, Quote.Reduce, Quote.RemainingBefore, Quote.RemainingAfter, Quote.Wasted);
+	// 남은 시간이 0이 되면 바로 완료 처리
+	StepGrowth();
+	NotifyChanged(bStructuralPending);
+	bStructuralPending = false;
+	return true;
+}
+
+bool UCozyEstateSubsystem::HasGrantedReward(FName RewardId) const
+{
+	return State.GrantedRewards.Contains(RewardId);
+}
+
+bool UCozyEstateSubsystem::GrantOneTimeReward(FName RewardId, FText& OutMessage)
+{
+	if (HasGrantedReward(RewardId))
+	{
+		OutMessage = LOCTEXT("RewardAlready", "이미 받은 보상입니다");
+		return false;
+	}
+	TArray<const FCozyRewardRow*> Rows;
+	if (RewardTable)
+	{
+		RewardTable->ForeachRow<FCozyRewardRow>(TEXT("Grant"), [&](const FName& Key, const FCozyRewardRow& Row)
+		{
+			if (Row.RewardId == RewardId)
+			{
+				Rows.Add(&Row);
+			}
+		});
+	}
+	if (Rows.Num() == 0)
+	{
+		OutMessage = LOCTEXT("RewardMissing", "없는 보상입니다");
+		return false;
+	}
+	FString Given;
+	for (const FCozyRewardRow* Row : Rows)
+	{
+		const int32 Added = AddResource(Row->ItemId, Row->Amount);
+		Given += FString::Printf(TEXT("%s%s %d"), Given.IsEmpty() ? TEXT("") : TEXT(", "), *GetItemName(Row->ItemId).ToString(), Added);
+	}
+	State.GrantedRewards.Add(RewardId);
+	OutMessage = FText::Format(LOCTEXT("RewardGiven", "보상을 받았습니다 · {0}"), FText::FromString(Given));
+	UE_LOG(LogCozyRealm, Log, TEXT("일회성 보상 지급: %s · %s"), *RewardId.ToString(), *Given);
+	NotifyChanged();
+	return true;
 }
 
 void UCozyEstateSubsystem::StepGrowth()

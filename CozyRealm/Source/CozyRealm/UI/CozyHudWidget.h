@@ -243,6 +243,17 @@ private:
 	TArray<TObjectPtr<UTextBlock>> UpgradeBlockTexts;
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UButton>> UpgradeButtons;
+	// 작업 칸마다 시간 단축 (부적 수 선택 → 미리보기 → 확정 · D10~D12)
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<class UHorizontalBox>> UpgradeSpeedRows;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> UpgradeSpeedCountTexts;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> UpgradeSpeedPreviewTexts;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UButton>> UpgradeSpeedApplyButtons;
+	/** 작업 칸마다 고른 부적 수 (창을 다시 그려도 유지) */
+	TArray<int32> UpgradeSpeedCounts;
 	// --- 밭 관리 창 ---
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> FieldMgmtText;
