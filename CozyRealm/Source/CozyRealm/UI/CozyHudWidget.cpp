@@ -1,5 +1,6 @@
 #include "UI/CozyHudWidget.h"
 #include "Estate/CozyEstateSubsystem.h"
+#include "Core/CozyRealmEstatePlayerController.h"
 #include "Facilities/CozyFacilityActor.h"
 #include "Blueprint/WidgetTree.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
@@ -271,14 +272,10 @@ void UCozyHudWidget::HandleEstateChanged(bool bStructural)
 	{
 		RefreshWindow();
 	}
-	// 후신소 창은 업그레이드할 시설 목록이 바뀐 경우(시설 추가 등)만 다시 그림
+	// 후신소 창은 구조가 바뀐 경우(시설 추가 · 레벨 변경으로 다음 단계의 조건 '이동' 버튼이 달라짐)에 다시 그림
 	if (WindowKind == ECozyWindowKind::Upgrade)
 	{
-		UCozyEstateSubsystem* EstateNow = GetEstate();
-		if (EstateNow && EstateNow->GetUpgradableFacilities() != UpgradeFacilityIds)
-		{
-			RefreshWindow();
-		}
+		RefreshWindow();
 	}
 	if (bDebugVisible)
 	{
@@ -1569,6 +1566,34 @@ void UCozyHudWidget::BuildUpgradeContent()
 		WindowContent->AddChildToVerticalBox(Header)->SetPadding(FMargin(0.f, 8.f, 0.f, 2.f));
 		UTextBlock* DetailText = MakeText(FText::GetEmpty(), 14, CozyHud::MutedText);
 		WindowContent->AddChildToVerticalBox(DetailText);
+		// 조건 시설로 '이동' 버튼 (조건 목록은 데이터라 창을 만들 때 한 번만 · 충족 여부 글자는 UpdateUpgradeLive가 갱신)
+		UHorizontalBox* MoveRow = nullptr;
+		for (const FCozyUpgradeQuote::FCondition& Condition : Estate->GetUpgradeQuote(FacilityId).Conditions)
+		{
+			const FCozyFacilityRow* TargetDef = Condition.FacilityId.IsNone() ? nullptr : Estate->GetFacilityDef(Condition.FacilityId);
+			if (!TargetDef)
+			{
+				continue;
+			}
+			if (!MoveRow)
+			{
+				MoveRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+				MoveRow->AddChildToHorizontalBox(MakeText(LOCTEXT("UpMoveLabel", "조건 시설로 이동:"), 13, CozyHud::MutedText))->SetPadding(FMargin(0.f, 0.f, 6.f, 0.f));
+			}
+			const FName TargetId = Condition.FacilityId;
+			MoveRow->AddChildToHorizontalBox(MakeButton(TargetDef->DisplayName, [this, TargetId]()
+			{
+				if (ACozyRealmEstatePlayerController* Controller = Cast<ACozyRealmEstatePlayerController>(GetOwningPlayer()))
+				{
+					CloseWindow();
+					Controller->SelectFacilityByDefinition(TargetId);
+				}
+			}, true, 13))->SetPadding(FMargin(2.f, 0.f));
+		}
+		if (MoveRow)
+		{
+			WindowContent->AddChildToVerticalBox(MoveRow)->SetPadding(FMargin(0.f, 2.f));
+		}
 		UTextBlock* BlockText = MakeText(FText::GetEmpty(), 14, CozyHud::WarningText);
 		WindowContent->AddChildToVerticalBox(BlockText);
 		UpgradeTitleTexts.Add(TitleText);
@@ -1630,9 +1655,25 @@ void UCozyHudWidget::UpdateUpgradeLive()
 				Costs += FString::Printf(TEXT("%s%s %d개 (보유 %d)"), Costs.IsEmpty() ? TEXT("") : TEXT(" · "), *(Item ? Item->DisplayName : FText::FromName(Cost.ItemId)).ToString(), Cost.Amount, Cost.Have);
 			}
 			Detail = FString::Printf(TEXT("비용: %s · 시간: %s"), Costs.IsEmpty() ? TEXT("없음") : *Costs, *CozyHud::DurationText(Quote.Seconds).ToString());
-			if (Quote.RequiredShrineLevel > 0)
+			// 조건마다 충족 여부 (신사 상한 · 선행 시설 D41)
+			if (Quote.Conditions.Num() > 0)
 			{
-				Detail += FString::Printf(TEXT(" · 필요 신사 Lv%d"), Quote.RequiredShrineLevel);
+				FString Conditions;
+				for (const FCozyUpgradeQuote::FCondition& Condition : Quote.Conditions)
+				{
+					Conditions += FString::Printf(TEXT("%s%s %s"), Conditions.IsEmpty() ? TEXT("") : TEXT(" · "), *Condition.Label.ToString(),
+						Condition.bMet ? TEXT("(충족)") : *FString::Printf(TEXT("(부족 · 지금 Lv%d)"), Condition.Current));
+				}
+				Detail += FString::Printf(TEXT("\n조건: %s"), *Conditions);
+			}
+			if (Quote.UnlockFacilityNames.Num() > 0)
+			{
+				FString Facilities;
+				for (const FText& Facility : Quote.UnlockFacilityNames)
+				{
+					Facilities += (Facilities.IsEmpty() ? TEXT("") : TEXT(", ")) + Facility.ToString();
+				}
+				Detail += FString::Printf(TEXT("\n해금 시설: %s"), *Facilities);
 			}
 			if (Quote.NextFieldSpeedMultiplier > 0.f)
 			{

@@ -143,6 +143,12 @@ struct FCozyUpgradeQuote
 	TArray<FText> EndingJobs;
 	/** 이 단계가 끝나면 해금되는 작물 이름 (D37) */
 	TArray<FText> UnlockCropNames;
+	/** 이 단계가 끝나면 해금되는 시설 이름 */
+	TArray<FText> UnlockFacilityNames;
+	/** 조건 하나 (UI의 ✅ 표시와 '이동' 버튼용) · FacilityId가 있으면 그 시설로 이동할 수 있음 */
+	struct FCondition { FText Label; bool bMet = false; FName FacilityId; int32 Required = 0; int32 Current = 0; };
+	/** 신사 상한 · 선행 시설 조건 (데이터 순서) */
+	TArray<FCondition> Conditions;
 	/** 관리 시설이면 완료 후 모든 밭의 속도 배율 (0이면 해당 없음 · D39) */
 	float NextFieldSpeedMultiplier = 0.f;
 	/** 시작할 수 없는 이유 (시작 가능하면 비어 있음) */
@@ -200,6 +206,8 @@ public:
 
 	/** 데이터를 다시 검사해 로그에 경고를 남긴다 (디버그 메뉴) · 문제 개수를 돌려줌 */
 	int32 ValidateData() const;
+	/** 진행 검사 (7-6): 성장 단계를 레벨·조건만 따라가며 끝까지 도달할 수 있는지 · 단계 빈칸·중복·상한·달성 불가·순환 */
+	void ValidateProgression(TFunctionRef<void(const FString&)> Warn) const;
 
 	// --- 데이터 조회 ---
 
@@ -299,6 +307,8 @@ public:
 	/** 동시에 진행할 수 있는 업그레이드 수 (후신소 데이터) */
 	int32 GetUpgradeSlotCount() const;
 	bool IsFacilityUpgrading(const FGuid& FacilityId) const;
+	/** 해금된 시설인가 (이미 놓여 있음 또는 해금 단계를 지남 · 건설 기능에서 사용 · 따로 저장하지 않음) */
+	bool IsFacilityUnlocked(FName DefinitionId) const;
 	/** 신사 레벨 (신사가 없으면 0) */
 	int32 GetShrineLevel() const;
 

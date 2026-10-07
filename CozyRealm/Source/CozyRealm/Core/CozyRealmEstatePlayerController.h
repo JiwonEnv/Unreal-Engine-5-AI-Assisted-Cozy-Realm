@@ -23,6 +23,9 @@ public:
 	/** 지금 선택된 시설 (없으면 nullptr) */
 	ACozyFacilityActor* GetSelectedFacility() const { return SelectedFacility.Get(); }
 
+	/** 이 정의의 시설(같은 시설이 여러 개면 레벨이 가장 높은 것)을 선택 · 업그레이드 조건의 '이동' 버튼 */
+	void SelectFacilityByDefinition(FName DefinitionId);
+
 protected:
 
 	virtual void BeginPlay() override;
