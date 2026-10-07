@@ -139,6 +139,16 @@ powershell -ExecutionPolicy Bypass -File video_frame.ps1 -Video "<저장된 경�
 - **녹화를 완료로 기록하기 전에** `video_frame.ps1`로 장면을 뽑아 게임 화면이 담겼는지 확인합니다. 길이가 0이거나 Claude·Codex 창이 찍혔으면 실패입니다.
 - 한글 파일명과 경로는 bash에서 PowerShell로 넘길 때 깨집니다. 녹화·영상 스크립트는 **PowerShell에서 직접** 실행하세요.
 
+### 패키지 게임 검증 — `UE_WINDOW_TITLE`, `window_capture.ps1`
+```powershell
+$env:UE_WINDOW_TITLE = 'CozyRealm (64-bit*'      # 보호 기능의 대상을 패키지 게임 창으로 바꿈
+powershell -ExecutionPolicy Bypass -File window_capture.ps1 -Out C:\shots\pkg_01.png   # MCP 없이 창 캡처
+powershell -ExecutionPolicy Bypass -File ue_steps.ps1 -RefWidth 1296 -RefHeight 759 "click 624 606" "key F1"
+```
+- 패키지 게임에는 MCP 서버가 없어서, 캡처는 `window_capture.ps1`로 화면을 직접 찍습니다(제목 표시줄 포함 1296×759).
+- 좌표는 그 캡처 이미지의 픽셀을 그대로 쓰고, `ue_steps.ps1`에 `-RefWidth`·`-RefHeight`로 캡처 크기를 알려 줍니다.
+- **Xbox Game Bar로는 패키지 게임이 녹화되지 않았습니다(2026-10-07).** 게임 창이 맨 앞이어도 뒤에 있던 언리얼 에디터를 녹화하거나, 녹화 파일이 생기지 않았습니다. 패키지 게임은 단계별 캡처로 기록하세요.
+
 ### 캡처 확대 — `crop_image.ps1`
 ```powershell
 powershell -ExecutionPolicy Bypass -File crop_image.ps1 -Src 02.png -X 318 -Y 236 -Width 390 -Height 46 -Out zoom.png -Scale 3
