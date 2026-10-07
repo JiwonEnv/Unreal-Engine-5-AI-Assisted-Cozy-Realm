@@ -1,6 +1,8 @@
 #include "Core/CozyRealmEstatePlayerController.h"
 #include "Facilities/CozyFacilityActor.h"
 #include "UI/CozyHudWidget.h"
+#include "Estate/CozyEstateSubsystem.h"
+#include "EngineUtils.h"
 
 ACozyRealmEstatePlayerController::ACozyRealmEstatePlayerController()
 {
@@ -89,6 +91,30 @@ void ACozyRealmEstatePlayerController::SelectFacility(ACozyFacilityActor* Facili
 	if (Hud)
 	{
 		Hud->ShowFacilityIcons(Facility);
+	}
+}
+
+void ACozyRealmEstatePlayerController::SelectFacilityByDefinition(FName DefinitionId)
+{
+	const UCozyEstateSubsystem* Estate = GetWorld() ? GetWorld()->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
+	if (!Estate)
+	{
+		return;
+	}
+	ACozyFacilityActor* Best = nullptr;
+	int32 BestLevel = -1;
+	for (TActorIterator<ACozyFacilityActor> It(GetWorld()); It; ++It)
+	{
+		const FCozyFacilityState* State = Estate->FindFacility(It->GetFacilityId());
+		if (State && State->DefinitionId == DefinitionId && State->Level > BestLevel)
+		{
+			Best = *It;
+			BestLevel = State->Level;
+		}
+	}
+	if (Best)
+	{
+		SelectFacility(Best);
 	}
 }
 

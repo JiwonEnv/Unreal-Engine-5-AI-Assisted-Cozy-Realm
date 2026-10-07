@@ -261,6 +261,14 @@ struct FCozyGrowthRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Growth")
 	TArray<FName> UnlockCrops;
 
+	/** 선행 시설 조건: 시설 정의 ID → 필요한 최소 레벨 (같은 시설이 여러 개면 가장 높은 레벨 기준 · D41) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Growth")
+	TMap<FName, int32> RequiredFacilities;
+
+	/** 이 단계가 끝나면 해금되는 시설 정의 ID (건설 기능에서 사용 · 시설별 해금 레벨 ❓ D15) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Growth")
+	TArray<FName> UnlockFacilities;
+
 	/** 🙋/🤖/❓ 표시와 메모 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Note")
 	FString Note;

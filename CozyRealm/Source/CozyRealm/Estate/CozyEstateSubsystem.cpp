@@ -197,6 +197,24 @@ int32 UCozyEstateSubsystem::ValidateData() const
 			{
 				Warn(FString::Printf(TEXT("성장 %s: 없는 시설 참조 %s"), *Key.ToString(), *Row.TargetFacilityId.ToString()));
 			}
+			for (const TPair<FName, int32>& Required : Row.RequiredFacilities)
+			{
+				if (!GetFacilityDef(Required.Key))
+				{
+					Warn(FString::Printf(TEXT("성장 %s: 없는 선행 시설 참조 %s"), *Key.ToString(), *Required.Key.ToString()));
+				}
+				if (Required.Key == Row.TargetFacilityId)
+				{
+					Warn(FString::Printf(TEXT("성장 %s: 자기 자신을 선행 조건으로 요구함"), *Key.ToString()));
+				}
+			}
+			for (const FName& UnlockId : Row.UnlockFacilities)
+			{
+				if (!GetFacilityDef(UnlockId))
+				{
+					Warn(FString::Printf(TEXT("성장 %s: 없는 해금 시설 %s"), *Key.ToString(), *UnlockId.ToString()));
+				}
+			}
 			for (const TPair<FName, int32>& Cost : Row.StartCost)
 			{
 				if (!GetItemDef(Cost.Key))
@@ -277,8 +295,143 @@ int32 UCozyEstateSubsystem::ValidateData() const
 		Warn(FString::Printf(TEXT("영지 설정: 판매 대금 재화 %s가 Items.csv에 없음"), *Config.SaleCurrencyId.ToString()));
 	}
 
+	ValidateProgression(Warn);
+
 	UE_LOG(LogCozyRealm, Log, TEXT("[데이터 검사] 끝 · 문제 %d개"), Issues);
 	return Issues;
+}
+
+void UCozyEstateSubsystem::ValidateProgression(TFunctionRef<void(const FString&)> Warn) const
+{
+	if (!GrowthTable || !StartFacilityTable || !FacilityTable)
+	{
+		return;
+	}
+	struct FStep { FName Key; const FCozyGrowthRow* Row = nullptr; };
+	TMap<FName, TArray<FStep>> StepsByTarget;
+	GrowthTable->ForeachRow<FCozyGrowthRow>(TEXT("Progress"), [&StepsByTarget](const FName& Key, const FCozyGrowthRow& Row)
+	{
+		StepsByTarget.FindOrAdd(Row.TargetFacilityId).Add({ Key, &Row });
+	});
+	TSet<FName> ShrineIds;
+	FacilityTable->ForeachRow<FCozyFacilityRow>(TEXT("Progress"), [&ShrineIds](const FName& Key, const FCozyFacilityRow& Row)
+	{
+		if (Row.Functions.Contains(ECozyFacilityFunction::ShrineCore))
+		{
+			ShrineIds.Add(Key);
+		}
+	});
+
+	// 단계 빈칸 · 중복 · 신사 상한보다 낮은 조건 (🙋 다른 시설의 레벨 상한 = 신사 레벨)
+	for (TPair<FName, TArray<FStep>>& Pair : StepsByTarget)
+	{
+		Pair.Value.Sort([](const FStep& A, const FStep& B) { return A.Row->FromLevel < B.Row->FromLevel; });
+		int32 Expected = 1;
+		for (const FStep& Step : Pair.Value)
+		{
+			const int32 From = Step.Row->FromLevel;
+			if (From < Expected)
+			{
+				Warn(FString::Printf(TEXT("성장 %s: %s Lv%d→%d 단계가 중복됨"), *Step.Key.ToString(), *Pair.Key.ToString(), From, From + 1));
+			}
+			else if (From > Expected)
+			{
+				Warn(FString::Printf(TEXT("성장 %s: %s Lv%d→%d 단계가 없어 이 단계에 도달할 수 없음 (단계 빈칸)"), *Step.Key.ToString(), *Pair.Key.ToString(), Expected, Expected + 1));
+			}
+			Expected = From + 1;
+			if (!ShrineIds.Contains(Pair.Key) && Step.Row->RequiredShrineLevel < From + 1)
+			{
+				Warn(FString::Printf(TEXT("성장 %s: %s Lv%d는 신사 상한상 신사 Lv%d 이상이 필요한데 조건이 신사 Lv%d임"), *Step.Key.ToString(), *Pair.Key.ToString(), From + 1, From + 1, Step.Row->RequiredShrineLevel));
+			}
+		}
+	}
+
+	// 새 게임 시설에서 시작해, 조건을 만족하는 단계를 더 이상 없을 때까지 적용 (재료는 보지 않음)
+	TMap<FName, int32> Levels;
+	StartFacilityTable->ForeachRow<FCozyStartFacilityRow>(TEXT("Progress"), [&Levels](const FName& Key, const FCozyStartFacilityRow& Row)
+	{
+		int32& Level = Levels.FindOrAdd(Row.FacilityId);
+		Level = FMath::Max(Level, Row.Level);
+	});
+	auto ShrineLevelOf = [&Levels, &ShrineIds]()
+	{
+		int32 Level = 0;
+		for (const FName& Id : ShrineIds)
+		{
+			Level = FMath::Max(Level, Levels.FindRef(Id));
+		}
+		return Level;
+	};
+	TSet<FName> Applied;
+	for (bool bChanged = true; bChanged;)
+	{
+		bChanged = false;
+		for (const TPair<FName, TArray<FStep>>& Pair : StepsByTarget)
+		{
+			for (const FStep& Step : Pair.Value)
+			{
+				const int32* Current = Levels.Find(Pair.Key);
+				if (Applied.Contains(Step.Key) || !Current || *Current != Step.Row->FromLevel || ShrineLevelOf() < Step.Row->RequiredShrineLevel)
+				{
+					continue;
+				}
+				bool bMet = true;
+				for (const TPair<FName, int32>& Required : Step.Row->RequiredFacilities)
+				{
+					bMet &= Levels.FindRef(Required.Key) >= Required.Value;
+				}
+				if (!bMet)
+				{
+					continue;
+				}
+				Levels.Add(Pair.Key, Step.Row->FromLevel + 1);
+				for (const FName& UnlockId : Step.Row->UnlockFacilities)
+				{
+					Levels.FindOrAdd(UnlockId, 1);
+				}
+				Applied.Add(Step.Key);
+				bChanged = true;
+			}
+		}
+	}
+
+	// 도달하지 못한 단계: 시설마다 처음 막힌 단계만 원인과 함께 알림
+	for (const TPair<FName, TArray<FStep>>& Pair : StepsByTarget)
+	{
+		for (const FStep& Step : Pair.Value)
+		{
+			if (Applied.Contains(Step.Key))
+			{
+				continue;
+			}
+			FString Reason;
+			if (!Levels.Contains(Pair.Key))
+			{
+				Reason = TEXT("시작 시설에도 없고 어떤 단계로도 해금되지 않음");
+			}
+			else if (ShrineLevelOf() < Step.Row->RequiredShrineLevel)
+			{
+				Reason = FString::Printf(TEXT("신사 Lv%d이 필요하지만 신사는 최대 Lv%d까지만 오를 수 있음"), Step.Row->RequiredShrineLevel, ShrineLevelOf());
+			}
+			else
+			{
+				for (const TPair<FName, int32>& Required : Step.Row->RequiredFacilities)
+				{
+					if (Levels.FindRef(Required.Key) < Required.Value)
+					{
+						Reason = FString::Printf(TEXT("%s Lv%d이 필요하지만 최대 Lv%d까지만 오를 수 있음 (상한·최대 레벨 또는 순환 조건)"), *Required.Key.ToString(), Required.Value, Levels.FindRef(Required.Key));
+						break;
+					}
+				}
+				if (Reason.IsEmpty())
+				{
+					Reason = TEXT("앞 단계에 도달하지 못함");
+				}
+			}
+			Warn(FString::Printf(TEXT("성장 %s: %s Lv%d→%d에 도달할 수 없음 · %s"), *Step.Key.ToString(), *Pair.Key.ToString(), Step.Row->FromLevel, Step.Row->FromLevel + 1, *Reason));
+			break;
+		}
+	}
 }
 
 void UCozyEstateSubsystem::BuildNewGameState()
@@ -1618,6 +1771,35 @@ FCozyUpgradeQuote UCozyEstateSubsystem::GetUpgradeQuote(const FGuid& FacilityId)
 		const FCozyCropRow* Crop = GetCropDef(CropId);
 		Quote.UnlockCropNames.Add(Crop ? Crop->DisplayName : FText::FromName(CropId));
 	}
+	for (const FName& UnlockId : Row->UnlockFacilities)
+	{
+		const FCozyFacilityRow* Unlock = GetFacilityDef(UnlockId);
+		Quote.UnlockFacilityNames.Add(Unlock ? Unlock->DisplayName : FText::FromName(UnlockId));
+	}
+	// 조건 목록: 신사 상한 → 선행 시설 (UI의 ✅ 표시와 '이동' 버튼용 · D41)
+	if (Row->RequiredShrineLevel > 0)
+	{
+		FName ShrineDefId;
+		for (const FCozyFacilityState& Other : State.Facilities)
+		{
+			const FCozyFacilityRow* OtherDef = GetFacilityDef(Other.DefinitionId);
+			if (OtherDef && OtherDef->Functions.Contains(ECozyFacilityFunction::ShrineCore))
+			{
+				ShrineDefId = Other.DefinitionId;
+				break;
+			}
+		}
+		const int32 ShrineNow = GetShrineLevel();
+		Quote.Conditions.Add({ FText::Format(LOCTEXT("CondShrine", "신사 Lv{0}"), FText::AsNumber(Row->RequiredShrineLevel)),
+			ShrineNow >= Row->RequiredShrineLevel, ShrineDefId, Row->RequiredShrineLevel, ShrineNow });
+	}
+	for (const TPair<FName, int32>& Required : Row->RequiredFacilities)
+	{
+		const FCozyFacilityRow* RequiredDef = GetFacilityDef(Required.Key);
+		const int32 Have = GetHighestLevelOf(Required.Key);
+		Quote.Conditions.Add({ FText::Format(LOCTEXT("CondFacility", "{0} Lv{1}"), RequiredDef ? RequiredDef->DisplayName : FText::FromName(Required.Key), FText::AsNumber(Required.Value)),
+			Have >= Required.Value, Required.Key, Required.Value, Have });
+	}
 	if (Def->Functions.Contains(ECozyFacilityFunction::FieldManagement))
 	{
 		Quote.NextFieldSpeedMultiplier = 1.f + Def->SpeedBonusPerLevel * FMath::Max(0, Quote.ToLevel - 1);
@@ -1677,6 +1859,11 @@ FCozyUpgradeQuote UCozyEstateSubsystem::GetUpgradeQuote(const FGuid& FacilityId)
 	else if (ShrineLevel < Row->RequiredShrineLevel)
 	{
 		Quote.BlockReason = FText::Format(LOCTEXT("UpShrine", "신사 Lv{0} 이상이 필요합니다 (지금 신사 Lv{1})"), FText::AsNumber(Row->RequiredShrineLevel), FText::AsNumber(ShrineLevel));
+	}
+	else if (const FCozyUpgradeQuote::FCondition* Missing = Quote.Conditions.FindByPredicate([](const FCozyUpgradeQuote::FCondition& Condition) { return !Condition.bMet; }))
+	{
+		// 🙋 선행 시설 조건 (D41) · 비용 차감·작업 등록 없음
+		Quote.BlockReason = FText::Format(LOCTEXT("UpRequired", "선행 조건이 부족합니다 · {0} 필요 (지금 Lv{1})"), Missing->Label, FText::AsNumber(Missing->Current));
 	}
 	else
 	{
@@ -1890,6 +2077,27 @@ bool UCozyEstateSubsystem::IsCropUnlocked(FName CropId) const
 		GrowthTable->ForeachRow<FCozyGrowthRow>(TEXT("Unlock"), [&](const FName& Key, const FCozyGrowthRow& Row)
 		{
 			if (!bUnlocked && Row.UnlockCrops.Contains(CropId) && GetHighestLevelOf(Row.TargetFacilityId) > Row.FromLevel)
+			{
+				bUnlocked = true;
+			}
+		});
+	}
+	return bUnlocked;
+}
+
+bool UCozyEstateSubsystem::IsFacilityUnlocked(FName DefinitionId) const
+{
+	if (GetHighestLevelOf(DefinitionId) > 0)
+	{
+		return true;
+	}
+	// 이 시설을 해금하는 성장 단계를 이미 지났으면 해금 (작물 해금과 같은 방식 · 저장 데이터를 따로 두지 않음)
+	bool bUnlocked = false;
+	if (GrowthTable)
+	{
+		GrowthTable->ForeachRow<FCozyGrowthRow>(TEXT("UnlockFacility"), [&](const FName& Key, const FCozyGrowthRow& Row)
+		{
+			if (!bUnlocked && Row.UnlockFacilities.Contains(DefinitionId) && GetHighestLevelOf(Row.TargetFacilityId) > Row.FromLevel)
 			{
 				bUnlocked = true;
 			}
