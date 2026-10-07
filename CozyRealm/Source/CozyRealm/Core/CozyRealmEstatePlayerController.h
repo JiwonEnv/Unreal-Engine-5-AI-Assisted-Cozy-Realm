@@ -26,6 +26,10 @@ public:
 	/** 이 정의의 시설(같은 시설이 여러 개면 레벨이 가장 높은 것)을 선택 · 업그레이드 조건의 '이동' 버튼 */
 	void SelectFacilityByDefinition(FName DefinitionId);
 
+	/** 배치 모드 (B) · 시설을 끌어서 옮기고 회전·보관·확정·취소 (D45) */
+	void SetPlacementMode(bool bEnable);
+	bool IsPlacementMode() const { return bPlacementMode; }
+
 protected:
 
 	virtual void BeginPlay() override;
@@ -46,4 +50,9 @@ private:
 	TObjectPtr<UCozyHudWidget> Hud;
 
 	TWeakObjectPtr<ACozyFacilityActor> SelectedFacility;
+
+	/** 배치 모드 입력 (누르고 끌기 · R 회전) */
+	void TickPlacement();
+	bool bPlacementMode = false;
+	bool bDraggingPlacement = false;
 };
