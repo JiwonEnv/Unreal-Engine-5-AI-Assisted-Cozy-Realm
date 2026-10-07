@@ -1,4 +1,5 @@
 # User preferences
 
 - When the user asks to create images for a blog post body, default to a landscape 2:1 aspect ratio (width twice height), matching the three blog illustrations created on 2026-10-06. Apply this without asking again unless the user explicitly requests a different ratio. This preference is for blog body images; it does not override separately specified thumbnail or cover dimensions.
-- 사용자에게 보여 주는 진행 설명·질문·완료 보고·커밋 메시지·PR 설명은 모두 한국어로 쓴다. 코드 식별자와 도구의 원문 출력은 그대로 두고, 직접 작성하는 설명만 한국어로 쉽게 쓴다. (2026-10-06 요청 · 이전에 요청했는데 영어로 나온 적이 있어 다시 강조)
+- **최우선 · 한국어 규칙 (프로젝트가 끝날 때까지):** 사용자는 한국인이고 영어 설명을 이해하기 어렵다. 질문·진행 설명(도구 호출 사이의 짧은 설명 포함)·완료 보고·커밋 메시지·PR 설명·노션 작업 기록은 모두 한국어로 쓴다. 코드 식별자와 도구의 원문 출력만 그대로 둔다. 표·목록·제목도 한국어로 쓴다. (2026-10-05·10-06·10-07 세 번 요청 · 긴 작업 끝의 완료 보고가 영어로 나온 적이 있으니 보고 전에 꼭 확인)
+- **노션 작업 기록에는 실제 플레이 녹화도 남긴다:** Windows 화면 녹화로 언리얼 게임 화면과 조작·결과가 보이게 녹화한다. 저장 폴더는 `C:\Users\ljw13\OneDrive\바탕 화면\CozyRealm\Reocode` (없거나 접근할 수 없으면 Windows 녹화 기본 폴더). 파일 이름은 `2026-10-07_기능3_밭관리시설_업그레이드후다음주기속도적용_01.mp4`처럼 어떤 작업인지 알 수 있게 바꾼다. 해당 카드에 파일명·실제 저장 경로·영상에서 확인할 수 있는 내용을 적는다. 영상은 로컬에만 두고 노션·Git에는 올리지 않는다. 파일이 생겼고 게임 화면이 담겼는지 확인하기 전에는 완료로 기록하지 않는다 (Claude 앱 창이나 빈 영상이면 실패).
