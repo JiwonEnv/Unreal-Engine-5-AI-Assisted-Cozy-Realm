@@ -1,3 +1,3 @@
-﻿---,DisplayName,ProducedItem,ProducedAmount,ProductionSeconds,CultivationLookId,Note
-Wheat,밀,Wheat,1,10,,"🙋 10초당 밀 1 / 시작 밭 작물·D22"
-RedBean,팥,RedBean,1,15,,"🙋 공통 밭 작물·D16 / 🤖 15초당 1 / ❓ 해금 조건 (아직 밭 생산 항목에 넣지 않음)"
+﻿---,DisplayName,ProducedItem,ProducedAmount,ProductionSeconds,CultivationLookId,bStartUnlocked,Note
+Wheat,밀,Wheat,1,10,,True,🙋 10초당 밀 1 / 시작 밭 작물·D22 / 처음부터 고를 수 있음
+RedBean,팥,RedBean,1,15,,False,🙋 공통 밭 작물·D16 / 🤖 15초당 1 / 🙋 밭 관리 시설 단계로 해금(D37) · 해금 단계는 ❓(지금은 테스트로 Lv2)

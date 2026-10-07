@@ -125,6 +125,10 @@ int32 UCozyEstateSubsystem::ValidateData() const
 			{
 				Warn(FString::Printf(TEXT("시설 %s: 가공 시설인데 가공 칸(%d) 또는 미수령 한도(%d)가 0"), *Key.ToString(), Row.ProcessingSlots, Row.UnclaimedCapacity));
 			}
+			if (!Row.ManagerFacilityId.IsNone() && !GetFacilityDef(Row.ManagerFacilityId))
+			{
+				Warn(FString::Printf(TEXT("시설 %s: 없는 관리 시설 참조 %s"), *Key.ToString(), *Row.ManagerFacilityId.ToString()));
+			}
 		});
 	}
 
@@ -182,6 +186,13 @@ int32 UCozyEstateSubsystem::ValidateData() const
 	{
 		GrowthTable->ForeachRow<FCozyGrowthRow>(TEXT("Validate"), [&](const FName& Key, const FCozyGrowthRow& Row)
 		{
+			for (const FName& CropId : Row.UnlockCrops)
+			{
+				if (!GetCropDef(CropId))
+				{
+					Warn(FString::Printf(TEXT("성장 %s: 없는 해금 작물 %s"), *Key.ToString(), *CropId.ToString()));
+				}
+			}
 			if (!GetFacilityDef(Row.TargetFacilityId))
 			{
 				Warn(FString::Printf(TEXT("성장 %s: 없는 시설 참조 %s"), *Key.ToString(), *Row.TargetFacilityId.ToString()));
@@ -503,6 +514,14 @@ FCozyProductionView UCozyEstateSubsystem::GetProductionView(const FGuid& Facilit
 	}
 	View.bHasProduction = true;
 	View.CollectButtonLabel = Def->CollectButtonLabel;
+	View.SpeedMultiplier = static_cast<float>(GetSpeedMultiplier(*Facility, *Def));
+	if (!Def->ManagerFacilityId.IsNone())
+	{
+		const FCozyFacilityRow* ManagerDef = GetFacilityDef(Def->ManagerFacilityId);
+		View.bHasGrowthSource = true;
+		View.GrowthSourceName = ManagerDef ? ManagerDef->DisplayName : FText::FromName(Def->ManagerFacilityId);
+		View.GrowthSourceLevel = GetHighestLevelOf(Def->ManagerFacilityId);
+	}
 	{
 		// 미수령 · 창고 상태는 생산·가공 공통 계산을 그대로 씀 (D31)
 		const FCozyUnclaimedView Unclaimed = GetUnclaimedView(FacilityId);
@@ -1031,7 +1050,9 @@ void UCozyEstateSubsystem::Tick(float DeltaTime)
 	if (Steps > 0)
 	{
 		// 시간만 흐름: UI는 숫자·진행 바만 갱신 (버튼을 다시 만들면 클릭이 끊김)
-		NotifyChanged(false);
+		// 업그레이드가 끝났으면 구조 변경으로 알림 (레벨·해금 작물 표시 갱신)
+		NotifyChanged(bStructuralPending);
+		bStructuralPending = false;
 	}
 }
 
@@ -1062,6 +1083,7 @@ void UCozyEstateSubsystem::StepJobs()
 			StepProcessing(Facility, *Def);
 		}
 	}
+	StepGrowth();
 }
 
 bool UCozyEstateSubsystem::IsFacilityWorking(const FCozyFacilityState& Facility, const FCozyFacilityRow& Def) const
@@ -1075,9 +1097,8 @@ bool UCozyEstateSubsystem::IsFacilityWorking(const FCozyFacilityState& Facility,
 
 double UCozyEstateSubsystem::GetProductionDuration(const FCozyFacilityState& Facility, const FCozyCropRow& Crop, const FCozyFacilityRow& Def) const
 {
-	// 레벨당 속도 증가 (밭 🙋 +20%) → 한 주기 시간이 그만큼 짧아짐
-	const double SpeedMultiplier = 1.0 + Def.SpeedBonusPerLevel * FMath::Max(0, Facility.Level - 1);
-	return FMath::Max(0.1, static_cast<double>(Crop.ProductionSeconds) / SpeedMultiplier);
+	// 속도 배율이 오르면 한 주기 시간이 짧아짐 · 주기를 새로 시작할 때만 계산하므로 진행 중인 주기는 그대로 (D40)
+	return FMath::Max(0.1, static_cast<double>(Crop.ProductionSeconds) / GetSpeedMultiplier(Facility, Def));
 }
 
 void UCozyEstateSubsystem::StepProduction(FCozyFacilityState& Facility, const FCozyFacilityRow& Def)
@@ -1176,8 +1197,7 @@ void UCozyEstateSubsystem::SetShowTestRecipes(bool bShow)
 
 double UCozyEstateSubsystem::GetProcessingDuration(const FCozyFacilityState& Facility, const FCozyRecipeRow& Recipe, const FCozyFacilityRow& Def) const
 {
-	const double SpeedMultiplier = 1.0 + Def.SpeedBonusPerLevel * FMath::Max(0, Facility.Level - 1);
-	return FMath::Max(0.1, static_cast<double>(Recipe.Seconds) / SpeedMultiplier);
+	return FMath::Max(0.1, static_cast<double>(Recipe.Seconds) / GetSpeedMultiplier(Facility, Def));
 }
 
 FCozyRecipeQuote UCozyEstateSubsystem::GetRecipeQuote(const FGuid& FacilityId, FName RecipeId, int32 Runs) const
@@ -1239,7 +1259,12 @@ FCozyRecipeQuote UCozyEstateSubsystem::GetRecipeQuote(const FGuid& FacilityId, F
 		}
 	}
 	FText ItemReason;
-	if (!IsFacilityWorking(*Facility, *Def))
+	if (IsFacilityUpgrading(FacilityId))
+	{
+		// 🙋 업그레이드 중에는 새 가공을 시작할 수 없음 · 완료 후 다시 가공 (D36)
+		ConditionReason = LOCTEXT("QuoteUpgrading", "업그레이드 중이라 가공을 시작할 수 없습니다 · 업그레이드가 끝나면 다시 가공할 수 있습니다");
+	}
+	else if (!IsFacilityWorking(*Facility, *Def))
 	{
 		ConditionReason = FText::Format(LOCTEXT("QuoteNoResident", "주민이 부족해 가공을 시작할 수 없습니다 (필요 {0}명)"), FText::AsNumber(FMath::Max(1, Def->MinResidents)));
 	}
@@ -1428,6 +1453,496 @@ void UCozyEstateSubsystem::StepProcessing(FCozyFacilityState& Facility, const FC
 			State.Jobs.RemoveAt(Index);
 		}
 	}
+}
+
+// ---------------------------------------------------------------------------
+// 공통 성장 · 업그레이드 (후신소 · 신사·시설·관리 시설이 모두 같은 처리 · 차이는 성장 설정표의 행)
+
+const FCozyGrowthRow* UCozyEstateSubsystem::FindGrowthRow(FName DefinitionId, int32 FromLevel, FName* OutRowId) const
+{
+	const FCozyGrowthRow* Found = nullptr;
+	if (GrowthTable)
+	{
+		GrowthTable->ForeachRow<FCozyGrowthRow>(TEXT("Growth"), [&](const FName& Key, const FCozyGrowthRow& Row)
+		{
+			if (!Found && Row.TargetFacilityId == DefinitionId && Row.FromLevel == FromLevel)
+			{
+				Found = &Row;
+				if (OutRowId)
+				{
+					*OutRowId = Key;
+				}
+			}
+		});
+	}
+	return Found;
+}
+
+int32 UCozyEstateSubsystem::GetHighestLevelOf(FName DefinitionId) const
+{
+	int32 Level = 0;
+	for (const FCozyFacilityState& Facility : State.Facilities)
+	{
+		if (Facility.DefinitionId == DefinitionId)
+		{
+			Level = FMath::Max(Level, Facility.Level);
+		}
+	}
+	return Level;
+}
+
+double UCozyEstateSubsystem::GetSpeedMultiplier(const FCozyFacilityState& Facility, const FCozyFacilityRow& Def) const
+{
+	// 🙋 관리 시설이 정해진 시설(밭)은 자기 레벨이 아니라 관리 시설 단계의 공통 효과를 받음 (D39)
+	// 관리 시설이 아직 없으면 기본 속도 · 이후 새로 지은 밭도 같은 계산이라 현재 단계 효과를 받음
+	if (!Def.ManagerFacilityId.IsNone())
+	{
+		const FCozyFacilityRow* ManagerDef = GetFacilityDef(Def.ManagerFacilityId);
+		const int32 ManagerLevel = GetHighestLevelOf(Def.ManagerFacilityId);
+		if (!ManagerDef || ManagerLevel <= 0)
+		{
+			return 1.0;
+		}
+		return 1.0 + ManagerDef->SpeedBonusPerLevel * FMath::Max(0, ManagerLevel - 1);
+	}
+	return 1.0 + Def.SpeedBonusPerLevel * FMath::Max(0, Facility.Level - 1);
+}
+
+int32 UCozyEstateSubsystem::GetShrineLevel() const
+{
+	int32 Level = 0;
+	for (const FCozyFacilityState& Facility : State.Facilities)
+	{
+		const FCozyFacilityRow* Def = GetFacilityDef(Facility.DefinitionId);
+		if (Def && Def->Functions.Contains(ECozyFacilityFunction::ShrineCore))
+		{
+			Level = FMath::Max(Level, Facility.Level);
+		}
+	}
+	return Level;
+}
+
+int32 UCozyEstateSubsystem::GetUpgradeSlotCount() const
+{
+	int32 Slots = 0;
+	for (const FCozyFacilityState& Facility : State.Facilities)
+	{
+		const FCozyFacilityRow* Def = GetFacilityDef(Facility.DefinitionId);
+		if (Def && Def->Functions.Contains(ECozyFacilityFunction::UpgradeQueue))
+		{
+			Slots += Def->UpgradeSlots;
+		}
+	}
+	return Slots;
+}
+
+bool UCozyEstateSubsystem::IsFacilityUpgrading(const FGuid& FacilityId) const
+{
+	return State.Jobs.ContainsByPredicate([&FacilityId](const FCozyJobRecord& Job) { return Job.FacilityId == FacilityId && Job.Type == ECozyJobType::Growth; });
+}
+
+TArray<FGuid> UCozyEstateSubsystem::GetUpgradableFacilities() const
+{
+	TSet<FName> Targets;
+	if (GrowthTable)
+	{
+		GrowthTable->ForeachRow<FCozyGrowthRow>(TEXT("Targets"), [&Targets](const FName& Key, const FCozyGrowthRow& Row)
+		{
+			Targets.Add(Row.TargetFacilityId);
+		});
+	}
+	TArray<FGuid> Result;
+	for (const FCozyFacilityState& Facility : State.Facilities)
+	{
+		if (Targets.Contains(Facility.DefinitionId))
+		{
+			Result.Add(Facility.InstanceId);
+		}
+	}
+	return Result;
+}
+
+FCozyUpgradeQuote UCozyEstateSubsystem::GetUpgradeQuote(const FGuid& FacilityId) const
+{
+	FCozyUpgradeQuote Quote;
+	const FCozyFacilityState* Facility = FindFacility(FacilityId);
+	const FCozyFacilityRow* Def = Facility ? GetFacilityDef(Facility->DefinitionId) : nullptr;
+	if (!Def)
+	{
+		Quote.BlockReason = LOCTEXT("UpNoFacility", "시설을 찾을 수 없습니다");
+		return Quote;
+	}
+	Quote.FromLevel = Facility->Level;
+	Quote.ToLevel = Facility->Level + 1;
+	Quote.bUpgrading = IsFacilityUpgrading(FacilityId);
+	const FCozyGrowthRow* Row = FindGrowthRow(Facility->DefinitionId, Facility->Level, &Quote.GrowthRowId);
+	if (!Row)
+	{
+		Quote.BlockReason = Quote.bUpgrading ? LOCTEXT("UpBusyNoRow", "업그레이드 중입니다")
+			: FText::Format(LOCTEXT("UpNoRow", "다음 단계(Lv{0} → Lv{1}) 업그레이드가 아직 없습니다"), FText::AsNumber(Quote.FromLevel), FText::AsNumber(Quote.ToLevel));
+		return Quote;
+	}
+	Quote.bValid = true;
+	Quote.Seconds = Row->Seconds;
+	Quote.RequiredShrineLevel = Row->RequiredShrineLevel;
+	for (const TPair<FName, int32>& Cost : Row->StartCost)
+	{
+		Quote.Costs.Add({ Cost.Key, Cost.Value, GetAmount(Cost.Key) });
+	}
+	for (const FName& CropId : Row->UnlockCrops)
+	{
+		const FCozyCropRow* Crop = GetCropDef(CropId);
+		Quote.UnlockCropNames.Add(Crop ? Crop->DisplayName : FText::FromName(CropId));
+	}
+	if (Def->Functions.Contains(ECozyFacilityFunction::FieldManagement))
+	{
+		Quote.NextFieldSpeedMultiplier = 1.f + Def->SpeedBonusPerLevel * FMath::Max(0, Quote.ToLevel - 1);
+	}
+
+	// 🙋 D36: 가공 시설이면 진행·일시 정지 중인 가공을 종료하고 미완료 회차의 재료를 반환 (완성된 회차는 미수령분에 남음)
+	TMap<FName, int32> RefundMap;
+	for (const FCozyJobRecord& Job : State.Jobs)
+	{
+		if (Job.FacilityId != FacilityId || Job.Type != ECozyJobType::Processing)
+		{
+			continue;
+		}
+		const int32 Remaining = FMath::Max(0, Job.TotalRuns - Job.PaidCycles);
+		if (const FCozyRecipeRow* Recipe = GetRecipeDef(Job.ContentId))
+		{
+			for (const TPair<FName, int32>& Input : Recipe->Inputs)
+			{
+				RefundMap.FindOrAdd(Input.Key) += Input.Value * Remaining;
+			}
+		}
+		Quote.EndingJobs.Add(FText::Format(LOCTEXT("UpEndingJob", "{0} {1}/{2}회 완성 · 미완료 {3}회 종료"),
+			GetItemName(Job.OutputItemId), FText::AsNumber(Job.PaidCycles), FText::AsNumber(Job.TotalRuns), FText::AsNumber(Remaining)));
+	}
+	for (const TPair<FName, int32>& Refund : RefundMap)
+	{
+		if (Refund.Value > 0)
+		{
+			Quote.Refunds.Add({ Refund.Key, Refund.Value, GetAmount(Refund.Key) });
+		}
+	}
+
+	int32 ActiveUpgrades = 0;
+	for (const FCozyJobRecord& Job : State.Jobs)
+	{
+		if (Job.Type == ECozyJobType::Growth)
+		{
+			++ActiveUpgrades;
+		}
+	}
+	const int32 Slots = GetUpgradeSlotCount();
+	const int32 ShrineLevel = GetShrineLevel();
+
+	if (Quote.bUpgrading)
+	{
+		Quote.BlockReason = LOCTEXT("UpBusy", "이미 업그레이드 중입니다");
+	}
+	else if (Slots <= 0)
+	{
+		Quote.BlockReason = LOCTEXT("UpNoQueue", "후신소가 없어 업그레이드할 수 없습니다");
+	}
+	else if (ActiveUpgrades >= Slots)
+	{
+		// 🙋 슬롯이 가득 차면 시작하지 않음 · 비용 차감·작업 등록 없음 (D25)
+		Quote.BlockReason = FText::Format(LOCTEXT("UpSlotsFull", "동시 작업 한도에 도달했습니다 (동시 {0}개) · 진행 중인 업그레이드가 끝나면 시작할 수 있습니다"), FText::AsNumber(Slots));
+	}
+	else if (ShrineLevel < Row->RequiredShrineLevel)
+	{
+		Quote.BlockReason = FText::Format(LOCTEXT("UpShrine", "신사 Lv{0} 이상이 필요합니다 (지금 신사 Lv{1})"), FText::AsNumber(Row->RequiredShrineLevel), FText::AsNumber(ShrineLevel));
+	}
+	else
+	{
+		for (const FCozyUpgradeQuote::FAmount& Cost : Quote.Costs)
+		{
+			if (Cost.Have < Cost.Amount)
+			{
+				Quote.BlockReason = FText::Format(LOCTEXT("UpNoCost", "시작 비용이 부족합니다 · {0} {1}개 필요 (보유 {2}개)"), GetItemName(Cost.ItemId), FText::AsNumber(Cost.Amount), FText::AsNumber(Cost.Have));
+				break;
+			}
+		}
+	}
+	if (Quote.BlockReason.IsEmpty() && Quote.Refunds.Num() > 0)
+	{
+		// 🙋 D38: 시작 비용을 뺀 뒤의 최종 재고에 반환 재료가 전부 들어가야 시작 (재료를 버리거나 한도를 넘기지 않음)
+		FString Shortages;
+		for (const FCozyUpgradeQuote::FAmount& Refund : Quote.Refunds)
+		{
+			const FCozyItemRow* Item = GetItemDef(Refund.ItemId);
+			if (!Item || Item->Category != ECozyItemCategory::Material)
+			{
+				continue;
+			}
+			int32 CostOfSame = 0;
+			for (const FCozyUpgradeQuote::FAmount& Cost : Quote.Costs)
+			{
+				if (Cost.ItemId == Refund.ItemId)
+				{
+					CostOfSame += Cost.Amount;
+				}
+			}
+			const int32 Final = Refund.Have - CostOfSame + Refund.Amount;
+			if (Final > Config.StorageCapPerItem)
+			{
+				Shortages += FString::Printf(TEXT("%s%s 공간 %d개 부족"), Shortages.IsEmpty() ? TEXT("") : TEXT(", "), *GetItemName(Refund.ItemId).ToString(), Final - Config.StorageCapPerItem);
+			}
+		}
+		if (!Shortages.IsEmpty())
+		{
+			Quote.BlockReason = FText::Format(LOCTEXT("UpNoRefundSpace", "창고 공간이 부족해 가공 재료를 반환할 수 없습니다 · {0} · 재료를 쓰거나 팔아 공간을 만든 뒤 시작해 주세요"), FText::FromString(Shortages));
+		}
+	}
+	Quote.bCanStart = Quote.BlockReason.IsEmpty();
+	return Quote;
+}
+
+bool UCozyEstateSubsystem::StartUpgrade(const FGuid& FacilityId, FText& OutMessage)
+{
+	// 시작 직전 최신 상태로 재검사 · 실패하면 가공·재료·예약 공간·비용 모두 그대로 (D38)
+	const FCozyUpgradeQuote Quote = GetUpgradeQuote(FacilityId);
+	if (!Quote.bCanStart)
+	{
+		OutMessage = Quote.BlockReason;
+		UE_LOG(LogCozyRealm, Log, TEXT("업그레이드 시작 실패: %s · %s"), *GetFacilityDisplayName(FacilityId).ToString(), *OutMessage.ToString());
+		return false;
+	}
+
+	// 한 묶음: 비용 차감 → 가공 종료·미완료 재료 반환·예약 공간 해제 → 작업 등록
+	FString CostText;
+	for (const FCozyUpgradeQuote::FAmount& Cost : Quote.Costs)
+	{
+		State.Resources.FindOrAdd(Cost.ItemId) -= Cost.Amount;
+		CostText += FString::Printf(TEXT("%s%s %d"), CostText.IsEmpty() ? TEXT("") : TEXT(", "), *GetItemName(Cost.ItemId).ToString(), Cost.Amount);
+	}
+	const int32 EndedJobs = State.Jobs.RemoveAll([&FacilityId](const FCozyJobRecord& Job) { return Job.FacilityId == FacilityId && Job.Type == ECozyJobType::Processing; });
+	FString RefundText;
+	for (const FCozyUpgradeQuote::FAmount& Refund : Quote.Refunds)
+	{
+		const int32 Added = AddResource(Refund.ItemId, Refund.Amount);
+		ensureMsgf(Added == Refund.Amount, TEXT("반환 공간 검사를 통과했는데 다 들어가지 않음"));
+		RefundText += FString::Printf(TEXT("%s%s %d개"), RefundText.IsEmpty() ? TEXT("") : TEXT(", "), *GetItemName(Refund.ItemId).ToString(), Added);
+	}
+
+	FCozyJobRecord Job;
+	Job.JobId = FGuid::NewGuid();
+	Job.FacilityId = FacilityId;
+	Job.Type = ECozyJobType::Growth;
+	Job.ContentId = Quote.GrowthRowId;
+	Job.StartGameSeconds = State.GameSeconds;
+	Job.DurationSeconds = Quote.Seconds;
+	State.Jobs.Add(Job);
+
+	const FText FacilityName = GetFacilityDisplayName(FacilityId);
+	OutMessage = EndedJobs > 0
+		? FText::Format(LOCTEXT("UpStartedRefund", "{0} Lv{1} → Lv{2} 업그레이드를 시작했습니다 · 비용 {3} · 가공 {4}건 종료, 재료 {5} 반환 (완성품은 시설에 남음)"),
+			FacilityName, FText::AsNumber(Quote.FromLevel), FText::AsNumber(Quote.ToLevel), FText::FromString(CostText.IsEmpty() ? TEXT("없음") : CostText), FText::AsNumber(EndedJobs), FText::FromString(RefundText))
+		: FText::Format(LOCTEXT("UpStarted", "{0} Lv{1} → Lv{2} 업그레이드를 시작했습니다 · 비용 {3}"),
+			FacilityName, FText::AsNumber(Quote.FromLevel), FText::AsNumber(Quote.ToLevel), FText::FromString(CostText.IsEmpty() ? TEXT("없음") : CostText));
+	UE_LOG(LogCozyRealm, Log, TEXT("업그레이드 시작: %s Lv%d→%d · 비용 %s · 가공 종료 %d건 · 반환 %s · %.0f초"),
+		*FacilityName.ToString(), Quote.FromLevel, Quote.ToLevel, *CostText, EndedJobs, *RefundText, Quote.Seconds);
+	NotifyChanged();
+	return true;
+}
+
+TArray<FCozyUpgradeJobView> UCozyEstateSubsystem::GetUpgradeJobs() const
+{
+	TArray<FCozyUpgradeJobView> Result;
+	for (const FCozyJobRecord& Job : State.Jobs)
+	{
+		if (Job.Type != ECozyJobType::Growth)
+		{
+			continue;
+		}
+		FCozyUpgradeJobView& View = Result.AddDefaulted_GetRef();
+		View.JobId = Job.JobId;
+		View.FacilityId = Job.FacilityId;
+		View.FacilityName = GetFacilityDisplayName(Job.FacilityId);
+		const FCozyGrowthRow* Row = GrowthTable ? GrowthTable->FindRow<FCozyGrowthRow>(Job.ContentId, TEXT(""), false) : nullptr;
+		View.ToLevel = Row ? Row->FromLevel + 1 : 0;
+		const double Elapsed = FMath::Max(0.0, State.GameSeconds - Job.StartGameSeconds);
+		View.Progress01 = Job.DurationSeconds > 0.0 ? FMath::Clamp(static_cast<float>(Elapsed / Job.DurationSeconds), 0.f, 1.f) : 1.f;
+		View.RemainingSeconds = static_cast<float>(FMath::Max(0.0, Job.DurationSeconds - Elapsed));
+	}
+	return Result;
+}
+
+void UCozyEstateSubsystem::StepGrowth()
+{
+	for (int32 Index = State.Jobs.Num() - 1; Index >= 0; --Index)
+	{
+		const FCozyJobRecord& Job = State.Jobs[Index];
+		if (Job.Type != ECozyJobType::Growth || State.GameSeconds - Job.StartGameSeconds < Job.DurationSeconds)
+		{
+			continue;
+		}
+		const FCozyGrowthRow* Row = GrowthTable ? GrowthTable->FindRow<FCozyGrowthRow>(Job.ContentId, TEXT(""), false) : nullptr;
+		if (FCozyFacilityState* Facility = FindFacilityMutable(Job.FacilityId))
+		{
+			// 효과: 레벨 +1 · 신사 상한·관리 시설 속도·작물 해금은 레벨에서 계산되므로 따로 저장하지 않음
+			// 밭의 진행 중인 주기는 시작할 때 정한 시간 그대로 끝나고 다음 주기부터 새 효과 (D40)
+			Facility->Level = Row ? FMath::Max(Facility->Level, Row->FromLevel + 1) : Facility->Level + 1;
+			UE_LOG(LogCozyRealm, Log, TEXT("업그레이드 완료: %s Lv%d"), *GetFacilityDisplayName(Job.FacilityId).ToString(), Facility->Level);
+		}
+		State.Jobs.RemoveAt(Index);
+		bStructuralPending = true;
+	}
+}
+
+FCozyFieldManagementView UCozyEstateSubsystem::GetFieldManagementView(const FGuid& ManagerFacilityId) const
+{
+	FCozyFieldManagementView View;
+	const FCozyFacilityState* Facility = FindFacility(ManagerFacilityId);
+	const FCozyFacilityRow* Def = Facility ? GetFacilityDef(Facility->DefinitionId) : nullptr;
+	if (!Def)
+	{
+		return View;
+	}
+	View.Level = Facility->Level;
+	View.bUpgrading = IsFacilityUpgrading(ManagerFacilityId);
+	View.CurrentMultiplier = 1.f + Def->SpeedBonusPerLevel * FMath::Max(0, View.Level - 1);
+	FName RowId;
+	if (const FCozyGrowthRow* Next = FindGrowthRow(Facility->DefinitionId, Facility->Level, &RowId))
+	{
+		View.NextMultiplier = 1.f + Def->SpeedBonusPerLevel * View.Level;
+		for (const FName& CropId : Next->UnlockCrops)
+		{
+			const FCozyCropRow* Crop = GetCropDef(CropId);
+			View.NextUnlockCrops.Add(Crop ? Crop->DisplayName : FText::FromName(CropId));
+		}
+	}
+	// 이 관리 시설이 맡는 생산 시설과, 그 시설들이 키울 수 있는 작물 중 해금된 것
+	TSet<FName> Shown;
+	if (FacilityTable)
+	{
+		FacilityTable->ForeachRow<FCozyFacilityRow>(TEXT("Managed"), [&](const FName& Key, const FCozyFacilityRow& Row)
+		{
+			if (Row.ManagerFacilityId != Facility->DefinitionId)
+			{
+				return;
+			}
+			for (const FName& CropId : Row.ProductionItems)
+			{
+				if (!Shown.Contains(CropId) && IsCropUnlocked(CropId))
+				{
+					Shown.Add(CropId);
+					const FCozyCropRow* Crop = GetCropDef(CropId);
+					View.UnlockedCrops.Add(Crop ? Crop->DisplayName : FText::FromName(CropId));
+				}
+			}
+		});
+	}
+	for (const FCozyFacilityState& Other : State.Facilities)
+	{
+		const FCozyFacilityRow* OtherDef = GetFacilityDef(Other.DefinitionId);
+		if (OtherDef && OtherDef->ManagerFacilityId == Facility->DefinitionId)
+		{
+			++View.ManagedFacilities;
+		}
+	}
+	return View;
+}
+
+// ---------------------------------------------------------------------------
+// 작물 선택 (개별 밭 · 해금은 데이터와 관리 시설 레벨로 계산 · D37)
+
+bool UCozyEstateSubsystem::IsCropUnlocked(FName CropId) const
+{
+	const FCozyCropRow* Crop = GetCropDef(CropId);
+	if (!Crop)
+	{
+		return false;
+	}
+	if (Crop->bStartUnlocked)
+	{
+		return true;
+	}
+	// 이 작물을 해금하는 성장 단계를 이미 지난 시설이 있으면 해금 (저장 데이터를 따로 두지 않음)
+	bool bUnlocked = false;
+	if (GrowthTable)
+	{
+		GrowthTable->ForeachRow<FCozyGrowthRow>(TEXT("Unlock"), [&](const FName& Key, const FCozyGrowthRow& Row)
+		{
+			if (!bUnlocked && Row.UnlockCrops.Contains(CropId) && GetHighestLevelOf(Row.TargetFacilityId) > Row.FromLevel)
+			{
+				bUnlocked = true;
+			}
+		});
+	}
+	return bUnlocked;
+}
+
+FText UCozyEstateSubsystem::GetCropUnlockHint(FName CropId) const
+{
+	FText Hint = LOCTEXT("CropLockedUnknown", "아직 해금 방법이 정해지지 않았습니다");
+	bool bFound = false;
+	if (GrowthTable)
+	{
+		GrowthTable->ForeachRow<FCozyGrowthRow>(TEXT("Hint"), [&](const FName& Key, const FCozyGrowthRow& Row)
+		{
+			if (!bFound && Row.UnlockCrops.Contains(CropId))
+			{
+				bFound = true;
+				const FCozyFacilityRow* Def = GetFacilityDef(Row.TargetFacilityId);
+				const FText Name = Def ? Def->DisplayName : FText::FromName(Row.TargetFacilityId);
+				Hint = GetHighestLevelOf(Row.TargetFacilityId) > 0
+					? FText::Format(LOCTEXT("CropLockedHint", "{0} Lv{1}에서 해금"), Name, FText::AsNumber(Row.FromLevel + 1))
+					: FText::Format(LOCTEXT("CropLockedNoFacility", "{0} Lv{1}에서 해금 ({0}이 아직 없습니다)"), Name, FText::AsNumber(Row.FromLevel + 1));
+			}
+		});
+	}
+	return Hint;
+}
+
+bool UCozyEstateSubsystem::CanSelectCrop(const FGuid& FacilityId, FName CropId, FText& OutReason) const
+{
+	const FCozyFacilityState* Facility = FindFacility(FacilityId);
+	const FCozyFacilityRow* Def = Facility ? GetFacilityDef(Facility->DefinitionId) : nullptr;
+	const FCozyCropRow* Crop = GetCropDef(CropId);
+	if (!Def || !Crop || !Def->bProductionItemSelectable || !Def->ProductionItems.Contains(CropId))
+	{
+		OutReason = LOCTEXT("CropNotHere", "이 시설에서 키울 수 없는 작물입니다");
+		return false;
+	}
+	if (Facility->SelectedCropId == CropId)
+	{
+		OutReason = LOCTEXT("CropSame", "이미 키우는 작물입니다");
+		return false;
+	}
+	if (!IsCropUnlocked(CropId))
+	{
+		OutReason = FText::Format(LOCTEXT("CropLocked", "{0}: {1}"), Crop->DisplayName, GetCropUnlockHint(CropId));
+		return false;
+	}
+	// 🙋 미수령 작물이 남아 있거나 진행 중인 생산 주기가 있으면 다른 품목으로 바꿀 수 없음 (D31 · D37)
+	if (!CanAcceptOutputItem(FacilityId, Crop->ProducedItem, OutReason))
+	{
+		return false;
+	}
+	if (FindJob(Facility->ActiveJobId))
+	{
+		OutReason = LOCTEXT("CropRunning", "진행 중인 생산 주기가 있어 작물을 바꿀 수 없습니다 · 주민을 빼서 생산을 멈춘 뒤 바꿀 수 있습니다");
+		return false;
+	}
+	return true;
+}
+
+bool UCozyEstateSubsystem::SelectCrop(const FGuid& FacilityId, FName CropId, FText& OutMessage)
+{
+	if (!CanSelectCrop(FacilityId, CropId, OutMessage))
+	{
+		UE_LOG(LogCozyRealm, Log, TEXT("작물 변경 실패: %s → %s · %s"), *GetFacilityDisplayName(FacilityId).ToString(), *CropId.ToString(), *OutMessage.ToString());
+		return false;
+	}
+	FCozyFacilityState* Facility = FindFacilityMutable(FacilityId);
+	const FCozyCropRow* Crop = GetCropDef(CropId);
+	Facility->SelectedCropId = CropId;
+	OutMessage = FText::Format(LOCTEXT("CropChanged", "키우는 작물을 {0}(으)로 바꿨습니다"), Crop->DisplayName);
+	UE_LOG(LogCozyRealm, Log, TEXT("작물 변경: %s → %s"), *GetFacilityDisplayName(FacilityId).ToString(), *CropId.ToString());
+	NotifyChanged();
+	return true;
 }
 
 // ---------------------------------------------------------------------------

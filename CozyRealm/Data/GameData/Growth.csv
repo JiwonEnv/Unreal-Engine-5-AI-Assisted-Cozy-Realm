@@ -1,3 +1,4 @@
-﻿---,TargetFacilityId,FromLevel,RequiredShrineLevel,StartCost,Seconds,Note
-Shrine_1,Shrine,1,0,"((""Wheat"", 10),(""Flour"", 5))",180,"🤖 T3 첫 신사: 조건 없음·밀 10+밀가루 5 / 🤖 T1 3분 · 기능 3에서 사용"
-Field_1,Field,1,2,"((""Gold"", 20))",30,"🙋 비용 20골드(20×1.5^(Lv-1)) · 🙋 신사 상한 / 🤖 T1 30초 · 기능 3에서 사용"
+﻿---,TargetFacilityId,FromLevel,RequiredShrineLevel,StartCost,Seconds,UnlockCrops,Note
+Shrine_1,Shrine,1,0,"((""Wheat"", 10),(""Flour"", 5))",180,(),🤖 T3 첫 신사: 조건 없음·밀 10+밀가루 5 / 🤖 T1 3분 · 기능 3에서 사용
+FieldOffice_1,FieldOffice,1,2,"((""Gold"", 20))",30,(RedBean),🤖 테스트 값 · 밭 관리 시설 Lv1→2 (기존 밭 Lv1→2의 🙋 비용 20골드·🤖 T1 30초를 옮김 · D39) · 🙋 신사 상한 / 🤖 팥 해금은 테스트용(레벨별 해금 작물 ❓)
+Mill_1,Mill,1,2,"((""Gold"", 20))",30,(),🤖 테스트 전용 · 가공 시설 업그레이드(D36·D38) 검증용 · 비용은 시설 레벨업 공식 20골드 · 시간 🤖 30초

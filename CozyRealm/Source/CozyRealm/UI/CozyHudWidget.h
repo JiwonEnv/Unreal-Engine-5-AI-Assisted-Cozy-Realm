@@ -49,7 +49,11 @@ enum class ECozyWindowKind : uint8
 	/** 공통 가공: 레시피 → 제작 횟수 → 재료·시간 확인 → 시작 (모든 제작 시설 공통 · D32) */
 	Processing,
 	/** 판매소: 재료 선택 → 수량 → 받을 재화 확인 → 판매 */
-	Sales
+	Sales,
+	/** 후신소: 신사·시설·관리 시설 업그레이드 (공통 성장 처리 · D9) */
+	Upgrade,
+	/** 밭 관리 시설: 관리 단계 · 모든 밭 효과 · 해금 작물 (D37·D39) */
+	FieldManagement
 };
 
 /**
@@ -97,6 +101,10 @@ private:
 	void UpdateProcessingLive();
 	/** 판매소 창의 글자·버튼 상태만 갱신 (창을 다시 만들지 않음) */
 	void UpdateSalesLive();
+	/** 후신소 창의 글자·버튼 상태만 갱신 */
+	void UpdateUpgradeLive();
+	/** 밭 관리 창의 글자만 갱신 */
+	void UpdateFieldManagementLive();
 	/** 미수령분 수령 버튼 공통 처리 (생산·가공) · 결과는 '방금 한 일'로 */
 	void HandleCollectClicked(const FGuid& FacilityId);
 	void SetFeedback(const FText& Message);
@@ -115,6 +123,8 @@ private:
 	void BuildStorageContent();
 	void BuildProcessingContent();
 	void BuildSalesContent();
+	void BuildUpgradeContent();
+	void BuildFieldManagementContent();
 
 	UTextBlock* MakeText(const FText& Text, int32 FontSize = 16, const FLinearColor& Color = FLinearColor::White);
 	UButton* MakeButton(const FText& Label, TFunction<void()> OnClick, bool bEnabled = true, int32 FontSize = 15);
@@ -218,6 +228,33 @@ private:
 	TObjectPtr<UTextBlock> SellBlockText;
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> SellButton;
+	// --- 후신소 창 ---
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> UpgradeSlotText;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> UpgradeJobTexts;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<class UProgressBar>> UpgradeJobBars;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> UpgradeTitleTexts;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> UpgradeDetailTexts;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> UpgradeBlockTexts;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UButton>> UpgradeButtons;
+	// --- 밭 관리 창 ---
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> FieldMgmtText;
+	// --- 시설 정보 창: 작물 선택 · 공통 성장 효과 ---
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> InfoCropText;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> InfoGrowthText;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UButton>> InfoCropButtons;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> InfoCropReasonText;
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> DebugPanel;
 	UPROPERTY(Transient)
@@ -251,6 +288,10 @@ private:
 	TArray<FName> SellListItemIds;
 	FName SellSelectedItem;
 	int32 SellSelectedAmount = 1;
+	/** 후신소 창에 보이는 시설 (목록이 바뀌면 창을 다시 그림) */
+	TArray<FGuid> UpgradeFacilityIds;
+	/** 시설 정보 창의 작물 버튼 순서 */
+	TArray<FName> InfoCropIds;
 	bool bDebugVisible = false;
 	FDelegateHandle EstateChangedHandle;
 	TArray<TObjectPtr<UCozyUiAction>>* ActionSink = nullptr;
