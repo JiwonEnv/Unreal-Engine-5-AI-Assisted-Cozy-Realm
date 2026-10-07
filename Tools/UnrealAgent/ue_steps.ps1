@@ -11,7 +11,9 @@ param(
     [Parameter(Position = 0, ValueFromRemainingArguments = $true)][string[]]$Steps,
     [double]$Delay = 0.8,
     [string]$CaptureDir = (Get-Location).Path,
-    [string]$Project
+    [string]$Project,
+    [int]$RefWidth = 1280,    # 좌표 기준 크기 (패키지 게임은 window_capture.ps1 캡처 크기를 그대로 넣는다)
+    [int]$RefHeight = 720
 )
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 $here = $PSScriptRoot
@@ -29,6 +31,7 @@ foreach ($step in $Steps) {
         { $_ -in 'click', 'key' } {
             $args2 = @($parts[0]) + $parts[1..($parts.Count - 1)]
             if ($Project) { $args2 += @('-Project', $Project) }
+            $args2 += @('-RefWidth', $RefWidth, '-RefHeight', $RefHeight)
             $r = & powershell -NoProfile -ExecutionPolicy Bypass -File "$here\ue_input.ps1" @args2
             $code = $LASTEXITCODE
             Write-Output "$step -> $r"
