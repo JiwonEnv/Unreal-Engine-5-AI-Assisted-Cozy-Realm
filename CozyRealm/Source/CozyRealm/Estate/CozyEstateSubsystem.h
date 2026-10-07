@@ -173,6 +173,17 @@ struct FCozySpeedupQuote
 	FText BlockReason;
 };
 
+/** 방치 보상 결과 (게임을 꺼 둔 동안 정산한 내용 · 팝업 표시용) */
+struct FCozyOfflineReport
+{
+	/** 꺼 둔 실제 시간 */
+	double AwaySeconds = 0.0;
+	/** 정산한 시간 (최대 12시간) */
+	double AppliedSeconds = 0.0;
+	bool bClamped = false;
+	TArray<FText> Lines;
+};
+
 /** 진행 중인 업그레이드 하나 (후신소 창 표시용) */
 struct FCozyUpgradeJobView
 {
@@ -410,6 +421,14 @@ public:
 	/** 디버그: 저장 파일의 저장 시각을 Seconds만큼 과거로 (현재 상태는 그대로 · 방치 검증용) */
 	void DebugShiftSaveTime(double Seconds);
 
+	// --- 방치 보상 (2주차 기능 2 · D44) ---
+
+	/** 아직 보여 주지 않은 방치 보상 결과 (없으면 nullptr) */
+	const FCozyOfflineReport* GetPendingOfflineReport() const { return bOfflineReportPending ? &OfflineReport : nullptr; }
+	void DismissOfflineReport() { bOfflineReportPending = false; }
+	/** 디버그: 방치 시간 건너뛰기 (저장 파일 없이 같은 정산 처리 · 정산 후 저장) */
+	void DebugSkipOffline(double Seconds);
+
 	/** 상태가 바뀔 때마다 알림 (UI 새로 고침용) */
 	FOnCozyEstateChanged OnEstateChanged;
 
@@ -426,6 +445,8 @@ private:
 	bool LoadEstateFromSave(FDateTime& OutSavedUtc);
 	/** 불러온 상태에서 데이터에 없는 시설·주민·작업·재료 참조를 정리 (정리 6-6 · 지운 개수를 로그) */
 	void SanitizeLoadedState();
+	/** 꺼 둔 시간만큼 접속 중과 같은 규칙으로 1초씩 진행 (최대 12시간) + 방치 재화 · 정산 직후 반드시 저장 */
+	void ApplyOfflineProgress(double AwaySeconds, const TCHAR* Source);
 	UDataTable* LoadCsvTable(const FString& FileName, UScriptStruct* RowStruct, FString& OutErrors);
 	void BuildNewGameState();
 	void SpawnFacilityActors();
@@ -510,4 +531,6 @@ private:
 	/** 마지막 저장 시각 (UTC) · 자동 저장까지 흐른 실제 시간 */
 	FDateTime LastSavedUtc;
 	double AutosaveAccumulator = 0.0;
+	FCozyOfflineReport OfflineReport;
+	bool bOfflineReportPending = false;
 };

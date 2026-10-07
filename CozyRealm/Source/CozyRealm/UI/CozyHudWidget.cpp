@@ -216,9 +216,52 @@ UCozyEstateSubsystem* UCozyHudWidget::GetEstate() const
 	return World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
 }
 
+void UCozyHudWidget::ShowPendingOfflineReport()
+{
+	UCozyEstateSubsystem* Estate = GetEstate();
+	if (Estate && Estate->GetPendingOfflineReport() && WindowKind != ECozyWindowKind::OfflineReport)
+	{
+		HideFacilityIcons();
+		OpenWindow(ECozyWindowKind::OfflineReport, FGuid());
+	}
+}
+
+void UCozyHudWidget::BuildOfflineReportContent()
+{
+	UCozyEstateSubsystem* Estate = GetEstate();
+	const FCozyOfflineReport* Report = Estate ? Estate->GetPendingOfflineReport() : nullptr;
+	WindowTitle->SetText(LOCTEXT("OfflineTitle", "방치 보상"));
+	if (!Report)
+	{
+		WindowContent->AddChildToVerticalBox(MakeText(LOCTEXT("OfflineNone", "새로 받은 방치 보상이 없습니다"), 15, CozyHud::MutedText));
+		return;
+	}
+	WindowContent->AddChildToVerticalBox(MakeText(FText::Format(LOCTEXT("OfflineAway", "자리를 비운 동안: {0}{1}"),
+		CozyHud::DurationText(Report->AwaySeconds),
+		Report->bClamped ? FText::Format(LOCTEXT("OfflineClamp", " · 최대 {0}까지만 정산"), CozyHud::DurationText(Report->AppliedSeconds)) : FText::GetEmpty()), 16))->SetPadding(FMargin(0.f, 0.f, 0.f, 8.f));
+	if (Report->Lines.Num() == 0)
+	{
+		WindowContent->AddChildToVerticalBox(MakeText(LOCTEXT("OfflineNothing", "그동안 쌓인 것이 없습니다 (주민 배치·미수령 공간을 확인해 주세요)"), 15, CozyHud::MutedText));
+	}
+	for (const FText& Line : Report->Lines)
+	{
+		WindowContent->AddChildToVerticalBox(MakeText(Line, 15))->SetPadding(FMargin(0.f, 2.f));
+	}
+	WindowContent->AddChildToVerticalBox(MakeText(LOCTEXT("OfflineNote", "생산·가공품은 각 시설의 미수령분에 쌓였습니다 · 재화는 이미 받았습니다"), 13, CozyHud::MutedText))->SetPadding(FMargin(0.f, 8.f, 0.f, 0.f));
+	WindowContent->AddChildToVerticalBox(MakeButton(LOCTEXT("OfflineOk", "확인"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			EstateNow->DismissOfflineReport();
+		}
+		CloseWindow();
+	}))->SetPadding(FMargin(0.f, 10.f, 0.f, 0.f));
+}
+
 void UCozyHudWidget::HandleEstateChanged(bool bStructural)
 {
 	RefreshTopBar();
+	ShowPendingOfflineReport();
 	if (bStructural)
 	{
 		RefreshNameLabels();
@@ -766,6 +809,9 @@ void UCozyHudWidget::RefreshWindow()
 		break;
 	case ECozyWindowKind::FieldManagement:
 		BuildFieldManagementContent();
+		break;
+	case ECozyWindowKind::OfflineReport:
+		BuildOfflineReportContent();
 		break;
 	default:
 		break;
@@ -2066,6 +2112,19 @@ void UCozyHudWidget::RefreshDebugPanel()
 		}
 	}, true, 13));
 	DebugContent->AddChildToVerticalBox(SaveRow)->SetPadding(FMargin(0.f, 3.f));
+	// 방치 시간 건너뛰기 (기획서 제작자 도구 ② · 같은 정산 처리)
+	UHorizontalBox* SkipRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+	for (const float Hours : { 1.f, 12.f })
+	{
+		SkipRow->AddChildToHorizontalBox(MakeButton(FText::Format(LOCTEXT("SkipOffline", "방치 {0}시간 건너뛰기"), FText::AsNumber(Hours)), [this, Hours]()
+		{
+			if (UCozyEstateSubsystem* EstateNow = GetEstate())
+			{
+				EstateNow->DebugSkipOffline(Hours * 3600.0);
+			}
+		}, true, 13))->SetPadding(FMargin(0.f, 0.f, 3.f, 0.f));
+	}
+	DebugContent->AddChildToVerticalBox(SkipRow)->SetPadding(FMargin(0.f, 3.f));
 
 	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("Restart", "새 게임 다시 시작"), [this]()
 	{
