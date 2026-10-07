@@ -77,7 +77,8 @@ void ACozyFacilityActor::InitFacility(const FGuid& InFacilityId, const FCozyFaci
 	// 바닥 오라: 지면보다 조금 높고 상자 밑면보다 낮게, 상자보다 AuraMargin만큼 넓게 → 둘레가 고르게 보임
 	AuraMesh->SetRelativeScale3D(FVector(BoxX + AuraMargin * 2.f, BoxY + AuraMargin * 2.f, CozyFacility::BasicShapeSize) / CozyFacility::BasicShapeSize);
 	AuraMesh->SetRelativeLocation(FVector(0.f, 0.f, FMath::Min(AuraLift, BoxLift * 0.5f)));
-	if (UMaterialInstanceDynamic* AuraMaterial = AuraMesh->CreateDynamicMaterialInstance(0))
+	AuraMaterial = AuraMesh->CreateDynamicMaterialInstance(0);
+	if (AuraMaterial)
 	{
 		AuraMaterial->SetVectorParameterValue(CozyFacility::ColorParam, AuraColor);
 	}
@@ -125,6 +126,20 @@ void ACozyFacilityActor::SetSelected(bool bInSelected)
 	if (GreyboxMaterial)
 	{
 		GreyboxMaterial->SetVectorParameterValue(CozyFacility::ColorParam, bInSelected ? BaseColor * 1.25f : BaseColor);
+	}
+}
+
+void ACozyFacilityActor::SetPlacementPreview(bool bActive, bool bValid)
+{
+	if (AuraMaterial)
+	{
+		const FLinearColor Color = !bActive ? AuraColor : (bValid ? FLinearColor(0.15f, 0.85f, 0.3f) : FLinearColor(0.95f, 0.15f, 0.12f));
+		AuraMaterial->SetVectorParameterValue(CozyFacility::ColorParam, Color);
+	}
+	AuraMesh->SetVisibility(bActive);
+	for (UStaticMeshComponent* Edge : OutlineEdges)
+	{
+		Edge->SetVisibility(false);
 	}
 }
 

@@ -76,6 +76,10 @@ struct FCozyFacilityState
 	/** 진행 중인 자동 생산 작업 ID (작업 기록이 유일한 원본 · 없으면 무효 ID) · 가공 작업은 작업 기록의 시설 ID로 찾음 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Facility")
 	FGuid ActiveJobId;
+
+	/** 보관함에 있는가 (영지에 놓이지 않음 · 레벨·외형·밭 작물은 그대로 · D45) */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Facility")
+	bool bStored = false;
 };
 
 /** 주민 1명의 상태 */

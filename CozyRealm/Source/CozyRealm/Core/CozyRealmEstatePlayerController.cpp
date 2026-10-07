@@ -38,8 +38,16 @@ void ACozyRealmEstatePlayerController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
 
+	if (WasInputKeyJustPressed(EKeys::B))
+	{
+		SetPlacementMode(!bPlacementMode);
+	}
 	// UI 위젯이 먼저 클릭을 받으면 여기까지 오지 않음 (GameAndUI 입력 모드)
-	if (WasInputKeyJustPressed(EKeys::LeftMouseButton))
+	if (bPlacementMode)
+	{
+		TickPlacement();
+	}
+	else if (WasInputKeyJustPressed(EKeys::LeftMouseButton))
 	{
 		HandleWorldClick();
 	}
@@ -93,7 +101,20 @@ void ACozyRealmEstatePlayerController::PlayerTick(float DeltaTime)
 		}
 	}
 
-	if (WasInputKeyJustPressed(EKeys::Escape) && Hud)
+	if (WasInputKeyJustPressed(EKeys::Escape) && Hud && bPlacementMode)
+	{
+		// 배치 중이면 미리보기 취소, 아니면 배치 모드 끝내기
+		UCozyEstateSubsystem* Estate = GetWorld()->GetSubsystem<UCozyEstateSubsystem>();
+		if (Estate && Estate->IsPlacing())
+		{
+			Estate->CancelPlacement();
+		}
+		else
+		{
+			SetPlacementMode(false);
+		}
+	}
+	else if (WasInputKeyJustPressed(EKeys::Escape) && Hud)
 	{
 		if (Hud->IsWindowOpen())
 		{
@@ -162,6 +183,74 @@ void ACozyRealmEstatePlayerController::SelectFacilityByDefinition(FName Definiti
 	if (Best)
 	{
 		SelectFacility(Best);
+	}
+}
+
+void ACozyRealmEstatePlayerController::SetPlacementMode(bool bEnable)
+{
+	UCozyEstateSubsystem* Estate = GetWorld() ? GetWorld()->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
+	if (!bEnable && Estate && Estate->IsPlacing())
+	{
+		Estate->CancelPlacement();
+	}
+	bPlacementMode = bEnable;
+	bDraggingPlacement = false;
+	ClearSelection();
+	if (Hud)
+	{
+		Hud->CloseWindow();
+		Hud->SetPlacementMode(bEnable);
+	}
+}
+
+void ACozyRealmEstatePlayerController::TickPlacement()
+{
+	UCozyEstateSubsystem* Estate = GetWorld()->GetSubsystem<UCozyEstateSubsystem>();
+	if (!Estate || (Hud && Hud->IsWindowOpen()))
+	{
+		return;
+	}
+	if (WasInputKeyJustPressed(EKeys::R) && Estate->IsPlacing())
+	{
+		Estate->RotatePlacement();
+	}
+	if (WasInputKeyJustPressed(EKeys::LeftMouseButton))
+	{
+		FHitResult Hit;
+		ACozyFacilityActor* Clicked = GetHitResultUnderCursor(ECC_Visibility, false, Hit) ? Cast<ACozyFacilityActor>(Hit.GetActor()) : nullptr;
+		if (Clicked && Estate->IsPlacing() && Clicked == Estate->GetPlacementActor())
+		{
+			bDraggingPlacement = true;
+		}
+		else if (Clicked && !Estate->IsPlacing())
+		{
+			bDraggingPlacement = Estate->BeginPlacement(Clicked->GetFacilityId());
+		}
+		else if (Clicked && Hud)
+		{
+			Hud->ShowToast(NSLOCTEXT("CozyRealm", "PlaceFinishFirst", "먼저 지금 옮기는 시설을 확정하거나 취소해 주세요"));
+		}
+	}
+	if (!IsInputKeyDown(EKeys::LeftMouseButton))
+	{
+		bDraggingPlacement = false;
+	}
+	if (bDraggingPlacement && Estate->IsPlacing())
+	{
+		// 커서 광선이 영지 바닥 평면과 만나는 칸 → 시설 가운데가 그 칸에 오게
+		FVector RayOrigin;
+		FVector RayDirection;
+		if (DeprojectMousePositionToWorld(RayOrigin, RayDirection) && !FMath::IsNearlyZero(RayDirection.Z))
+		{
+			const float T = (Estate->GetGroundZ() - RayOrigin.Z) / RayDirection.Z;
+			const FIntPoint Cell = Estate->WorldToCell(RayOrigin + RayDirection * T);
+			const FIntPoint Size = Estate->GetFootprint(Estate->GetPlacementId(), Estate->GetPlacementRotation());
+			const FIntPoint Coord(Cell.X - (Size.X - 1) / 2, Cell.Y - (Size.Y - 1) / 2);
+			if (Coord != Estate->GetPlacementCoord())
+			{
+				Estate->UpdatePlacement(Coord, Estate->GetPlacementRotation());
+			}
+		}
 	}
 }
 

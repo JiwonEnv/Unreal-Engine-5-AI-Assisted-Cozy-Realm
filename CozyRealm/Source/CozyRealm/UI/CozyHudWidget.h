@@ -81,6 +81,9 @@ public:
 
 	void CloseWindow();
 	bool IsWindowOpen() const { return WindowKind != ECozyWindowKind::None; }
+	/** 배치 모드 안내·보관함 패널과 미리보기 옆 버튼 (D45) */
+	void SetPlacementMode(bool bEnable);
+
 	/** 화면 위쪽에 잠깐 보이는 알림 (단축키 결과 등) */
 	void ShowToast(const FText& Message);
 	/** 단축키: Tab 주민 목록(나가야) · I 창고 · 이미 열려 있으면 닫음 */
@@ -160,6 +163,28 @@ private:
 	TObjectPtr<UTextBlock> WindowTitle;
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> WindowContent;
+	// --- 배치 모드 ---
+	void RefreshPlacementPanel();
+	void UpdatePlacementLive();
+	bool bPlacementMode = false;
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> PlacementPanel;
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> PlacementStoredBox;
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> PlacementActionBox;
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanelSlot> PlacementActionSlot;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> PlacementStatusText;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> PlacementStoreButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> PlacementConfirmButton;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UCozyUiAction>> PlacementActions;
+	TArray<FGuid> PlacementStoredIds;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> ToastText;
 	float ToastRemaining = 0.f;

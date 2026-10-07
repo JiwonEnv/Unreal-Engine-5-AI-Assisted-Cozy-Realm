@@ -120,6 +120,73 @@ void UCozyHudWidget::BuildLayout()
 	}
 	IconBox->SetVisibility(ESlateVisibility::Collapsed);
 
+	// 배치 모드 패널 (왼쪽 위 · 안내 + 보관함 목록) · 미리보기 옆 버튼 (회전 · 보관 · 확정 · 취소)
+	PlacementPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("PlacementPanel"));
+	PlacementPanel->SetBrushColor(CozyHud::PanelColor);
+	PlacementPanel->SetPadding(FMargin(12.f));
+	UVerticalBox* PlacementBody = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
+	PlacementPanel->SetContent(PlacementBody);
+	PlacementBody->AddChildToVerticalBox(MakeText(LOCTEXT("PlaceTitle", "배치 모드 (B로 끝내기)"), 18, CozyHud::AccentText));
+	PlacementBody->AddChildToVerticalBox(MakeText(LOCTEXT("PlaceHelp", "시설을 누른 채 끌어서 옮기기 · R 회전 · Esc 취소"), 14, CozyHud::MutedText))->SetPadding(FMargin(0.f, 2.f, 0.f, 6.f));
+	PlacementStoredBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
+	PlacementBody->AddChildToVerticalBox(PlacementStoredBox);
+	if (UCanvasPanelSlot* PanelSlot = RootCanvas->AddChildToCanvas(PlacementPanel))
+	{
+		PanelSlot->SetPosition(FVector2D(12.f, 56.f));
+		PanelSlot->SetAutoSize(true);
+	}
+	PlacementPanel->SetVisibility(ESlateVisibility::Collapsed);
+
+	PlacementActionBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("PlacementActionBox"));
+	PlacementStatusText = MakeText(FText::GetEmpty(), 14);
+	PlacementActionBox->AddChildToVerticalBox(PlacementStatusText)->SetHorizontalAlignment(HAlign_Center);
+	UHorizontalBox* PlacementButtons = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+	ActionSink = &FrameActions;
+	PlacementButtons->AddChildToHorizontalBox(MakeButton(LOCTEXT("PlaceRotate", "회전 (R)"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			EstateNow->RotatePlacement();
+		}
+	}, true, 14))->SetPadding(FMargin(2.f, 0.f));
+	PlacementStoreButton = MakeButton(LOCTEXT("PlaceStore", "보관"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			const FGuid Id = EstateNow->GetPlacementId();
+			FText Message;
+			EstateNow->StoreFacility(Id, Message);
+			ShowToast(Message);
+		}
+	}, true, 14);
+	PlacementButtons->AddChildToHorizontalBox(PlacementStoreButton)->SetPadding(FMargin(2.f, 0.f));
+	PlacementConfirmButton = MakeButton(LOCTEXT("PlaceConfirm", "확정"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			FText Message;
+			EstateNow->ConfirmPlacement(Message);
+			ShowToast(Message);
+		}
+	}, true, 14);
+	PlacementButtons->AddChildToHorizontalBox(PlacementConfirmButton)->SetPadding(FMargin(2.f, 0.f));
+	PlacementButtons->AddChildToHorizontalBox(MakeButton(LOCTEXT("PlaceCancel", "취소"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			EstateNow->CancelPlacement();
+		}
+	}, true, 14))->SetPadding(FMargin(2.f, 0.f));
+	ActionSink = nullptr;
+	PlacementActionBox->AddChildToVerticalBox(PlacementButtons)->SetPadding(FMargin(0.f, 4.f, 0.f, 0.f));
+	PlacementActionSlot = RootCanvas->AddChildToCanvas(PlacementActionBox);
+	if (PlacementActionSlot)
+	{
+		PlacementActionSlot->SetAutoSize(true);
+		PlacementActionSlot->SetAlignment(FVector2D(0.5f, 1.f));
+	}
+	PlacementActionBox->SetVisibility(ESlateVisibility::Collapsed);
+
 	// 단축키 결과 알림 (위쪽 가운데 · 잠깐 보였다 사라짐)
 	ToastText = MakeText(FText::GetEmpty(), 17, CozyHud::AccentText);
 	if (UCanvasPanelSlot* ToastSlot = RootCanvas->AddChildToCanvas(ToastText))
@@ -211,6 +278,11 @@ void UCozyHudWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 
 	UpdateNameLabelPositions();
 
+	if (bPlacementMode)
+	{
+		UpdatePlacementLive();
+	}
+
 	if (ToastRemaining > 0.f)
 	{
 		ToastRemaining -= InDeltaTime;
@@ -235,6 +307,97 @@ UCozyEstateSubsystem* UCozyHudWidget::GetEstate() const
 {
 	const UWorld* World = GetWorld();
 	return World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
+}
+
+void UCozyHudWidget::SetPlacementMode(bool bEnable)
+{
+	bPlacementMode = bEnable;
+	HideFacilityIcons();
+	if (PlacementPanel)
+	{
+		PlacementPanel->SetVisibility(bEnable ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+	if (!bEnable && PlacementActionBox)
+	{
+		PlacementActionBox->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	RefreshPlacementPanel();
+}
+
+void UCozyHudWidget::RefreshPlacementPanel()
+{
+	UCozyEstateSubsystem* Estate = GetEstate();
+	if (!PlacementStoredBox || !Estate || !bPlacementMode)
+	{
+		return;
+	}
+	const TArray<FGuid> Stored = Estate->GetStoredFacilities();
+	if (Stored == PlacementStoredIds && PlacementStoredBox->GetChildrenCount() > 0)
+	{
+		return;
+	}
+	PlacementStoredIds = Stored;
+	PlacementStoredBox->ClearChildren();
+	PlacementActions.Reset();
+	PlacementStoredBox->AddChildToVerticalBox(MakeText(FText::Format(LOCTEXT("StoredTitle", "보관함 ({0})"), FText::AsNumber(Stored.Num())), 15));
+	if (Stored.Num() == 0)
+	{
+		PlacementStoredBox->AddChildToVerticalBox(MakeText(LOCTEXT("StoredEmpty", "비어 있음"), 14, CozyHud::MutedText));
+	}
+	ActionSink = &PlacementActions;
+	for (const FGuid& Id : Stored)
+	{
+		const FCozyFacilityState* Facility = Estate->FindFacility(Id);
+		FString Label = FString::Printf(TEXT("꺼내기: %s Lv%d"), *Estate->GetFacilityDisplayName(Id).ToString(), Facility ? Facility->Level : 0);
+		if (Facility && !Facility->SelectedCropId.IsNone())
+		{
+			if (const FCozyCropRow* Crop = Estate->GetCropDef(Facility->SelectedCropId))
+			{
+				Label += FString::Printf(TEXT(" · %s"), *Crop->DisplayName.ToString());
+			}
+		}
+		PlacementStoredBox->AddChildToVerticalBox(MakeButton(FText::FromString(Label), [this, Id]()
+		{
+			if (UCozyEstateSubsystem* EstateNow = GetEstate())
+			{
+				EstateNow->BeginPlacement(Id);
+			}
+		}, true, 14))->SetPadding(FMargin(0.f, 2.f));
+	}
+	ActionSink = nullptr;
+}
+
+void UCozyHudWidget::UpdatePlacementLive()
+{
+	UCozyEstateSubsystem* Estate = GetEstate();
+	ACozyFacilityActor* Actor = Estate ? Estate->GetPlacementActor() : nullptr;
+	if (!Estate || !Estate->IsPlacing() || !Actor || !PlacementActionBox)
+	{
+		if (PlacementActionBox)
+		{
+			PlacementActionBox->SetVisibility(ESlateVisibility::Collapsed);
+		}
+		return;
+	}
+	FText PlaceReason;
+	const bool bCanPlace = Estate->CanPlaceFacility(Estate->GetPlacementId(), Estate->GetPlacementCoord(), Estate->GetPlacementRotation(), PlaceReason);
+	FText StoreReason;
+	const bool bCanStore = !Estate->IsPlacementFromStorage() && Estate->CanStoreFacility(Estate->GetPlacementId(), StoreReason);
+	FString Status = bCanPlace ? TEXT("놓을 수 있습니다") : PlaceReason.ToString();
+	if (!Estate->IsPlacementFromStorage() && !bCanStore)
+	{
+		Status += TEXT("\n보관 불가: ") + StoreReason.ToString();
+	}
+	PlacementStatusText->SetText(FText::FromString(Status));
+	PlacementStatusText->SetColorAndOpacity(FSlateColor(bCanPlace ? FLinearColor(0.55f, 1.f, 0.6f) : CozyHud::WarningText));
+	PlacementConfirmButton->SetIsEnabled(bCanPlace);
+	PlacementStoreButton->SetIsEnabled(bCanStore);
+	PlacementActionBox->SetVisibility(ESlateVisibility::Visible);
+	FVector2D ScreenPosition;
+	if (PlacementActionSlot && UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(GetOwningPlayer(), Actor->GetIconAnchorLocation(), ScreenPosition, false))
+	{
+		PlacementActionSlot->SetPosition(ScreenPosition);
+	}
 }
 
 void UCozyHudWidget::ShowToast(const FText& Message)
@@ -328,6 +491,10 @@ void UCozyHudWidget::HandleEstateChanged(bool bStructural)
 {
 	RefreshTopBar();
 	ShowPendingOfflineReport();
+	if (bStructural)
+	{
+		RefreshPlacementPanel();
+	}
 	if (bStructural)
 	{
 		RefreshNameLabels();

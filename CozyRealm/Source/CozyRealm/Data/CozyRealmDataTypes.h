@@ -94,6 +94,10 @@ struct FCozyFacilityRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Production")
 	int32 UnclaimedCapacity = 0;
 
+	/** 배치 모드에서 보관함에 넣을 수 있는가 (🙋 D45 · 하나뿐인 핵심 시설 신사·나가야·후신소는 이동만) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Placement")
+	bool bCanStore = true;
+
 	/** 동시에 진행할 수 있는 가공 작업 수 (가공 시설만 · 0이면 가공 불가) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Processing")
 	int32 ProcessingSlots = 0;

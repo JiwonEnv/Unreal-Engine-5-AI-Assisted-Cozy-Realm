@@ -411,6 +411,38 @@ public:
 	/** 상태를 지우고 시작 설정으로 새 게임을 다시 만든다 (저장 파일도 새 게임으로 덮어씀) */
 	void DebugRestartNewGame();
 
+	// --- 배치 모드 (3주차 기능 2 · D45) ---
+
+	/** 회전을 반영한 차지 칸 수 */
+	FIntPoint GetFootprint(const FGuid& FacilityId, int32 Rotation) const;
+	/** 영지 안 · 다른 시설과 겹치지 않음 (자기 자신은 제외) */
+	bool CanPlaceFacility(const FGuid& FacilityId, FIntPoint Coord, int32 Rotation, FText& OutReason) const;
+	/** 보관 가능: 핵심 시설 아님 · 진행·일시 정지 작업 없음 · 미수령분 없음 */
+	bool CanStoreFacility(const FGuid& FacilityId, FText& OutReason) const;
+	/** 보관: 배치 주민은 나가야로 · 레벨·외형·밭 작물 유지 · 실패하면 아무것도 바뀌지 않음 */
+	bool StoreFacility(const FGuid& FacilityId, FText& OutMessage);
+	TArray<FGuid> GetStoredFacilities() const;
+
+	/** 옮기기·꺼내기 미리보기 시작 (보관함 시설이면 빈 자리에 임시 상자) */
+	bool BeginPlacement(const FGuid& FacilityId);
+	/** 미리보기 위치·회전 (영지 밖으로 나가지 않게 맞춤) · 초록/빨강 표시 */
+	void UpdatePlacement(FIntPoint Coord, int32 Rotation);
+	void RotatePlacement();
+	/** 확정: 다시 검사한 뒤 위치·회전 저장 (진행 작업·예약 공간은 그대로) */
+	bool ConfirmPlacement(FText& OutMessage);
+	/** 취소: 원래 자리로 (보관함에서 꺼낸 것이면 다시 보관함) */
+	void CancelPlacement();
+	bool IsPlacing() const { return PlacementId.IsValid(); }
+	const FGuid& GetPlacementId() const { return PlacementId; }
+	bool IsPlacementFromStorage() const { return bPlacementFromStorage; }
+	FIntPoint GetPlacementCoord() const { return PlacementCoord; }
+	int32 GetPlacementRotation() const { return PlacementRotation; }
+	ACozyFacilityActor* GetPlacementActor() const { return PlacementActor; }
+	/** 월드 위치 → 칸 (영지 밖이어도 계산) */
+	FIntPoint WorldToCell(const FVector& WorldLocation) const;
+	/** 영지 바닥 높이 (커서 광선과 만나는 평면) */
+	float GetGroundZ() const { return Config.GridOrigin.Z; }
+
 	// --- 저장 / 불러오기 (2주차 기능 3 · 슬롯 1개 · 자동 저장 1분마다 + 종료 시) ---
 
 	/** 지금 상태를 저장 (Reason은 로그용) */
@@ -447,6 +479,11 @@ private:
 	bool LoadEstateFromSave(FDateTime& OutSavedUtc);
 	/** 불러온 상태에서 데이터에 없는 시설·주민·작업·재료 참조를 정리 (정리 6-6 · 지운 개수를 로그) */
 	void SanitizeLoadedState();
+	/** 칸 좌표 · 크기 → 월드 위치 (실제 지면 높이) */
+	FVector ComputeFacilityLocation(FIntPoint Coord, FIntPoint Size) const;
+	ACozyFacilityActor* FindFacilityActor(const FGuid& FacilityId) const;
+	bool FindFreeSpot(const FGuid& FacilityId, int32 Rotation, FIntPoint& OutCoord) const;
+
 	/** 꺼 둔 시간만큼 접속 중과 같은 규칙으로 1초씩 진행 (최대 12시간) + 방치 재화 · 정산 직후 반드시 저장 */
 	void ApplyOfflineProgress(double AwaySeconds, const TCHAR* Source);
 	UDataTable* LoadCsvTable(const FString& FileName, UScriptStruct* RowStruct, FString& OutErrors);
@@ -535,4 +572,12 @@ private:
 	double AutosaveAccumulator = 0.0;
 	FCozyOfflineReport OfflineReport;
 	bool bOfflineReportPending = false;
+
+	// 배치 미리보기 (확정 전에는 상태를 바꾸지 않음)
+	FGuid PlacementId;
+	FIntPoint PlacementCoord = FIntPoint::ZeroValue;
+	int32 PlacementRotation = 0;
+	bool bPlacementFromStorage = false;
+	UPROPERTY(Transient)
+	TObjectPtr<ACozyFacilityActor> PlacementActor;
 };

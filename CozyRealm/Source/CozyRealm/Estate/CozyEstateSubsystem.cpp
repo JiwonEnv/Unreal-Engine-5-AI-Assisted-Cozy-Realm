@@ -747,7 +747,10 @@ void UCozyEstateSubsystem::SpawnFacilityActors()
 {
 	for (const FCozyFacilityState& Facility : State.Facilities)
 	{
-		SpawnFacilityActor(Facility);
+		if (!Facility.bStored)
+		{
+			SpawnFacilityActor(Facility);
+		}
 	}
 }
 
@@ -761,22 +764,7 @@ void UCozyEstateSubsystem::SpawnFacilityActor(const FCozyFacilityState& Facility
 	}
 
 	const FIntPoint Size = (Facility.Rotation % 2 == 0) ? Def->Size : FIntPoint(Def->Size.Y, Def->Size.X);
-	FVector Center = Config.GridOrigin + FVector(
-		(Facility.GridCoord.X + Size.X * 0.5f) * Config.CellSize,
-		(Facility.GridCoord.Y + Size.Y * 0.5f) * Config.CellSize,
-		0.f);
-
-	// 실제 지면 높이에 맞춤 (영지 판 두께가 바뀌어도 시설·오라가 묻히지 않게)
-	FHitResult GroundHit;
-	FCollisionQueryParams TraceParams(SCENE_QUERY_STAT(CozyFacilityGround), false);
-	for (ACozyFacilityActor* Existing : FacilityActors)
-	{
-		TraceParams.AddIgnoredActor(Existing);
-	}
-	if (World->LineTraceSingleByChannel(GroundHit, Center + FVector(0.f, 0.f, 2000.f), Center - FVector(0.f, 0.f, 2000.f), ECC_Visibility, TraceParams))
-	{
-		Center.Z = GroundHit.ImpactPoint.Z;
-	}
+	const FVector Center = ComputeFacilityLocation(Facility.GridCoord, Size);
 
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -791,8 +779,317 @@ void UCozyEstateSubsystem::SpawnFacilityActor(const FCozyFacilityState& Facility
 	}
 }
 
+FVector UCozyEstateSubsystem::ComputeFacilityLocation(FIntPoint Coord, FIntPoint Size) const
+{
+	FVector Center = Config.GridOrigin + FVector((Coord.X + Size.X * 0.5f) * Config.CellSize, (Coord.Y + Size.Y * 0.5f) * Config.CellSize, 0.f);
+	// 실제 지면 높이에 맞춤 (영지 판 두께가 바뀌어도 시설·오라가 묻히지 않게)
+	if (const UWorld* World = GetWorld())
+	{
+		FHitResult GroundHit;
+		FCollisionQueryParams TraceParams(SCENE_QUERY_STAT(CozyFacilityGround), false);
+		for (ACozyFacilityActor* Existing : FacilityActors)
+		{
+			TraceParams.AddIgnoredActor(Existing);
+		}
+		if (PlacementActor)
+		{
+			TraceParams.AddIgnoredActor(PlacementActor);
+		}
+		if (World->LineTraceSingleByChannel(GroundHit, Center + FVector(0.f, 0.f, 2000.f), Center - FVector(0.f, 0.f, 2000.f), ECC_Visibility, TraceParams))
+		{
+			Center.Z = GroundHit.ImpactPoint.Z;
+		}
+	}
+	return Center;
+}
+
+ACozyFacilityActor* UCozyEstateSubsystem::FindFacilityActor(const FGuid& FacilityId) const
+{
+	for (ACozyFacilityActor* Actor : FacilityActors)
+	{
+		if (IsValid(Actor) && Actor->GetFacilityId() == FacilityId)
+		{
+			return Actor;
+		}
+	}
+	return nullptr;
+}
+
+FIntPoint UCozyEstateSubsystem::GetFootprint(const FGuid& FacilityId, int32 Rotation) const
+{
+	const FCozyFacilityState* Facility = FindFacility(FacilityId);
+	const FCozyFacilityRow* Def = Facility ? GetFacilityDef(Facility->DefinitionId) : nullptr;
+	if (!Def)
+	{
+		return FIntPoint(1, 1);
+	}
+	return (Rotation % 2 == 0) ? Def->Size : FIntPoint(Def->Size.Y, Def->Size.X);
+}
+
+FIntPoint UCozyEstateSubsystem::WorldToCell(const FVector& WorldLocation) const
+{
+	const FVector Local = (WorldLocation - Config.GridOrigin) / FMath::Max(1.f, Config.CellSize);
+	return FIntPoint(FMath::FloorToInt(Local.X), FMath::FloorToInt(Local.Y));
+}
+
+bool UCozyEstateSubsystem::CanPlaceFacility(const FGuid& FacilityId, FIntPoint Coord, int32 Rotation, FText& OutReason) const
+{
+	const FIntPoint Size = GetFootprint(FacilityId, Rotation);
+	if (Coord.X < 0 || Coord.Y < 0 || Coord.X + Size.X > Config.GridSize.X || Coord.Y + Size.Y > Config.GridSize.Y)
+	{
+		OutReason = LOCTEXT("PlaceOutside", "영지 밖에는 놓을 수 없습니다");
+		return false;
+	}
+	for (const FCozyFacilityState& Other : State.Facilities)
+	{
+		if (Other.InstanceId == FacilityId || Other.bStored)
+		{
+			continue;
+		}
+		const FIntPoint OtherSize = GetFootprint(Other.InstanceId, Other.Rotation);
+		const bool bOverlap = Coord.X < Other.GridCoord.X + OtherSize.X && Other.GridCoord.X < Coord.X + Size.X
+			&& Coord.Y < Other.GridCoord.Y + OtherSize.Y && Other.GridCoord.Y < Coord.Y + Size.Y;
+		if (bOverlap)
+		{
+			OutReason = FText::Format(LOCTEXT("PlaceOverlap", "{0}와(과) 겹쳐서 놓을 수 없습니다"), GetFacilityDisplayName(Other.InstanceId));
+			return false;
+		}
+	}
+	return true;
+}
+
+bool UCozyEstateSubsystem::FindFreeSpot(const FGuid& FacilityId, int32 Rotation, FIntPoint& OutCoord) const
+{
+	FText Ignored;
+	for (int32 Y = 0; Y < Config.GridSize.Y; ++Y)
+	{
+		for (int32 X = 0; X < Config.GridSize.X; ++X)
+		{
+			if (CanPlaceFacility(FacilityId, FIntPoint(X, Y), Rotation, Ignored))
+			{
+				OutCoord = FIntPoint(X, Y);
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool UCozyEstateSubsystem::CanStoreFacility(const FGuid& FacilityId, FText& OutReason) const
+{
+	const FCozyFacilityState* Facility = FindFacility(FacilityId);
+	const FCozyFacilityRow* Def = Facility ? GetFacilityDef(Facility->DefinitionId) : nullptr;
+	if (!Def)
+	{
+		OutReason = LOCTEXT("StoreNoFacility", "시설을 찾을 수 없습니다");
+		return false;
+	}
+	if (Facility->bStored)
+	{
+		OutReason = LOCTEXT("StoreAlready", "이미 보관함에 있습니다");
+		return false;
+	}
+	if (!Def->bCanStore)
+	{
+		OutReason = FText::Format(LOCTEXT("StoreCore", "{0}은(는) 하나뿐인 핵심 시설이라 보관할 수 없습니다 · 옮기기만 할 수 있습니다"), Def->DisplayName);
+		return false;
+	}
+	if (State.Jobs.ContainsByPredicate([&FacilityId](const FCozyJobRecord& Job) { return Job.FacilityId == FacilityId; }))
+	{
+		OutReason = LOCTEXT("StoreBusy", "진행 중이거나 일시 정지된 작업이 있어 보관할 수 없습니다 · 작업이 끝나거나 취소한 뒤(생산은 주민 배치 해제) 보관해 주세요");
+		return false;
+	}
+	if (GetUnclaimedTotal(FacilityId) > 0)
+	{
+		OutReason = FText::Format(LOCTEXT("StoreUnclaimed", "미수령 {0} {1}개를 모두 수령해야 보관할 수 있습니다"), GetItemName(Facility->UnclaimedItemId), FText::AsNumber(GetUnclaimedTotal(FacilityId)));
+		return false;
+	}
+	return true;
+}
+
+bool UCozyEstateSubsystem::StoreFacility(const FGuid& FacilityId, FText& OutMessage)
+{
+	if (IsPlacing())
+	{
+		CancelPlacement();
+	}
+	if (!CanStoreFacility(FacilityId, OutMessage))
+	{
+		return false;
+	}
+	FCozyFacilityState* Facility = FindFacilityMutable(FacilityId);
+	int32 Returned = 0;
+	for (FCozyResidentState& Resident : State.Residents)
+	{
+		if (Resident.AssignedFacility == FacilityId)
+		{
+			RemoveResidentFromFacility(Resident);
+			++Returned;
+		}
+	}
+	Facility->bStored = true;
+	if (ACozyFacilityActor* Actor = FindFacilityActor(FacilityId))
+	{
+		FacilityActors.Remove(Actor);
+		Actor->Destroy();
+	}
+	const FText Name = GetFacilityDisplayName(FacilityId);
+	OutMessage = Returned > 0
+		? FText::Format(LOCTEXT("StoredRes", "{0}을(를) 보관함에 넣었습니다 · 주민 {1}명은 나가야로 돌아갔습니다"), Name, FText::AsNumber(Returned))
+		: FText::Format(LOCTEXT("Stored", "{0}을(를) 보관함에 넣었습니다"), Name);
+	UE_LOG(LogCozyRealm, Log, TEXT("보관: %s Lv%d · 작물 %s · 주민 %d명 나가야로"), *Name.ToString(), Facility->Level, *Facility->SelectedCropId.ToString(), Returned);
+	NotifyChanged(true);
+	SaveEstate(TEXT("보관"));
+	return true;
+}
+
+TArray<FGuid> UCozyEstateSubsystem::GetStoredFacilities() const
+{
+	TArray<FGuid> Result;
+	for (const FCozyFacilityState& Facility : State.Facilities)
+	{
+		if (Facility.bStored)
+		{
+			Result.Add(Facility.InstanceId);
+		}
+	}
+	return Result;
+}
+
+bool UCozyEstateSubsystem::BeginPlacement(const FGuid& FacilityId)
+{
+	if (IsPlacing())
+	{
+		CancelPlacement();
+	}
+	const FCozyFacilityState* Facility = FindFacility(FacilityId);
+	const FCozyFacilityRow* Def = Facility ? GetFacilityDef(Facility->DefinitionId) : nullptr;
+	UWorld* World = GetWorld();
+	if (!Def || !World)
+	{
+		return false;
+	}
+	PlacementId = FacilityId;
+	PlacementRotation = Facility->Rotation;
+	bPlacementFromStorage = Facility->bStored;
+	PlacementCoord = Facility->GridCoord;
+	if (bPlacementFromStorage)
+	{
+		// 빈 자리에 임시 상자 (확정 전에는 상태를 바꾸지 않음)
+		FindFreeSpot(FacilityId, PlacementRotation, PlacementCoord);
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		PlacementActor = World->SpawnActor<ACozyFacilityActor>(ACozyFacilityActor::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, Params);
+		if (PlacementActor)
+		{
+			PlacementActor->InitFacility(FacilityId, *Def, Config.CellSize);
+		}
+	}
+	else
+	{
+		PlacementActor = FindFacilityActor(FacilityId);
+	}
+	if (!PlacementActor)
+	{
+		PlacementId.Invalidate();
+		return false;
+	}
+	UpdatePlacement(PlacementCoord, PlacementRotation);
+	NotifyChanged(true);
+	return true;
+}
+
+void UCozyEstateSubsystem::UpdatePlacement(FIntPoint Coord, int32 Rotation)
+{
+	if (!IsPlacing() || !PlacementActor)
+	{
+		return;
+	}
+	PlacementRotation = ((Rotation % 4) + 4) % 4;
+	const FIntPoint Size = GetFootprint(PlacementId, PlacementRotation);
+	PlacementCoord = FIntPoint(FMath::Clamp(Coord.X, 0, FMath::Max(0, Config.GridSize.X - Size.X)), FMath::Clamp(Coord.Y, 0, FMath::Max(0, Config.GridSize.Y - Size.Y)));
+	PlacementActor->SetActorLocationAndRotation(ComputeFacilityLocation(PlacementCoord, Size), FRotator(0.f, 90.f * PlacementRotation, 0.f));
+	FText Reason;
+	PlacementActor->SetPlacementPreview(true, CanPlaceFacility(PlacementId, PlacementCoord, PlacementRotation, Reason));
+}
+
+void UCozyEstateSubsystem::RotatePlacement()
+{
+	UpdatePlacement(PlacementCoord, PlacementRotation + 1);
+}
+
+bool UCozyEstateSubsystem::ConfirmPlacement(FText& OutMessage)
+{
+	if (!IsPlacing())
+	{
+		return false;
+	}
+	if (!CanPlaceFacility(PlacementId, PlacementCoord, PlacementRotation, OutMessage))
+	{
+		return false;
+	}
+	FCozyFacilityState* Facility = FindFacilityMutable(PlacementId);
+	const FText Name = GetFacilityDisplayName(PlacementId);
+	const FIntPoint From = Facility->GridCoord;
+	Facility->GridCoord = PlacementCoord;
+	Facility->Rotation = PlacementRotation;
+	const bool bFromStorage = bPlacementFromStorage;
+	if (bFromStorage)
+	{
+		// 임시 상자를 지우고 정식 시설 액터로
+		Facility->bStored = false;
+		if (PlacementActor)
+		{
+			PlacementActor->Destroy();
+		}
+		PlacementActor = nullptr;
+		SpawnFacilityActor(*Facility);
+	}
+	else if (PlacementActor)
+	{
+		PlacementActor->SetPlacementPreview(false, true);
+	}
+	PlacementActor = nullptr;
+	PlacementId.Invalidate();
+	OutMessage = bFromStorage
+		? FText::Format(LOCTEXT("PlacedFromStorage", "{0}을(를) 다시 배치했습니다 · Lv{1} 그대로"), Name, FText::AsNumber(Facility->Level))
+		: FText::Format(LOCTEXT("Moved", "{0}을(를) 옮겼습니다 · 진행 중인 작업은 그대로 이어집니다"), Name);
+	UE_LOG(LogCozyRealm, Log, TEXT("배치 확정: %s (%d,%d)→(%d,%d) 회전 %d%s"), *Name.ToString(), From.X, From.Y, PlacementCoord.X, PlacementCoord.Y, PlacementRotation, bFromStorage ? TEXT(" · 보관함에서 꺼냄") : TEXT(""));
+	NotifyChanged(true);
+	SaveEstate(TEXT("배치"));
+	return true;
+}
+
+void UCozyEstateSubsystem::CancelPlacement()
+{
+	if (!IsPlacing())
+	{
+		return;
+	}
+	if (bPlacementFromStorage)
+	{
+		if (PlacementActor)
+		{
+			PlacementActor->Destroy();
+		}
+	}
+	else if (const FCozyFacilityState* Facility = FindFacility(PlacementId))
+	{
+		if (PlacementActor)
+		{
+			const FIntPoint Size = GetFootprint(PlacementId, Facility->Rotation);
+			PlacementActor->SetActorLocationAndRotation(ComputeFacilityLocation(Facility->GridCoord, Size), FRotator(0.f, 90.f * Facility->Rotation, 0.f));
+			PlacementActor->SetPlacementPreview(false, true);
+		}
+	}
+	PlacementActor = nullptr;
+	PlacementId.Invalidate();
+	NotifyChanged(true);
+}
+
 void UCozyEstateSubsystem::DestroyFacilityActors()
 {
+	CancelPlacement();
 	for (ACozyFacilityActor* Actor : FacilityActors)
 	{
 		if (IsValid(Actor))
@@ -1352,6 +1649,11 @@ bool UCozyEstateSubsystem::CanAcceptResident(const FGuid& FacilityId, FText& Out
 		OutFailReason = LOCTEXT("NoFacility", "시설을 찾을 수 없습니다");
 		return false;
 	}
+	if (Facility->bStored)
+	{
+		OutFailReason = LOCTEXT("ResidentStored", "보관 중인 시설에는 배치할 수 없습니다");
+		return false;
+	}
 	if (Def->MaxResidents <= 0)
 	{
 		OutFailReason = LOCTEXT("NoSlots", "이 시설에는 아직 주민 배치 칸이 없습니다");
@@ -1531,6 +1833,10 @@ void UCozyEstateSubsystem::StepJobs()
 {
 	for (FCozyFacilityState& Facility : State.Facilities)
 	{
+		if (Facility.bStored)
+		{
+			continue; // 보관 시설은 작업이 없음 (보관 조건)
+		}
 		const FCozyFacilityRow* Def = GetFacilityDef(Facility.DefinitionId);
 		if (Def && Def->Functions.Contains(ECozyFacilityFunction::Production))
 		{
@@ -2035,7 +2341,7 @@ TArray<FGuid> UCozyEstateSubsystem::GetUpgradableFacilities() const
 	TArray<FGuid> Result;
 	for (const FCozyFacilityState& Facility : State.Facilities)
 	{
-		if (Targets.Contains(Facility.DefinitionId))
+		if (Targets.Contains(Facility.DefinitionId) && !Facility.bStored)
 		{
 			Result.Add(Facility.InstanceId);
 		}
@@ -2616,6 +2922,10 @@ bool UCozyEstateSubsystem::DebugAddFacility(FName DefinitionId)
 	TSet<FIntPoint> Occupied;
 	for (const FCozyFacilityState& Facility : State.Facilities)
 	{
+		if (Facility.bStored)
+		{
+			continue;
+		}
 		if (const FCozyFacilityRow* OtherDef = GetFacilityDef(Facility.DefinitionId))
 		{
 			const FIntPoint OtherSize = (Facility.Rotation % 2 == 0) ? OtherDef->Size : FIntPoint(OtherDef->Size.Y, OtherDef->Size.X);

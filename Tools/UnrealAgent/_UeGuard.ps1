@@ -17,6 +17,11 @@ public class UeGuardNative {
   [DllImport("user32.dll")] public static extern void keybd_event(byte k, byte s, uint f, UIntPtr e);
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
   public struct RECT { public int L, T, R, B; }
+  public delegate bool EnumCb(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumCb cb, IntPtr l);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);
+  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern int GetWindowThreadProcessId(IntPtr h, out int pid);
 }
 "@
 }
@@ -39,6 +44,19 @@ function Find-UeWindow([string]$Project) {
         $pattern = "$name - Unreal Editor"
         $candidates = @(Get-Process -Name UnrealEditor -ErrorAction SilentlyContinue |
             Where-Object { $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -like "$name*Unreal Editor*" })
+    }
+    if ($candidates.Count -eq 0) {
+        # 창이 모달·재생성 중이면 Get-Process의 주 창이 잠시 비어 있음 → 보이는 창을 제목으로 직접 찾음
+        $found = New-Object System.Collections.ArrayList
+        [UeGuardNative]::EnumWindows({ param($h, $l)
+            $sb = New-Object System.Text.StringBuilder 256
+            [void][UeGuardNative]::GetWindowText($h, $sb, 256)
+            if ([UeGuardNative]::IsWindowVisible($h) -and $sb.ToString() -like $pattern) {
+                $wpid = 0; [void][UeGuardNative]::GetWindowThreadProcessId($h, [ref]$wpid)
+                [void]$found.Add([pscustomobject]@{ Id = $wpid; MainWindowHandle = $h; MainWindowTitle = $sb.ToString() })
+            }
+            $true }, [IntPtr]::Zero) | Out-Null
+        $candidates = @($found)
     }
     if ($candidates.Count -eq 0) {
         Write-Output "NOTFOUND: '$pattern' 창이 없습니다 (프로그램이 꺼져 있거나 제목이 다름)"
