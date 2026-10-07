@@ -28,16 +28,24 @@ function Get-UeProjectName([string]$Project) {
 }
 
 # 창 제목이 "<프로젝트> - Unreal Editor" 형태인 UnrealEditor 메인 창을 찾는다
+# 환경 변수 UE_WINDOW_TITLE 이 있으면 그 제목 패턴(와일드카드)의 창을 대신 찾는다
+#   예: 패키지 게임 검증 → $env:UE_WINDOW_TITLE = 'CozyRealm (64-bit*'
 function Find-UeWindow([string]$Project) {
     $name = Get-UeProjectName $Project
-    $candidates = @(Get-Process -Name UnrealEditor -ErrorAction SilentlyContinue |
-        Where-Object { $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -like "$name*Unreal Editor*" })
+    if ($env:UE_WINDOW_TITLE) {
+        $pattern = $env:UE_WINDOW_TITLE
+        $candidates = @(Get-Process | Where-Object { $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -like $pattern })
+    } else {
+        $pattern = "$name - Unreal Editor"
+        $candidates = @(Get-Process -Name UnrealEditor -ErrorAction SilentlyContinue |
+            Where-Object { $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -like "$name*Unreal Editor*" })
+    }
     if ($candidates.Count -eq 0) {
-        Write-Output "NOTFOUND: '$name - Unreal Editor' 창이 없습니다 (에디터가 꺼져 있거나 프로젝트 이름이 다름)"
+        Write-Output "NOTFOUND: '$pattern' 창이 없습니다 (프로그램이 꺼져 있거나 제목이 다름)"
         exit 3
     }
     if ($candidates.Count -gt 1) {
-        Write-Output "AMBIGUOUS: '$name' 에디터 창이 $($candidates.Count)개입니다 · 하나만 남기고 다시 실행하세요"
+        Write-Output "AMBIGUOUS: '$pattern' 창이 $($candidates.Count)개입니다 · 하나만 남기고 다시 실행하세요"
         exit 4
     }
     return $candidates[0]
