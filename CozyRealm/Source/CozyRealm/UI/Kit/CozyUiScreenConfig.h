@@ -7,10 +7,11 @@
 #include "CozyUiScreenConfig.generated.h"
 
 /**
- *  화면 하나의 설정 (그 화면만 다른 것).
+ *  화면 하나의 설정 (그 화면만 다른 것 · 화면 구성).
  *  - 테마를 통째로 바꾸거나, 색·글꼴 일부만 덮어쓴다.
- *  - 버튼 목록: 추가·삭제·순서·글자·아이콘·크기·표시 여부·클릭 동작.
- *  위치·크기 배치는 이 에셋이 아니라 화면 Widget Blueprint 디자이너에서 정한다 (서로 덮어쓰지 않음).
+ *  - 영역 목록: 자동 정렬 영역마다 방향(가로·세로·줄바꿈) · 간격 방식 · 맞춤.
+ *  - 요소 목록: 버튼 · 글자 · 이미지 · 게이지 · 칩 · 정보 패널을 추가·삭제·숨김·순서 변경 · 게임 값·동작 연결.
+ *  영역 상자와 자유 배치 요소의 위치·크기·화면 기준점은 이 에셋이 아니라 Widget Blueprint 디자이너에서 정한다 (서로 덮어쓰지 않음).
  */
 UCLASS(BlueprintType)
 class UCozyUiScreenConfig : public UPrimaryDataAsset
@@ -31,13 +32,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "1 테마")
 	TMap<ECozyUiTextRole, FSlateFontInfo> FontOverrides;
 
-	/**
-	 *  버튼 목록.
-	 *  Area를 고른 버튼은 그 이름의 자동 정렬 영역에 Order 순서로 들어간다 (줄을 추가·삭제하면 버튼 수가 바뀜).
-	 *  Area를 비운 버튼은 디자이너에 놓은 같은 ID의 자유 배치 버튼에 글자·아이콘·표시 여부·동작만 준다.
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "2 버튼", meta = (TitleProperty = "{Id} · {Area} · {Order} · {Label}"))
-	TArray<FCozyUiButtonEntry> Buttons;
+	/** 자동 정렬 영역 목록 (영역 상자 WBP_UiArea의 Area Id와 이름을 맞춤) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "2 영역", meta = (TitleProperty = "{Id} · {Purpose} · {Flow} · {Spread}"))
+	TArray<FCozyUiAreaLayout> Areas;
+
+	/** 화면 구성 요소 목록 (줄 추가 = 요소 추가 · 줄 삭제 = 요소 삭제 · Visible 끄기 = 숨김 · Order = 순서) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "3 요소", meta = (TitleProperty = "{Id} · {Purpose} · {Kind} · {Area} {Order}"))
+	TArray<FCozyUiElementEntry> Elements;
+
+	const FCozyUiAreaLayout* FindArea(FName AreaId) const
+	{
+		return AreaId.IsNone() ? nullptr : Areas.FindByPredicate([AreaId](const FCozyUiAreaLayout& Each) { return Each.Id == AreaId; });
+	}
+
+	const FCozyUiElementEntry* FindElement(FName ElementId) const
+	{
+		return ElementId.IsNone() ? nullptr : Elements.FindByPredicate([ElementId](const FCozyUiElementEntry& Each) { return Each.Id == ElementId; });
+	}
 
 	FOnCozyUiAssetChanged OnChanged;
 

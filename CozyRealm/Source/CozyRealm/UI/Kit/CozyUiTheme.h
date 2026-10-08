@@ -52,6 +52,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "5 게이지")
 	TMap<FName, FCozyUiGaugeStyle> GaugeStyles;
 
+	/**
+	 *  요소 종류별 모양 틀 (Widget Blueprint · 버튼 · 글자 · 이미지 · 게이지 · 칩 · 정보 패널).
+	 *  틀 안의 배치(아이콘과 글자 순서 · 여백)를 바꾸면 그 종류의 모든 요소가 바뀐다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "7 요소 모양 틀")
+	TMap<ECozyUiElementKind, TSoftClassPtr<class UCozyUiElementWidget>> ElementTemplates;
+
 	/** 여백 · 간격 · 기본 크기 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "6 크기·여백")
 	FCozyUiMetrics Metrics;

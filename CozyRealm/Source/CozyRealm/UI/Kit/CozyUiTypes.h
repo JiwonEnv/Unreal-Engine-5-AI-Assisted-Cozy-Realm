@@ -245,49 +245,246 @@ struct FCozyUiGaugeStyle
 	bool bTintByState = true;
 };
 
-/** 화면 설정의 버튼 한 줄 · 자동 정렬 영역에 들어가거나 자유 배치 버튼의 내용을 정한다 */
+/** 화면 구성 요소의 종류 · 종류마다 공통 테마에 모양 틀(Widget Blueprint)이 있다 */
+UENUM(BlueprintType)
+enum class ECozyUiElementKind : uint8
+{
+	/** 버튼 (아이콘 · 글자 · 클릭 동작) */
+	Button,
+	/** 글자 (고정 글 또는 게임 값) */
+	Text,
+	/** 이미지 · 아이콘 */
+	Image,
+	/** 게이지 (제목 · 막대 · 숫자) */
+	Gauge,
+	/** 정보 칩 (배경 + 아이콘 + 글자 · 재화 표시 등) */
+	Chip,
+	/** 정보 패널 (배경 + 안쪽 영역 · 다른 요소를 담음) */
+	Panel
+};
+
+/** 이미지를 정해진 칸에 넣는 방법 · 이미지 비율이 바뀌어도 칸 크기는 그대로 */
+UENUM(BlueprintType)
+enum class ECozyUiImageFit : uint8
+{
+	/** 비율 유지하며 칸 안에 맞추기 (남는 곳은 비움) */
+	KeepRatio,
+	/** 칸을 꽉 채우기 (비율 무시) */
+	Stretch,
+	/** 이미지 원래 크기 (칸 무시) */
+	Original
+};
+
+/** 요소 크기 정하는 방법 */
+UENUM(BlueprintType)
+enum class ECozyUiSizeMode : uint8
+{
+	/** 내용에 맞춤 */
+	Content,
+	/** 고정 크기 (Size · 한쪽이 0이면 그쪽만 내용에 맞춤) */
+	Fixed
+};
+
+/** 자동 정렬 방향 */
+UENUM(BlueprintType)
+enum class ECozyUiFlow : uint8
+{
+	/** 가로 한 줄 */
+	Horizontal,
+	/** 세로 한 줄 */
+	Vertical,
+	/** 가로로 놓다가 공간이 부족하면 줄바꿈 (영역 폭을 디자이너에서 정해야 함) */
+	Wrap
+};
+
+/** 자동 정렬 간격 방식 */
+UENUM(BlueprintType)
+enum class ECozyUiSpread : uint8
+{
+	/** 붙여서 놓기 (간격 Gap) · 묶음 위치는 Pack Align */
+	Packed,
+	/** 모두 가장 큰 요소와 같은 크기로 (붙여서 · 묶음 위치는 Pack Align · Pack Align이 Fill이면 영역을 나눠 채움) */
+	EqualSize,
+	/** 양 끝에 붙이고 사이 간격을 균등하게 */
+	EqualGap
+};
+
+/** 정렬 위치 */
+UENUM(BlueprintType)
+enum class ECozyUiAlign : uint8
+{
+	/** 앞 (왼쪽 · 위) */
+	Start,
+	/** 가운데 */
+	Center,
+	/** 뒤 (오른쪽 · 아래) */
+	End,
+	/** 늘려서 채우기 */
+	Fill
+};
+
+/** 자동 정렬 영역 하나의 설정 · 영역 상자의 위치·크기는 Widget Blueprint 디자이너에서 */
 USTRUCT(BlueprintType)
-struct FCozyUiButtonEntry
+struct FCozyUiAreaLayout
 {
 	GENERATED_BODY()
 
-	/** 버튼 ID · 자유 배치 버튼은 같은 ID로 연결 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Button")
+	/** 영역 이름 · 디자이너의 영역 상자(WBP_UiArea)의 Area Id와 같게 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Area")
 	FName Id;
 
-	/** 들어갈 자동 정렬 영역 이름 · 비우면 자유 배치 버튼의 내용으로만 씀 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Button")
+	/** 용도 설명 (알아보기 쉽게 · 동작에는 영향 없음) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Area")
+	FText Purpose;
+
+	/** 정렬 방향 (가로 · 세로 · 줄바꿈) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Area")
+	ECozyUiFlow Flow = ECozyUiFlow::Horizontal;
+
+	/** 간격 방식 (붙여서 · 같은 크기 · 균등 간격) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Area")
+	ECozyUiSpread Spread = ECozyUiSpread::Packed;
+
+	/** 요소 사이 간격 (-1이면 테마 Gap) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Area")
+	float Gap = -1.f;
+
+	/** 붙여서 놓을 때 묶음 위치 (가로면 왼쪽·가운데·오른쪽 · 세로면 위·가운데·아래) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Area")
+	ECozyUiAlign PackAlign = ECozyUiAlign::Start;
+
+	/** 줄 반대 방향 맞춤 (가로 줄이면 위·가운데·아래 · 세로 줄이면 왼쪽·가운데·오른쪽 · Fill이면 늘림) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Area")
+	ECozyUiAlign ItemAlign = ECozyUiAlign::Center;
+
+	/** 영역 안쪽 여백 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Area")
+	FMargin Padding = FMargin(0.f);
+};
+
+/**
+ *  화면 구성 요소 한 줄 (버튼 · 글자 · 이미지 · 게이지 · 칩 · 정보 패널).
+ *  Area를 고르면 그 자동 정렬 영역에 Order 순서로 만들어진다 (줄 추가·삭제 = 요소 추가·삭제).
+ *  Area를 비우면 디자이너에 놓은 같은 Id의 자유 배치 요소에 내용만 준다 (위치·크기는 디자이너).
+ */
+USTRUCT(BlueprintType)
+struct FCozyUiElementEntry
+{
+	GENERATED_BODY()
+
+	/** 요소 이름 (영어 · 자유 배치 요소는 디자이너의 Element Id와 같게) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "1 기본")
+	FName Id;
+
+	/** 용도 설명 (알아보기 쉽게 · 예: 골드 보유량) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "1 기본")
+	FText Purpose;
+
+	/** 종류 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "1 기본")
+	ECozyUiElementKind Kind = ECozyUiElementKind::Button;
+
+	/** 들어갈 자동 정렬 영역 (비우면 자유 배치 · 디자이너에 놓은 요소용) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "1 기본")
 	FName Area;
 
 	/** 영역 안 순서 (작을수록 앞) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Button")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "1 기본")
 	int32 Order = 0;
 
-	/** 표시 여부 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Button")
+	/** 표시 여부 (끄면 자리도 차지하지 않음) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "1 기본")
 	bool bVisible = true;
 
-	/** 버튼 글자 (비우면 글자 없음) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Button")
+	/** 글자 · 형식 ({0} 현재 · {1} 최대 · {2} 퍼센트 · {3} 남은 시간 · {4} 상태 글) · 게이지는 제목 줄 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "2 글자")
 	FText Label;
 
-	/** 아이콘 · 테마 이미지 이름 (예: Icon.Storage) · 비우면 아이콘 없음 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Button", meta = (GetOptions = "CozyUiTheme.GetImageNameOptions"))
-	FName Icon;
+	/** 글꼴 역할 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "2 글자")
+	ECozyUiTextRole TextRole = ECozyUiTextRole::Body;
 
-	/** 버튼 모양 · 테마 버튼 모양 이름 (비우면 Default) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Button", meta = (GetOptions = "CozyUiTheme.GetButtonStyleOptions"))
+	/** 글자 색 역할 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "2 글자")
+	ECozyUiColor TextColor = ECozyUiColor::Ink;
+
+	/** 긴 글을 자르지 않고 줄바꿈 (요소 폭이 정해져 있어야 함) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "2 글자")
+	bool bWrapText = false;
+
+	/** 아이콘·이미지 (테마 이미지 이름 · 비우면 없음) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "3 이미지", meta = (GetOptions = "CozyUiTheme.GetImageNameOptions"))
+	FName Image;
+
+	/** 이미지를 칸에 넣는 방법 (비율 유지 맞추기 · 꽉 채우기 · 원래 크기) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "3 이미지")
+	ECozyUiImageFit ImageFit = ECozyUiImageFit::KeepRatio;
+
+	/** 이미지 칸 크기 (0이면 테마 아이콘 크기) · 이미지 비율이 달라도 이 칸은 그대로 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "3 이미지")
+	FVector2D ImageBox = FVector2D::ZeroVector;
+
+	/** 이미지 색 입히기 (None이면 원래 색) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "3 이미지")
+	ECozyUiColor ImageTint = ECozyUiColor::None;
+
+	/** 배경 이미지 (칩·패널 · 테마 이미지 이름 · 예: Chip · Window · Panel) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "3 이미지", meta = (GetOptions = "CozyUiTheme.GetImageNameOptions"))
+	FName Background;
+
+	/** 버튼·게이지 모양 이름 (테마의 버튼 모양 · 게이지 모양 · 비우면 Default) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "3 이미지")
 	FName Style;
 
-	/** 크기 (0이면 테마 기본) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Button")
+	/** 크기 방법 (내용에 맞춤 · 고정) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "4 크기")
+	ECozyUiSizeMode SizeMode = ECozyUiSizeMode::Content;
+
+	/** 고정 크기 (한쪽이 0이면 그쪽만 내용에 맞춤) · 자유 배치 요소는 디자이너 크기가 우선 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "4 크기")
 	FVector2D Size = FVector2D::ZeroVector;
 
-	/** 클릭 동작 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Button")
+	/** 연결할 게임 값 (글자·칩·게이지) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "5 게임 값")
+	ECozyUiValue Value = ECozyUiValue::None;
+
+	/** 값 매개변수 (재료 ID 예: Wheat · 시설 정의 ID 예: Field) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "5 게임 값")
+	FName ValueParam;
+
+	/** 게이지 채움 방향 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "5 게임 값")
+	TEnumAsByte<EProgressBarFillType::Type> FillType = EProgressBarFillType::LeftToRight;
+
+	/** 게이지 안에 숫자 (현재/최대) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "5 게임 값")
+	bool bShowNumber = false;
+
+	/** 게이지 안에 퍼센트 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "5 게임 값")
+	bool bShowPercent = false;
+
+	/** 게이지 안에 남은 시간 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "5 게임 값")
+	bool bShowRemaining = false;
+
+	/** 게이지 채움 색 (None이면 상태색: 진행 · 일시 정지 · 가득 참) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "5 게임 값")
+	ECozyUiColor FillColor = ECozyUiColor::None;
+
+	/** 클릭 동작 (버튼) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "6 동작")
 	ECozyUiAction Action = ECozyUiAction::None;
 
-	/** 동작 매개변수 (지금은 쓰지 않음 · 나중 동작용) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Button")
+	/** 동작 매개변수 (지금은 쓰지 않음) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "6 동작")
 	FName ActionParam;
+
+	/** 정보 패널 안쪽 영역 이름 (이 영역에 넣은 요소들이 패널 안에 놓임) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "7 패널")
+	FName ChildArea;
+
+	/** 이 요소만 다른 모양 틀 (비우면 테마의 종류별 틀) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "8 고급")
+	TSoftClassPtr<class UCozyUiElementWidget> TemplateOverride;
 };

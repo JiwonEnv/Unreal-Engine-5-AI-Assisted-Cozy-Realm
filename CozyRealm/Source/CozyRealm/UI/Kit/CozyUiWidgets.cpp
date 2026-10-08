@@ -10,6 +10,12 @@
 #include "Components/VerticalBoxSlot.h"
 #include "Components/WrapBox.h"
 #include "Components/SizeBox.h"
+#include "Components/SizeBoxSlot.h"
+#include "Components/WrapBoxSlot.h"
+#include "Components/Spacer.h"
+#include "Components/UniformGridPanel.h"
+#include "Components/UniformGridSlot.h"
+#include "Engine/Texture2D.h"
 #include "Blueprint/WidgetTree.h"
 #include "Framework/Application/SlateApplication.h"
 
@@ -99,9 +105,10 @@ void UCozyUiImage::ApplyCozyTheme(const UCozyUiScreen& Screen)
 	if (const FSlateBrush* ThemeBrush = Theme->FindImage(ImageName))
 	{
 		FSlateBrush Copy = *ThemeBrush;
-		if (bUseThemeIconSize)
+		const FVector2D Box = bUseThemeIconSize ? Theme->Metrics.IconSize : FitBox;
+		if (!Box.IsNearlyZero())
 		{
-			Copy.ImageSize = Theme->Metrics.IconSize;
+			Copy.ImageSize = CozyUiFit::Resolve(*ThemeBrush, Box, Fit);
 		}
 		SetBrush(Copy);
 	}
@@ -124,27 +131,90 @@ void UCozyUiBorder::ApplyCozyTheme(const UCozyUiScreen& Screen)
 }
 
 // ---------------------------------------------------------------------------
-// 버튼
+// 이미지 맞춤
 
-void UCozyUiButton::NativeOnInitialized()
+FVector2D CozyUiFit::Resolve(const FSlateBrush& Brush, const FVector2D& Box, ECozyUiImageFit Fit)
+{
+	// 원래 크기: 텍스처 크기 (없으면 테마에 적은 이미지 크기)
+	FVector2D Native = Brush.ImageSize;
+	if (const UTexture2D* Texture = Cast<UTexture2D>(Brush.GetResourceObject()))
+	{
+		if (Texture->GetSizeX() > 0 && Texture->GetSizeY() > 0)
+		{
+			Native = FVector2D(Texture->GetSizeX(), Texture->GetSizeY());
+		}
+	}
+	if (Fit == ECozyUiImageFit::Original || Box.X <= 0.f || Box.Y <= 0.f || Native.X <= 0.f || Native.Y <= 0.f)
+	{
+		return Native;
+	}
+	if (Fit == ECozyUiImageFit::Stretch)
+	{
+		return Box;
+	}
+	const float Scale = FMath::Min(Box.X / Native.X, Box.Y / Native.Y);
+	return Native * Scale;
+}
+
+namespace
+{
+	EHorizontalAlignment ToHAlign(ECozyUiAlign Align)
+	{
+		switch (Align)
+		{
+		case ECozyUiAlign::Start: return HAlign_Left;
+		case ECozyUiAlign::Center: return HAlign_Center;
+		case ECozyUiAlign::End: return HAlign_Right;
+		default: return HAlign_Fill;
+		}
+	}
+
+	EVerticalAlignment ToVAlign(ECozyUiAlign Align)
+	{
+		switch (Align)
+		{
+		case ECozyUiAlign::Start: return VAlign_Top;
+		case ECozyUiAlign::Center: return VAlign_Center;
+		case ECozyUiAlign::End: return VAlign_Bottom;
+		default: return VAlign_Fill;
+		}
+	}
+
+	FText FormatValue(const FText& Format, const FCozyUiValueResult& R)
+	{
+		FFormatOrderedArguments Args;
+		Args.Add(FormatNumber(R.Current));
+		Args.Add(FormatNumber(R.Max));
+		Args.Add(FText::Format(LOCTEXT("Pct2", "{0}%"), FText::AsNumber(FMath::RoundToInt(R.Ratio() * 100.f))));
+		Args.Add(CozyUiFormat::Duration(R.RemainingSeconds));
+		Args.Add(R.Text);
+		return FText::Format(Format, Args);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 화면 구성 요소
+
+void UCozyUiElementWidget::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
 	if (Button)
 	{
-		Button->OnClicked.AddUniqueDynamic(this, &UCozyUiButton::HandleClicked);
+		Button->OnClicked.AddUniqueDynamic(this, &UCozyUiElementWidget::HandleClicked);
 	}
 }
 
-void UCozyUiButton::NativePreConstruct()
+void UCozyUiElementWidget::NativePreConstruct()
 {
 	Super::NativePreConstruct();
 	if (UCozyUiScreen* Screen = GetTypedOuter<UCozyUiScreen>())
 	{
 		ApplyCozyTheme(*Screen);
+		UpdateCozyValue(*Screen);
 	}
 }
 
-void UCozyUiButton::HandleClicked()
+void UCozyUiElementWidget::HandleClicked()
 {
 	if (UCozyUiScreen* Screen = GetTypedOuter<UCozyUiScreen>())
 	{
@@ -156,149 +226,113 @@ void UCozyUiButton::HandleClicked()
 	}
 }
 
-void UCozyUiButton::ApplyCozyTheme(const UCozyUiScreen& Screen)
+void UCozyUiElementWidget::ApplyCozyTheme(const UCozyUiScreen& Screen)
 {
-	// 내용: 영역이 준 줄 > 화면 설정의 같은 ID 줄 > 디자이너 기본값
+	// 내용: 영역이 준 줄 > 화면 설정의 같은 Id 줄 > 디자이너 기본값
 	if (!bFromArea)
 	{
-		const FCozyUiButtonEntry* Found = Screen.FindButtonEntry(ButtonId);
+		const FCozyUiElementEntry* Found = Screen.FindElement(ElementId);
 		Entry = Found ? *Found : Defaults;
 		if (Entry.Id.IsNone())
 		{
-			Entry.Id = ButtonId;
+			Entry.Id = ElementId;
 		}
 	}
 	const UCozyUiTheme* Theme = Screen.GetTheme();
-	if (!Theme || !Button)
+	if (!Theme)
 	{
 		return;
 	}
-	if (const FButtonStyle* Style = Theme->FindButtonStyle(Entry.Style))
+
+	if (Button)
 	{
-		Button->SetStyle(*Style);
+		if (const FButtonStyle* Style = Theme->FindButtonStyle(Entry.Style))
+		{
+			Button->SetStyle(*Style);
+		}
+		Button->SetToolTipText(Entry.Action == ECozyUiAction::None ? FText::GetEmpty() : UCozyUiScreen::GetActionName(Entry.Action));
 	}
+	if (Background)
+	{
+		if (const FSlateBrush* Brush = Theme->FindImage(Entry.Background))
+		{
+			Background->SetBrush(*Brush);
+			Background->SetBrushColor(FLinearColor::White);
+		}
+		else
+		{
+			Background->SetBrushColor(FLinearColor::Transparent);
+		}
+		Background->SetPadding(Entry.Kind == ECozyUiElementKind::Panel ? Theme->Metrics.WindowPadding : Theme->Metrics.PanelPadding);
+	}
+
+	// 이미지: 칸 크기는 고정, 이미지는 칸 안에 맞춤 방법대로 (비율이 다른 이미지로 바꿔도 줄이 흐트러지지 않음)
+	const FSlateBrush* ImageBrush = Theme->FindImage(Entry.Image);
+	const FVector2D Box = Entry.ImageBox.IsNearlyZero() ? Theme->Metrics.IconSize : Entry.ImageBox;
 	if (Icon)
 	{
-		const FSlateBrush* Brush = Theme->FindImage(Entry.Icon);
-		if (Brush)
+		if (ImageBrush)
 		{
-			FSlateBrush Copy = *Brush;
-			Copy.ImageSize = Theme->Metrics.IconSize;
+			FSlateBrush Copy = *ImageBrush;
+			Copy.ImageSize = CozyUiFit::Resolve(*ImageBrush, Box, Entry.ImageFit);
+			Copy.DrawAs = ESlateBrushDrawType::Image;
 			Icon->SetBrush(Copy);
+			Icon->SetColorAndOpacity(Entry.ImageTint == ECozyUiColor::None ? FLinearColor::White : Screen.GetColor(Entry.ImageTint));
 		}
-		Icon->SetVisibility(Brush ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		Icon->SetVisibility(ImageBrush ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		if (USizeBoxSlot* IconSlot = Cast<USizeBoxSlot>(Icon->Slot))
+		{
+			const bool bFill = Entry.ImageFit == ECozyUiImageFit::Stretch;
+			IconSlot->SetHorizontalAlignment(bFill ? HAlign_Fill : HAlign_Center);
+			IconSlot->SetVerticalAlignment(bFill ? VAlign_Fill : VAlign_Center);
+		}
 	}
+	if (IconBox)
+	{
+		if (Entry.ImageFit == ECozyUiImageFit::Original)
+		{
+			IconBox->ClearWidthOverride();
+			IconBox->ClearHeightOverride();
+		}
+		else
+		{
+			IconBox->SetWidthOverride(Box.X);
+			IconBox->SetHeightOverride(Box.Y);
+		}
+		IconBox->SetVisibility(ImageBrush ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+
 	if (Label)
 	{
-		Label->SetText(Entry.Label);
-		Label->SetVisibility(Entry.Label.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
-		const FSlateFontInfo Font = Screen.GetFont(ECozyUiTextRole::Button);
+		const ECozyUiTextRole Role = Entry.Kind == ECozyUiElementKind::Button ? ECozyUiTextRole::Button : Entry.TextRole;
+		const FSlateFontInfo Font = Screen.GetFont(Role);
 		if (Font.HasValidFont())
 		{
 			Label->SetFont(Font);
 		}
-		Label->SetColorAndOpacity(FSlateColor(Button->GetIsEnabled() ? Screen.GetColor(ECozyUiColor::Ink) : Theme->DisabledTextColor));
-	}
-	// 크기: 줄의 크기 > 테마 기본 크기 (0은 내용에 맞춤) · 위치는 디자이너·영역이 정함
-	if (USizeBox* Size = Cast<USizeBox>(WidgetTree ? WidgetTree->FindWidget(TEXT("SizeBox")) : nullptr))
-	{
-		const FVector2D Want = Entry.Size.IsNearlyZero() ? Theme->Metrics.ButtonSize : Entry.Size;
-		if (Want.X > 0.f) { Size->SetWidthOverride(Want.X); } else { Size->ClearWidthOverride(); }
-		if (Want.Y > 0.f) { Size->SetHeightOverride(Want.Y); } else { Size->ClearHeightOverride(); }
-	}
-	Button->SetToolTipText(UCozyUiScreen::GetActionName(Entry.Action));
-	SetVisibility(Entry.bVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-}
-
-// ---------------------------------------------------------------------------
-// 버튼 영역
-
-void UCozyUiButtonArea::ApplyCozyTheme(const UCozyUiScreen& Screen)
-{
-	if (!Box || !ButtonClass)
-	{
-		return;
-	}
-	const TArray<FCozyUiButtonEntry> Entries = Screen.GetButtonsForArea(AreaId);
-	const UCozyUiTheme* Theme = Screen.GetTheme();
-	const float Gap = Spacing >= 0.f ? Spacing : (Theme ? Theme->Metrics.Gap : 8.f);
-
-	// 버튼 구성이 바뀐 경우에만 다시 만듦 (매번 만들면 클릭이 끊김)
-	FString Signature = FString::Printf(TEXT("%.1f|"), Gap);
-	for (const FCozyUiButtonEntry& Each : Entries)
-	{
-		Signature += FString::Printf(TEXT("%s:%d:%d;"), *Each.Id.ToString(), Each.Order, Each.bVisible ? 1 : 0);
-	}
-	if (Signature != BuiltSignature || Spawned.Num() != Box->GetChildrenCount())
-	{
-		BuiltSignature = Signature;
-		Box->ClearChildren();
-		Spawned.Reset();
-		for (const FCozyUiButtonEntry& Each : Entries)
+		const bool bEnabled = !Button || Button->GetIsEnabled();
+		Label->SetColorAndOpacity(FSlateColor(bEnabled ? Screen.GetColor(Entry.TextColor) : Theme->DisabledTextColor));
+		Label->SetAutoWrapText(Entry.bWrapText);
+		if (Entry.Value == ECozyUiValue::None)
 		{
-			if (!Each.bVisible)
-			{
-				continue;
-			}
-			UCozyUiButton* NewButton = CreateWidget<UCozyUiButton>(this, ButtonClass);
-			if (!NewButton)
-			{
-				continue;
-			}
-			NewButton->bFromArea = true;
-			NewButton->SetEntry(Each);
-			UPanelSlot* NewSlot = Box->AddChild(NewButton);
-			const bool bFirst = Spawned.Num() == 0;
-			if (UHorizontalBoxSlot* H = Cast<UHorizontalBoxSlot>(NewSlot))
-			{
-				H->SetPadding(FMargin(bFirst ? 0.f : Gap, 0.f, 0.f, 0.f));
-				H->SetVerticalAlignment(VAlign_Center);
-			}
-			else if (UVerticalBoxSlot* V = Cast<UVerticalBoxSlot>(NewSlot))
-			{
-				V->SetPadding(FMargin(0.f, bFirst ? 0.f : Gap, 0.f, 0.f));
-			}
-			Spawned.Add(NewButton);
+			Label->SetText(Entry.Label);
 		}
-		if (UWrapBox* Wrap = Cast<UWrapBox>(Box))
+		Label->SetVisibility(Entry.Label.IsEmpty() && Entry.Value == ECozyUiValue::None ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	}
+
+	if (Bar)
+	{
+		if (const FCozyUiGaugeStyle* GaugeStyle = Theme->FindGaugeStyle(Entry.Style))
 		{
-			Wrap->SetInnerSlotPadding(FVector2D(Gap, Gap));
+			Bar->SetWidgetStyle(GaugeStyle->Style);
+			bTintByState = GaugeStyle->bTintByState;
+		}
+		Bar->SetBarFillType(Entry.FillType);
+		if (IsDesignTime())
+		{
+			Bar->SetPercent(0.6f);
 		}
 	}
-	else
-	{
-		// 같은 구성이면 내용(글자·아이콘·동작)만 새 값으로
-		int32 Index = 0;
-		for (const FCozyUiButtonEntry& Each : Entries)
-		{
-			if (Each.bVisible && Spawned.IsValidIndex(Index))
-			{
-				Spawned[Index++]->SetEntry(Each);
-			}
-		}
-	}
-	for (UCozyUiButton* Each : Spawned)
-	{
-		Each->ApplyCozyTheme(Screen);
-	}
-}
-
-// ---------------------------------------------------------------------------
-// 게이지
-
-void UCozyUiGauge::ApplyCozyTheme(const UCozyUiScreen& Screen)
-{
-	const UCozyUiTheme* Theme = Screen.GetTheme();
-	if (!Theme || !Bar)
-	{
-		return;
-	}
-	if (const FCozyUiGaugeStyle* GaugeStyle = Theme->FindGaugeStyle(Style))
-	{
-		Bar->SetWidgetStyle(GaugeStyle->Style);
-		bTintByState = GaugeStyle->bTintByState;
-	}
-	Bar->SetBarFillType(FillType);
 	if (ValueText)
 	{
 		const FSlateFontInfo Font = Screen.GetFont(ECozyUiTextRole::Small);
@@ -308,57 +342,232 @@ void UCozyUiGauge::ApplyCozyTheme(const UCozyUiScreen& Screen)
 		}
 		ValueText->SetColorAndOpacity(FSlateColor(Screen.GetColor(ECozyUiColor::Ink)));
 	}
-	if (IsDesignTime())
+
+	if (ChildArea)
 	{
-		Bar->SetPercent(DesignPercent);
+		ChildArea->AreaId = Entry.ChildArea;
+		ChildArea->ApplyCozyTheme(Screen);
 	}
+
+	// 크기: 고정이면 SizeBox로 · 내용에 맞춤이면 비움 (자유 배치 요소는 디자이너 슬롯 크기도 함께 작동)
+	if (SizeBox)
+	{
+		FVector2D Want = Entry.SizeMode == ECozyUiSizeMode::Fixed ? Entry.Size : FVector2D::ZeroVector;
+		if (Entry.SizeMode == ECozyUiSizeMode::Content && Entry.Kind == ECozyUiElementKind::Button)
+		{
+			Want = Theme->Metrics.ButtonSize;
+		}
+		if (Want.X > 0.f) { SizeBox->SetWidthOverride(Want.X); } else { SizeBox->ClearWidthOverride(); }
+		if (Want.Y > 0.f) { SizeBox->SetHeightOverride(Want.Y); } else { SizeBox->ClearHeightOverride(); }
+	}
+	SetVisibility(Entry.bVisible ? (Button ? ESlateVisibility::Visible : ESlateVisibility::SelfHitTestInvisible) : ESlateVisibility::Collapsed);
 }
 
-void UCozyUiGauge::UpdateCozyValue(const UCozyUiScreen& Screen)
+void UCozyUiElementWidget::UpdateCozyValue(const UCozyUiScreen& Screen)
 {
-	if (!Bar)
+	if (Entry.Value == ECozyUiValue::None)
 	{
 		return;
 	}
-	const FCozyUiValueResult R = Screen.GetValue(Value, ValueParam);
+	const FCozyUiValueResult R = Screen.GetValue(Entry.Value, Entry.ValueParam);
 	if (!R.bValid)
 	{
 		return;
 	}
-	Bar->SetPercent(R.Ratio());
-	if (FillColor != ECozyUiColor::None)
+	if (Label)
 	{
-		Bar->SetFillColorAndOpacity(Screen.GetColor(FillColor));
+		Label->SetText(Entry.Label.IsEmpty() ? FormatNumber(R.Current) : FormatValue(Entry.Label, R));
+		Label->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
-	else if (bTintByState)
+	if (Bar)
 	{
-		Bar->SetFillColorAndOpacity(Screen.GetColor(R.StateColor));
-	}
-	else
-	{
-		Bar->SetFillColorAndOpacity(FLinearColor::White);
+		Bar->SetPercent(R.Ratio());
+		if (Entry.FillColor != ECozyUiColor::None)
+		{
+			Bar->SetFillColorAndOpacity(Screen.GetColor(Entry.FillColor));
+		}
+		else
+		{
+			Bar->SetFillColorAndOpacity(bTintByState ? Screen.GetColor(R.StateColor) : FLinearColor::White);
+		}
 	}
 	if (ValueText)
 	{
+		// 막대 안에는 짧은 숫자만 · 긴 상태 설명은 제목 줄({4})에서 줄바꿈으로 보여 준다
 		TArray<FString> Parts;
-		if (bShowNumber)
+		if (Entry.bShowNumber)
 		{
 			Parts.Add(R.Max > 0.f ? FString::Printf(TEXT("%d/%d"), FMath::RoundToInt(R.Current), FMath::RoundToInt(R.Max)) : FString::FromInt(FMath::RoundToInt(R.Current)));
 		}
-		if (bShowPercent)
+		if (Entry.bShowPercent)
 		{
 			Parts.Add(FString::Printf(TEXT("%d%%"), FMath::RoundToInt(R.Ratio() * 100.f)));
 		}
-		if (bShowRemaining && R.RemainingSeconds > 0.f)
+		if (Entry.bShowRemaining && R.RemainingSeconds > 0.f)
 		{
 			Parts.Add(CozyUiFormat::Duration(R.RemainingSeconds).ToString());
 		}
-		if (!R.Text.IsEmpty() && (R.StateColor == ECozyUiColor::Paused || R.StateColor == ECozyUiColor::Locked))
-		{
-			Parts.Add(R.Text.ToString());
-		}
 		ValueText->SetText(FText::FromString(FString::Join(Parts, TEXT(" · "))));
 		ValueText->SetVisibility(Parts.Num() > 0 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 자동 정렬 영역
+
+void UCozyUiArea::ApplyCozyTheme(const UCozyUiScreen& Screen)
+{
+	if (!Host || !WidgetTree)
+	{
+		return;
+	}
+	Host->SetBrushColor(FLinearColor::Transparent);
+
+	FCozyUiAreaLayout Layout;
+	if (const FCozyUiAreaLayout* Found = Screen.FindArea(AreaId))
+	{
+		Layout = *Found;
+	}
+	const UCozyUiTheme* Theme = Screen.GetTheme();
+	const float Gap = Layout.Gap >= 0.f ? Layout.Gap : (Theme ? Theme->Metrics.Gap : 8.f);
+	const TArray<FCozyUiElementEntry> Entries = Screen.GetElementsForArea(AreaId);
+
+	// 구성(요소 목록 · 정렬 방식)이 바뀐 경우에만 다시 만듦 · 내용만 바뀌면 기존 요소에 다시 적용
+	FString Signature = FString::Printf(TEXT("%d|%d|%d|%d|%.1f|%s|"), (int32)Layout.Flow, (int32)Layout.Spread, (int32)Layout.PackAlign, (int32)Layout.ItemAlign, Gap,
+		*FString::Printf(TEXT("%.0f,%.0f,%.0f,%.0f"), Layout.Padding.Left, Layout.Padding.Top, Layout.Padding.Right, Layout.Padding.Bottom));
+	for (const FCozyUiElementEntry& Each : Entries)
+	{
+		if (Each.bVisible)
+		{
+			Signature += FString::Printf(TEXT("%s:%d:%s;"), *Each.Id.ToString(), (int32)Each.Kind, *Each.TemplateOverride.ToString());
+		}
+	}
+	if (Signature == BuiltSignature && Spawned.Num() > 0)
+	{
+		int32 Index = 0;
+		for (const FCozyUiElementEntry& Each : Entries)
+		{
+			if (Each.bVisible && Spawned.IsValidIndex(Index) && Spawned[Index])
+			{
+				Spawned[Index]->SetEntry(Each, true);
+				Spawned[Index]->ApplyCozyTheme(Screen);
+				++Index;
+			}
+		}
+		return;
+	}
+	BuiltSignature = Signature;
+	Spawned.Reset();
+	Host->SetPadding(Layout.Padding);
+
+	// 정렬 상자: 가로 · 세로 · 줄바꿈
+	UPanelWidget* Box = nullptr;
+	if (Layout.Flow == ECozyUiFlow::Wrap)
+	{
+		UWrapBox* Wrap = WidgetTree->ConstructWidget<UWrapBox>(UWrapBox::StaticClass());
+		Wrap->SetInnerSlotPadding(FVector2D(Gap, Gap));
+		Wrap->SetHorizontalAlignment(ToHAlign(Layout.PackAlign == ECozyUiAlign::Fill ? ECozyUiAlign::Start : Layout.PackAlign));
+		Box = Wrap;
+	}
+	else if (Layout.Spread == ECozyUiSpread::EqualSize)
+	{
+		// 같은 크기: 균일 격자 (모든 칸이 가장 큰 요소 크기 · 영역이 좁아도 글자가 겹치지 않음)
+		UUniformGridPanel* Grid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass());
+		Grid->SetSlotPadding(FMargin(Gap * 0.5f));
+		Box = Grid;
+	}
+	else if (Layout.Flow == ECozyUiFlow::Vertical)
+	{
+		Box = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
+	}
+	else
+	{
+		Box = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+	}
+	Host->SetContent(Box);
+
+	// 묶음 위치: 붙여서 놓을 때만 영역 안에서 앞·가운데·뒤 · 같은 크기·균등 간격·줄바꿈은 영역을 꽉 채움
+	const bool bHorizontal = Layout.Flow != ECozyUiFlow::Vertical;
+	const bool bFillMain = Layout.Spread == ECozyUiSpread::EqualGap || Layout.Flow == ECozyUiFlow::Wrap
+		|| (Layout.Spread == ECozyUiSpread::EqualSize && Layout.PackAlign == ECozyUiAlign::Fill);
+	if (bHorizontal)
+	{
+		Host->SetHorizontalAlignment(bFillMain ? HAlign_Fill : ToHAlign(Layout.PackAlign));
+		Host->SetVerticalAlignment(ToVAlign(Layout.ItemAlign));
+	}
+	else
+	{
+		Host->SetVerticalAlignment(bFillMain ? VAlign_Fill : ToVAlign(Layout.PackAlign));
+		Host->SetHorizontalAlignment(ToHAlign(Layout.ItemAlign));
+	}
+
+	for (const FCozyUiElementEntry& Each : Entries)
+	{
+		if (!Each.bVisible)
+		{
+			continue;
+		}
+		TSubclassOf<UCozyUiElementWidget> Class = Each.TemplateOverride.LoadSynchronous();
+		if (!Class && Theme)
+		{
+			if (const TSoftClassPtr<UCozyUiElementWidget>* Template = Theme->ElementTemplates.Find(Each.Kind))
+			{
+				Class = Template->LoadSynchronous();
+			}
+		}
+		if (!Class)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[UI] 영역 %s: 요소 %s의 모양 틀이 테마에 없습니다"), *AreaId.ToString(), *Each.Id.ToString());
+			continue;
+		}
+		UCozyUiElementWidget* NewElement = CreateWidget<UCozyUiElementWidget>(this, Class);
+		if (!NewElement)
+		{
+			continue;
+		}
+		NewElement->SetEntry(Each, true);
+
+		// 균등 간격: 요소 사이에 늘어나는 빈칸
+		if (Layout.Spread == ECozyUiSpread::EqualGap && Spawned.Num() > 0 && Layout.Flow != ECozyUiFlow::Wrap)
+		{
+			USpacer* Spacer = WidgetTree->ConstructWidget<USpacer>(USpacer::StaticClass());
+			UPanelSlot* SpacerSlot = Box->AddChild(Spacer);
+			if (UHorizontalBoxSlot* H = Cast<UHorizontalBoxSlot>(SpacerSlot)) { H->SetSize(FSlateChildSize(ESlateSizeRule::Fill)); }
+			if (UVerticalBoxSlot* V = Cast<UVerticalBoxSlot>(SpacerSlot)) { V->SetSize(FSlateChildSize(ESlateSizeRule::Fill)); }
+		}
+
+		UPanelSlot* NewSlot = Box->AddChild(NewElement);
+		const bool bFirst = Spawned.Num() == 0;
+		const float Lead = (bFirst || Layout.Spread == ECozyUiSpread::EqualGap) ? 0.f : Gap;
+		if (UHorizontalBoxSlot* H = Cast<UHorizontalBoxSlot>(NewSlot))
+		{
+			H->SetPadding(FMargin(Lead, 0.f, 0.f, 0.f));
+			H->SetVerticalAlignment(ToVAlign(Layout.ItemAlign));
+			H->SetHorizontalAlignment(HAlign_Fill);
+			H->SetSize(FSlateChildSize(Layout.Spread == ECozyUiSpread::EqualSize ? ESlateSizeRule::Fill : ESlateSizeRule::Automatic));
+		}
+		else if (UVerticalBoxSlot* V = Cast<UVerticalBoxSlot>(NewSlot))
+		{
+			V->SetPadding(FMargin(0.f, Lead, 0.f, 0.f));
+			V->SetHorizontalAlignment(ToHAlign(Layout.ItemAlign));
+			V->SetVerticalAlignment(VAlign_Fill);
+			V->SetSize(FSlateChildSize(Layout.Spread == ECozyUiSpread::EqualSize ? ESlateSizeRule::Fill : ESlateSizeRule::Automatic));
+		}
+		else if (UWrapBoxSlot* W = Cast<UWrapBoxSlot>(NewSlot))
+		{
+			W->SetVerticalAlignment(ToVAlign(Layout.ItemAlign));
+		}
+		else if (UUniformGridSlot* G = Cast<UUniformGridSlot>(NewSlot))
+		{
+			const int32 Index = Spawned.Num();
+			G->SetRow(bHorizontal ? 0 : Index);
+			G->SetColumn(bHorizontal ? Index : 0);
+			G->SetHorizontalAlignment(HAlign_Fill);
+			G->SetVerticalAlignment(VAlign_Fill);
+		}
+		Spawned.Add(NewElement);
+		NewElement->ApplyCozyTheme(Screen);
+		NewElement->UpdateCozyValue(Screen);
 	}
 }
 

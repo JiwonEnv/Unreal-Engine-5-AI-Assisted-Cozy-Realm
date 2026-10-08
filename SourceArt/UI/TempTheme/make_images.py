@@ -1,6 +1,6 @@
 # 임시 디자인용 개별 UI 이미지 (글자 없음 · 한 장 = 한 요소) · 크롬 헤드리스로 투명 PNG
 # 2026-10-08 임시 디자인(미승인) · 다시 만들기: python make_images.py · 언리얼에는 /Game/CozyRealm/UI/Textures/Temp 로 가져옴
-import os, subprocess
+import os, subprocess, tempfile
 OUT = os.path.dirname(os.path.abspath(__file__))  # 이 폴더에 PNG를 만든다
 os.makedirs(OUT, exist_ok=True)
 CHROME = r'C:\Program Files\Google\Chrome\Application\chrome.exe'
@@ -44,11 +44,16 @@ icons = {
 for k, (g, bg) in icons.items():
     items[k] = (64, 64, icon(g, bg))
 
+import sys
+ONLY = set(sys.argv[1:])  # 이름을 주면 그 이미지만 다시 만든다
 for name, (w, h, html) in items.items():
+    if ONLY and name not in ONLY:
+        continue
     hp = os.path.join(OUT, name + '.html')
-    open(hp, 'w', encoding='utf-8').write(BASE % html)
+    # 크롬은 작은 창을 더 넓게 그릴 수 있어 오른쪽이 잘림 → 정확한 크기 상자 안에 그린다 (2026-10-08 창 배경 오른쪽 테두리 누락 수정)
+    open(hp, 'w', encoding='utf-8').write(BASE % f'<div style="position:relative;width:{w}px;height:{h}px;overflow:hidden">{html}</div>')
     subprocess.run([CHROME, '--headless=new', '--disable-gpu', '--hide-scrollbars', '--default-background-color=00000000',
-                    f'--user-data-dir={os.path.join(OUT, "_chrome")}', f'--window-size={w},{h}',
+                    f'--user-data-dir={os.path.join(tempfile.gettempdir(), "cozy_ui_chrome")}', f'--window-size={w},{h}',
                     f'--screenshot={os.path.join(OUT, name + ".png")}', 'file:///' + hp.replace('\\', '/')],
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     os.remove(hp)
