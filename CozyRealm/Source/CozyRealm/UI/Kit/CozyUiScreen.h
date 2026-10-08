@@ -18,7 +18,7 @@ struct FCozyUiAreaLayout;
  *  - 미리보기: 실제 값 대신 가짜 상태를 보여 주고, 버튼은 알림만 (재료를 쓰지 않음)
  *  게임 규칙은 이 클래스에 없다. 값을 읽고 기존 기능을 부르기만 한다.
  */
-UCLASS(Abstract)
+UCLASS(Abstract, meta = (DisplayName = "Cozy UI Screen (편집 가능한 화면)"))
 class UCozyUiScreen : public UUserWidget
 {
 	GENERATED_BODY()
@@ -26,15 +26,15 @@ class UCozyUiScreen : public UUserWidget
 public:
 
 	/** 이 화면의 설정 (영역 · 요소 목록 · 테마 덮어쓰기) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cozy UI")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cozy UI", meta = (DisplayName = "Config (화면 설정)"))
 	TObjectPtr<UCozyUiScreenConfig> Config;
 
 	/** 미리보기 (실제 값 대신 가짜 상태 · 버튼은 동작하지 않고 알림만) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cozy UI|미리보기")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cozy UI|미리보기", meta = (DisplayName = "Preview (미리보기)"))
 	bool bPreview = false;
 
 	/** 미리보기 상태 (디자이너에서도 이 상태로 보임) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cozy UI|미리보기")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cozy UI|미리보기", meta = (DisplayName = "Preview State (미리보기 상태)"))
 	ECozyUiPreviewState PreviewState = ECozyUiPreviewState::Progress;
 
 	UFUNCTION(BlueprintCallable, Category = "Cozy UI")

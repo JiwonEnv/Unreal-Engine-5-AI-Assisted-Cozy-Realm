@@ -43,27 +43,27 @@ class UCozyUiText : public UTextBlock, public ICozyUiElement
 public:
 
 	/** 글꼴 역할 (테마의 제목 · 본문 · 숫자 · 작은 글 · 버튼) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI", meta = (DisplayName = "Role (글꼴 역할)"))
 	ECozyUiTextRole Role = ECozyUiTextRole::Body;
 
 	/** 글자 크기만 따로 (0이면 테마 크기) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI", meta = (DisplayName = "Size Override (글자 크기 따로)"))
 	int32 SizeOverride = 0;
 
 	/** 색 역할 (None이면 디자이너에서 고른 색 그대로) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI", meta = (DisplayName = "Color Role (색 역할)"))
 	ECozyUiColor ColorRole = ECozyUiColor::Ink;
 
 	/** 표시할 게임 값 (None이면 디자이너에 쓴 글자 그대로) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI|값")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI|값", meta = (DisplayName = "Value (연결할 게임 값)"))
 	ECozyUiValue Value = ECozyUiValue::None;
 
 	/** 값 매개변수 (재료 ID · 시설 정의 ID) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI|값")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI|값", meta = (DisplayName = "Value Param (값 매개변수)"))
 	FName ValueParam;
 
 	/** 표시 형식 · {0} 현재 · {1} 최대 · {2} 퍼센트 · {3} 남은 시간 · {4} 값 글자 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI|값")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI|값", meta = (DisplayName = "Format (표시 형식)"))
 	FText Format = FText::FromString(TEXT("{0}"));
 
 	virtual void ApplyCozyTheme(const UCozyUiScreen& Screen) override;
@@ -83,23 +83,23 @@ class UCozyUiImage : public UImage, public ICozyUiElement
 public:
 
 	/** 테마 이미지 이름 (예: Icon.Gold) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI", meta = (GetOptions = "CozyUiTheme.GetImageNameOptions"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI", meta = (DisplayName = "Image Name (이미지 이름표)", GetOptions = "CozyUiTheme.GetImageNameOptions"))
 	FName ImageName;
 
 	/** 색 입히기 (None이면 이미지 원래 색) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI", meta = (DisplayName = "Tint Role (색 입히기)"))
 	ECozyUiColor TintRole = ECozyUiColor::None;
 
 	/** 크기를 테마 아이콘 크기 칸에 맞출지 (끄면 Fit Box 칸 · 둘 다 없으면 이미지 원래 크기) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI", meta = (DisplayName = "Use Theme Icon Size (테마 아이콘 크기 칸)"))
 	bool bUseThemeIconSize = false;
 
 	/** 칸 크기 (0이면 칸 없음 = 원래 크기) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI", meta = (DisplayName = "Fit Box (칸 크기)"))
 	FVector2D FitBox = FVector2D::ZeroVector;
 
 	/** 칸에 넣는 방법 (비율 유지 맞추기 · 꽉 채우기 · 원래 크기) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI", meta = (DisplayName = "Fit (이미지 맞춤)"))
 	ECozyUiImageFit Fit = ECozyUiImageFit::KeepRatio;
 
 	virtual void ApplyCozyTheme(const UCozyUiScreen& Screen) override;
@@ -118,15 +118,15 @@ class UCozyUiBorder : public UBorder, public ICozyUiElement
 public:
 
 	/** 배경 이미지 이름 (예: Window · Panel · Chip) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI", meta = (GetOptions = "CozyUiTheme.GetImageNameOptions"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI", meta = (DisplayName = "Image Name (이미지 이름표)", GetOptions = "CozyUiTheme.GetImageNameOptions"))
 	FName ImageName;
 
 	/** 색 입히기 (None이면 이미지 원래 색) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI", meta = (DisplayName = "Tint Role (색 입히기)"))
 	ECozyUiColor TintRole = ECozyUiColor::None;
 
 	/** 안쪽 여백: 0 창 · 1 패널·칩 · 2 버튼 · 3 디자이너 값 그대로 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI", meta = (ClampMin = "0", ClampMax = "3"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI", meta = (DisplayName = "Padding Role (배경 안쪽 여백)", ClampMin = "0", ClampMax = "3"))
 	int32 PaddingRole = 1;
 
 	virtual void ApplyCozyTheme(const UCozyUiScreen& Screen) override;
@@ -151,11 +151,11 @@ class UCozyUiElementWidget : public UUserWidget, public ICozyUiElement
 public:
 
 	/** 자유 배치용 · 화면 설정 요소 목록의 Id (영역이 만든 요소는 자동으로 채워짐) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cozy UI")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cozy UI", meta = (DisplayName = "Element Id (화면 설정 요소 이름)"))
 	FName ElementId;
 
 	/** 화면 설정에 같은 Id가 없을 때 쓸 내용 (디자이너 미리보기용) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cozy UI")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cozy UI", meta = (DisplayName = "Defaults (설정에 없을 때 쓸 내용)"))
 	FCozyUiElementEntry Defaults;
 
 	/** 영역이 만든 요소의 내용 지정 */
@@ -227,7 +227,7 @@ class UCozyUiArea : public UUserWidget, public ICozyUiElement
 public:
 
 	/** 영역 이름 (화면 설정 영역 목록의 Id) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI", meta = (DisplayName = "Area Id (영역 이름)"))
 	FName AreaId;
 
 	virtual void ApplyCozyTheme(const UCozyUiScreen& Screen) override;
