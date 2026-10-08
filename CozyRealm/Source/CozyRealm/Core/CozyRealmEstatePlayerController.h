@@ -33,6 +33,9 @@ public:
 	void SetPlacementMode(bool bEnable);
 	bool IsPlacementMode() const { return bPlacementMode; }
 
+	/** 시설 선택 해제 (선택 표시 · 기능 아이콘 숨김) · 상세 창을 열 때 HUD도 부름 */
+	void ClearSelection();
+
 protected:
 
 	virtual void BeginPlay() override;
@@ -47,7 +50,6 @@ private:
 	/** 왼쪽 클릭: 시설이면 선택하고 기능 아이콘을, 빈 곳이면 선택 해제 */
 	void HandleWorldClick();
 	void SelectFacility(ACozyFacilityActor* Facility);
-	void ClearSelection();
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCozyHudWidget> Hud;
