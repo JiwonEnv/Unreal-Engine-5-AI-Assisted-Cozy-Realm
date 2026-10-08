@@ -4,6 +4,7 @@
 #include "Estate/CozyEstateSubsystem.h"
 #include "EngineUtils.h"
 #include "Camera/CozyRealmCameraPawn.h"
+#include "CozyRealm.h"
 
 ACozyRealmEstatePlayerController::ACozyRealmEstatePlayerController()
 {
@@ -131,6 +132,7 @@ void ACozyRealmEstatePlayerController::HandleWorldClick()
 {
 	if (Hud && Hud->IsWindowOpen())
 	{
+		UE_LOG(LogCozyRealm, Log, TEXT("[입력] 월드 클릭 무시: 창이 열려 있음"));
 		return;
 	}
 
@@ -139,10 +141,12 @@ void ACozyRealmEstatePlayerController::HandleWorldClick()
 	{
 		if (ACozyFacilityActor* Facility = Cast<ACozyFacilityActor>(Hit.GetActor()))
 		{
+			UE_LOG(LogCozyRealm, Log, TEXT("[입력] 시설 클릭: %s"), *Facility->GetName());
 			SelectFacility(Facility);
 			return;
 		}
 	}
+	UE_LOG(LogCozyRealm, Log, TEXT("[입력] 빈 곳 클릭 → 선택 해제"));
 	// 빈 곳 클릭 → 닫기
 	ClearSelection();
 }

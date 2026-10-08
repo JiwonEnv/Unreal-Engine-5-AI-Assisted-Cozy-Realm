@@ -360,7 +360,8 @@ void UCozyUiElementWidget::ApplyCozyTheme(const UCozyUiScreen& Screen)
 		if (Want.X > 0.f) { SizeBox->SetWidthOverride(Want.X); } else { SizeBox->ClearWidthOverride(); }
 		if (Want.Y > 0.f) { SizeBox->SetHeightOverride(Want.Y); } else { SizeBox->ClearHeightOverride(); }
 	}
-	SetVisibility(Entry.bVisible ? (Button ? ESlateVisibility::Visible : ESlateVisibility::SelfHitTestInvisible) : ESlateVisibility::Collapsed);
+	// 요소 자신은 마우스를 통과시키고, 안의 Button만 클릭을 받는다
+	SetVisibility(Entry.bVisible ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 }
 
 void UCozyUiElementWidget::UpdateCozyValue(const UCozyUiScreen& Screen)
@@ -422,6 +423,8 @@ void UCozyUiArea::ApplyCozyTheme(const UCozyUiScreen& Screen)
 		return;
 	}
 	Host->SetBrushColor(FLinearColor::Transparent);
+	// 영역의 빈 곳은 클릭을 통과시킨다 (안의 버튼만 입력)
+	Host->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 
 	FCozyUiAreaLayout Layout;
 	if (const FCozyUiAreaLayout* Found = Screen.FindArea(AreaId))

@@ -6,6 +6,13 @@
 #include "Core/CozyRealmEstatePlayerController.h"
 #include "Estate/CozyEstateSubsystem.h"
 #include "Blueprint/WidgetTree.h"
+#include "Components/Button.h"
+#include "Components/CheckBox.h"
+#include "Components/Slider.h"
+#include "Components/EditableText.h"
+#include "Components/EditableTextBox.h"
+#include "Components/ScrollBox.h"
+#include "Components/ComboBoxString.h"
 #include "CozyRealm.h"
 
 #define LOCTEXT_NAMESPACE "CozyUi"
@@ -224,6 +231,35 @@ void UCozyUiScreen::RefreshTheme()
 			Element.ApplyCozyTheme(*this);
 		}
 	});
+	EnforcePassThrough();
+}
+
+void UCozyUiScreen::EnforcePassThrough() const
+{
+	// 디자이너에서 실수로 '보임(Visible)'으로 둔 배경·글자도 플레이에서는 통과시킨다.
+	// 입력이 필요한 위젯(버튼·체크·슬라이더·글 입력·스크롤·목록 상자)만 그대로 둔다.
+	TFunction<void(const UUserWidget*)> Walk;
+	Walk = [&Walk](const UUserWidget* Owner)
+	{
+		if (!Owner || !Owner->WidgetTree)
+		{
+			return;
+		}
+		Owner->WidgetTree->ForEachWidget([&Walk](UWidget* Widget)
+		{
+			const bool bInteractive = Widget->IsA<UButton>() || Widget->IsA<UCheckBox>() || Widget->IsA<USlider>()
+				|| Widget->IsA<UEditableText>() || Widget->IsA<UEditableTextBox>() || Widget->IsA<UScrollBox>() || Widget->IsA<UComboBoxString>();
+			if (!bInteractive && Widget->GetVisibility() == ESlateVisibility::Visible)
+			{
+				Widget->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+			}
+			if (const UUserWidget* Nested = Cast<UUserWidget>(Widget))
+			{
+				Walk(Nested);
+			}
+		});
+	};
+	Walk(this);
 }
 
 void UCozyUiScreen::RefreshValues()

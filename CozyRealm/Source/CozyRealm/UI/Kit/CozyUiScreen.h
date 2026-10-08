@@ -74,6 +74,9 @@ protected:
 
 private:
 	void ForEachElement(TFunctionRef<void(class ICozyUiElement&)> Visit) const;
+
+	/** 버튼·입력 칸만 마우스를 받고, 배경·글자·이미지·게이지·빈 영역은 통과시킨다 (뒤의 시설 클릭이 막히지 않게) */
+	void EnforcePassThrough() const;
 	void BindAssetEvents();
 	void UnbindAssetEvents();
 	void HandleAssetChanged(const UObject* Asset);
