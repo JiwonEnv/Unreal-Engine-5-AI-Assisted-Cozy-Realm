@@ -964,6 +964,14 @@ void UCozyHudWidget::OpenWindow(ECozyWindowKind Kind, const FGuid& FacilityId, c
 
 void UCozyHudWidget::CloseWindow()
 {
+	// 방치 보상 창은 닫기도 '확인'과 같게 처리 · 안 하면 남은 보고서 때문에 바로 다시 열려 닫기가 안 되는 것처럼 보임
+	if (WindowKind == ECozyWindowKind::OfflineReport)
+	{
+		if (UCozyEstateSubsystem* Estate = GetEstate())
+		{
+			Estate->DismissOfflineReport();
+		}
+	}
 	WindowKind = ECozyWindowKind::None;
 	if (WindowOverlay)
 	{
