@@ -90,9 +90,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
 	ECozyUiColor TintRole = ECozyUiColor::None;
 
-	/** 크기를 테마 아이콘 크기로 맞출지 (끄면 이미지 원래 크기 · 슬롯 크기) */
+	/** 크기를 테마 아이콘 크기 칸에 맞출지 (끄면 Fit Box 칸 · 둘 다 없으면 이미지 원래 크기) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
 	bool bUseThemeIconSize = false;
+
+	/** 칸 크기 (0이면 칸 없음 = 원래 크기) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
+	FVector2D FitBox = FVector2D::ZeroVector;
+
+	/** 칸에 넣는 방법 (비율 유지 맞추기 · 꽉 채우기 · 원래 크기) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
+	ECozyUiImageFit Fit = ECozyUiImageFit::KeepRatio;
 
 	virtual void ApplyCozyTheme(const UCozyUiScreen& Screen) override;
 
@@ -129,39 +137,33 @@ public:
 };
 
 /**
- *  버튼 (Widget Blueprint WBP_UiButton의 부모).
- *  디자이너에 놓으면 '자유 배치 버튼': 위치·크기는 디자이너, ButtonId가 화면 설정에 있으면 글자·아이콘·표시·동작은 설정 값.
- *  버튼 영역이 만들면 '자동 정렬 버튼': 모든 값이 화면 설정 한 줄에서 옴.
+ *  화면 구성 요소 (버튼 · 글자 · 이미지 · 게이지 · 칩 · 정보 패널의 모양 틀 WBP_Ui*의 부모).
+ *  - 영역이 만든 요소: 화면 설정의 요소 한 줄이 모든 내용을 정하고, 위치는 영역 설정이 정한다.
+ *  - 디자이너에 놓은 요소(자유 배치): Element Id로 화면 설정의 한 줄을 찾아 내용만 받고, 위치·크기·기준점은 디자이너가 정한다.
+ *  틀 안에 있는 부품만 쓴다 (이름으로 연결 · 모두 선택 사항):
+ *  SizeBox(전체 크기) · Button · Background(배경) · IconBox(이미지 칸) · Icon · Label(글자) · Bar(게이지 막대) · ValueText(막대 안 글자) · ChildArea(패널 안 영역)
  */
-UCLASS(Abstract, meta = (DisplayName = "Cozy 버튼"))
-class UCozyUiButton : public UUserWidget, public ICozyUiElement
+UCLASS(Abstract, meta = (DisplayName = "Cozy 화면 요소"))
+class UCozyUiElementWidget : public UUserWidget, public ICozyUiElement
 {
 	GENERATED_BODY()
 
 public:
 
-	/** 화면 설정의 버튼 줄과 연결하는 ID */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
-	FName ButtonId;
+	/** 자유 배치용 · 화면 설정 요소 목록의 Id (영역이 만든 요소는 자동으로 채워짐) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cozy UI")
+	FName ElementId;
 
-	/** 설정에 없을 때 쓰는 값 (설정에 같은 ID가 있으면 설정 값이 우선) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
-	FCozyUiButtonEntry Defaults;
+	/** 화면 설정에 같은 Id가 없을 때 쓸 내용 (디자이너 미리보기용) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cozy UI")
+	FCozyUiElementEntry Defaults;
 
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UButton> Button;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UImage> Icon;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UTextBlock> Label;
-
-	/** 자동 정렬 영역이 만든 버튼이면 그 줄 · 아니면 설정에서 ButtonId로 찾음 */
-	void SetEntry(const FCozyUiButtonEntry& InEntry) { Entry = InEntry; bHasEntry = true; }
-	const FCozyUiButtonEntry& GetEffectiveEntry() const { return Entry; }
+	/** 영역이 만든 요소의 내용 지정 */
+	void SetEntry(const FCozyUiElementEntry& InEntry, bool bInFromArea) { Entry = InEntry; bFromArea = bInFromArea; }
+	const FCozyUiElementEntry& GetEntry() const { return Entry; }
 
 	virtual void ApplyCozyTheme(const UCozyUiScreen& Screen) override;
+	virtual void UpdateCozyValue(const UCozyUiScreen& Screen) override;
 
 #if WITH_EDITOR
 	virtual const FText GetPaletteCategory() override { return FText::FromString(TEXT("Cozy UI")); }
@@ -171,118 +173,81 @@ protected:
 	virtual void NativeOnInitialized() override;
 	virtual void NativePreConstruct() override;
 
-	UFUNCTION()
-	void HandleClicked();
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<class USizeBox> SizeBox;
 
-private:
-	FCozyUiButtonEntry Entry;
-	bool bHasEntry = false;
-	bool bFromArea = false;
-	friend class UCozyUiButtonArea;
-};
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> Button;
 
-/**
- *  자동 정렬 버튼 영역 (WBP_UiButtonArea의 부모 · 안에 Box 패널 하나).
- *  영역의 위치·크기·앵커는 화면 디자이너에서, 안의 버튼 목록·순서는 화면 설정 Data Asset에서 정한다.
- *  Box를 가로 상자·세로 상자·줄바꿈 상자 중 무엇으로 두느냐로 정렬 방향이 정해진다.
- */
-UCLASS(Abstract, meta = (DisplayName = "Cozy 버튼 영역"))
-class UCozyUiButtonArea : public UUserWidget, public ICozyUiElement
-{
-	GENERATED_BODY()
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UBorder> Background;
 
-public:
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<class USizeBox> IconBox;
 
-	/** 이 영역 이름 · 화면 설정 버튼 줄의 Area와 같으면 여기 들어옴 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
-	FName AreaId;
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UImage> Icon;
 
-	/** 만들 버튼 블루프린트 (WBP_UiButton 등) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
-	TSubclassOf<UCozyUiButton> ButtonClass;
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> Label;
 
-	/** 버튼 사이 간격 (음수면 테마 간격) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
-	float Spacing = -1.f;
-
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UPanelWidget> Box;
-
-	virtual void ApplyCozyTheme(const UCozyUiScreen& Screen) override;
-
-#if WITH_EDITOR
-	virtual const FText GetPaletteCategory() override { return FText::FromString(TEXT("Cozy UI")); }
-#endif
-
-private:
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UCozyUiButton>> Spawned;
-	FString BuiltSignature;
-};
-
-/**
- *  게이지 (WBP_UiGauge의 부모 · 안에 Bar 진행 막대 + 선택 ValueText 글자).
- *  모양(배경·채움 이미지)은 테마 게이지 모양, 크기·위치는 디자이너, 표시할 값은 목록에서 고른다.
- */
-UCLASS(Abstract, meta = (DisplayName = "Cozy 게이지"))
-class UCozyUiGauge : public UUserWidget, public ICozyUiElement
-{
-	GENERATED_BODY()
-
-public:
-
-	/** 테마 게이지 모양 이름 (비우면 Default) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI", meta = (GetOptions = "CozyUiTheme.GetGaugeStyleOptions"))
-	FName Style;
-
-	/** 채움 색 (None이면 상태에 따라 · 진행 · 일시 정지 · 가득 참 · 잠김 · 수령 가능) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
-	ECozyUiColor FillColor = ECozyUiColor::None;
-
-	/** 채움 방향 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
-	TEnumAsByte<EProgressBarFillType::Type> FillType = EProgressBarFillType::LeftToRight;
-
-	/** 표시할 게임 값 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI|값")
-	ECozyUiValue Value = ECozyUiValue::ResourceAmount;
-
-	/** 값 매개변수 (재료 ID · 시설 정의 ID) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI|값")
-	FName ValueParam;
-
-	/** 숫자 표시 (현재/최대) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI|값")
-	bool bShowNumber = true;
-
-	/** 퍼센트 표시 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI|값")
-	bool bShowPercent = false;
-
-	/** 남은 시간 표시 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI|값")
-	bool bShowRemaining = false;
-
-	/** 디자이너에서 보일 채움 비율 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI|값", meta = (ClampMin = "0", ClampMax = "1"))
-	float DesignPercent = 0.6f;
-
-	UPROPERTY(meta = (BindWidget))
+	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UProgressBar> Bar;
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> ValueText;
 
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<class UCozyUiArea> ChildArea;
+
+private:
+	UFUNCTION()
+	void HandleClicked();
+
+	FCozyUiElementEntry Entry;
+	bool bFromArea = false;
+	bool bTintByState = true;
+};
+
+/**
+ *  자동 정렬 영역 (WBP_UiArea의 부모).
+ *  디자이너에서는 이 상자의 위치·크기·화면 기준점만 정한다.
+ *  안에 들어갈 요소와 정렬 방식(가로·세로·줄바꿈 · 같은 크기 · 균등 간격)은 화면 설정의 영역·요소 목록이 정한다.
+ */
+UCLASS(Abstract, meta = (DisplayName = "Cozy 자동 정렬 영역"))
+class UCozyUiArea : public UUserWidget, public ICozyUiElement
+{
+	GENERATED_BODY()
+
+public:
+
+	/** 영역 이름 (화면 설정 영역 목록의 Id) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cozy UI")
+	FName AreaId;
+
 	virtual void ApplyCozyTheme(const UCozyUiScreen& Screen) override;
-	virtual void UpdateCozyValue(const UCozyUiScreen& Screen) override;
 
 #if WITH_EDITOR
 	virtual const FText GetPaletteCategory() override { return FText::FromString(TEXT("Cozy UI")); }
 #endif
 
+protected:
+	/** 요소를 담는 상자 (틀에 'Host'라는 이름의 Border) */
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UBorder> Host;
+
 private:
-	bool bTintByState = true;
+	FString BuiltSignature;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UCozyUiElementWidget>> Spawned;
 };
+
+/** 이미지 맞춤 · 칸 크기와 방법으로 그릴 크기를 정한다 */
+namespace CozyUiFit
+{
+	FVector2D Resolve(const FSlateBrush& Brush, const FVector2D& Box, ECozyUiImageFit Fit);
+}
 
 /** 시간 · 수량 글자 도우미 */
 namespace CozyUiFormat

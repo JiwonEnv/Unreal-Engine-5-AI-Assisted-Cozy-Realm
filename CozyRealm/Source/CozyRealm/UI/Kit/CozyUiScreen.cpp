@@ -35,6 +35,13 @@ void UCozyUiScreen::NativeDestruct()
 void UCozyUiScreen::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	if (bRefreshPending)
+	{
+		bRefreshPending = false;
+		BindAssetEvents();
+		RefreshTheme();
+		RefreshValues();
+	}
 	ValueTimer += InDeltaTime;
 	if (ValueTimer >= 0.25f)
 	{
@@ -74,6 +81,18 @@ void UCozyUiScreen::UnbindAssetEvents()
 
 void UCozyUiScreen::HandleAssetChanged(const UObject* Asset)
 {
+	// 플레이 중에는 다음 프레임에 적용한다.
+	// 에셋 편집은 되돌리기 기록(트랜잭션) 안에서 알려 오는데, 그 안에서 플레이용 위젯을 만들면
+	// 기록이 플레이 위젯을 붙잡아 플레이 종료 때 에디터가 멈춘다 (2026-10-08 확인).
+	if (!IsDesignTime())
+	{
+		if (!bRefreshPending)
+		{
+			UE_LOG(LogCozyRealm, Log, TEXT("[UI] 설정 변경 → 다음 프레임에 반영: %s → %s"), Asset ? *Asset->GetName() : TEXT("?"), *GetClass()->GetName());
+		}
+		bRefreshPending = true;
+		return;
+	}
 	// 테마를 다른 에셋으로 바꿨을 수도 있으니 다시 연결
 	BindAssetEvents();
 	RefreshTheme();
@@ -129,28 +148,29 @@ FSlateFontInfo UCozyUiScreen::GetFont(ECozyUiTextRole Role) const
 	return Theme ? Theme->Fonts.Get(Role) : FSlateFontInfo();
 }
 
-const FCozyUiButtonEntry* UCozyUiScreen::FindButtonEntry(FName ButtonId) const
+const FCozyUiElementEntry* UCozyUiScreen::FindElement(FName ElementId) const
 {
-	if (!Config || ButtonId.IsNone())
-	{
-		return nullptr;
-	}
-	return Config->Buttons.FindByPredicate([ButtonId](const FCozyUiButtonEntry& Each) { return Each.Id == ButtonId; });
+	return Config ? Config->FindElement(ElementId) : nullptr;
 }
 
-TArray<FCozyUiButtonEntry> UCozyUiScreen::GetButtonsForArea(FName AreaId) const
+const FCozyUiAreaLayout* UCozyUiScreen::FindArea(FName AreaId) const
 {
-	TArray<FCozyUiButtonEntry> Result;
+	return Config ? Config->FindArea(AreaId) : nullptr;
+}
+
+TArray<FCozyUiElementEntry> UCozyUiScreen::GetElementsForArea(FName AreaId) const
+{
+	TArray<FCozyUiElementEntry> Result;
 	if (Config && !AreaId.IsNone())
 	{
-		for (const FCozyUiButtonEntry& Each : Config->Buttons)
+		for (const FCozyUiElementEntry& Each : Config->Elements)
 		{
 			if (Each.Area == AreaId)
 			{
 				Result.Add(Each);
 			}
 		}
-		Result.StableSort([](const FCozyUiButtonEntry& A, const FCozyUiButtonEntry& B) { return A.Order < B.Order; });
+		Result.StableSort([](const FCozyUiElementEntry& A, const FCozyUiElementEntry& B) { return A.Order < B.Order; });
 	}
 	return Result;
 }
@@ -189,17 +209,17 @@ void UCozyUiScreen::RefreshTheme()
 	{
 		return;
 	}
-	// 버튼 영역이 버튼을 새로 만들 수 있으므로 영역을 먼저, 그다음 전체
+	// 영역이 요소를 새로 만들 수 있으므로 영역을 먼저, 그다음 전체
 	ForEachElement([this](ICozyUiElement& Element)
 	{
-		if (Cast<UCozyUiButtonArea>(&Element))
+		if (Cast<UCozyUiArea>(&Element))
 		{
 			Element.ApplyCozyTheme(*this);
 		}
 	});
 	ForEachElement([this](ICozyUiElement& Element)
 	{
-		if (!Cast<UCozyUiButtonArea>(&Element))
+		if (!Cast<UCozyUiArea>(&Element))
 		{
 			Element.ApplyCozyTheme(*this);
 		}
@@ -400,7 +420,7 @@ void UCozyUiScreen::ShowMessage(const FText& Message) const
 	}
 }
 
-void UCozyUiScreen::RunAction(const FCozyUiButtonEntry& Entry)
+void UCozyUiScreen::RunAction(const FCozyUiElementEntry& Entry)
 {
 	if (Entry.Action == ECozyUiAction::TogglePreview)
 	{
