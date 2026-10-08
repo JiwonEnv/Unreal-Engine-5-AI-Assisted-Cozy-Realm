@@ -58,6 +58,11 @@ public:
 	const FCozyUiElementEntry* FindElement(FName ElementId) const;
 	const FCozyUiAreaLayout* FindArea(FName AreaId) const;
 	TArray<FCozyUiElementEntry> GetElementsForArea(FName AreaId) const;
+	/** 반복 목록의 줄 (디자이너에서는 예시 3줄) */
+	TArray<FCozyUiListRow> GetListRows(ECozyUiListSource Source) const;
+
+	/** 창 화면이 보여 주는 시설 (시설 정보·가공 창 등 · 창을 열 때 HUD가 정함) */
+	FGuid ContextFacility;
 	FCozyUiValueResult GetValue(ECozyUiValue Value, FName Param) const;
 
 	/** 버튼 클릭 → 기존 기능 (미리보기면 알림만) */

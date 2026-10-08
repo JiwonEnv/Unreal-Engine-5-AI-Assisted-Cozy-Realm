@@ -98,6 +98,13 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "Screens")
 	TSoftClassPtr<UCozyUiScreen> HudScreenClass;
 
+	/**
+	 *  창 화면 (창 이름 → Widget Blueprint). 지정한 창은 예전 창 대신 이 화면을 띄운다 (틀 · 제목 · 닫기까지 화면이 그림).
+	 *  창 이름: Storage · FacilityInfo · Processing · Sales · Upgrade · FieldManagement · Nagaya · OfflineReport · Placeholder
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "Screens")
+	TMap<FName, TSoftClassPtr<UCozyUiScreen>> WindowScreens;
+
 	static const UCozyUiSettings* Get() { return GetDefault<UCozyUiSettings>(); }
 	static UCozyUiTheme* LoadDefaultTheme();
 };

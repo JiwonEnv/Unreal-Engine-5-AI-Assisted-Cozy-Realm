@@ -193,6 +193,16 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> LegacyTopBar;
 
+	// --- 편집 가능한 창 화면 (프로젝트 설정 'Cozy UI' → Window Screens) ---
+	/** 창 이름 (Storage · FacilityInfo …) */
+	static FName GetWindowName(ECozyWindowKind Kind);
+	/** 그 창에 지정된 화면 (없으면 예전 창) */
+	class UCozyUiScreen* GetWindowScreen(ECozyWindowKind Kind);
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> WindowFrameWidget;
+	UPROPERTY(Transient)
+	TMap<FName, TObjectPtr<class UCozyUiScreen>> WindowScreenCache;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> ToastText;
 	float ToastRemaining = 0.f;

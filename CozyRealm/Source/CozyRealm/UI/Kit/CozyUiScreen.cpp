@@ -292,6 +292,10 @@ FCozyUiValueResult UCozyUiScreen::GetPreviewValue(ECozyUiValue Value) const
 	case ECozyUiValue::GameClock: R.Text = LOCTEXT("PvClock", "미리보기 · 14:20"); break;
 	case ECozyUiValue::UpgradeSlots: R.Current = PreviewState == ECozyUiPreviewState::Empty ? 0.f : 1.f; R.Max = 1.f; break;
 	case ECozyUiValue::StoredFacilities: R.Current = 1.f; R.Max = 0.f; break;
+	case ECozyUiValue::StorageSpace:
+		R.Text = PreviewState == ECozyUiPreviewState::Full ? LOCTEXT("PvSpaceFull", "가득 참 — 받을 수 있는 공간이 없습니다") : LOCTEXT("PvSpace", "더 받을 수 있음 38개");
+		R.StateColor = PreviewState == ECozyUiPreviewState::Full ? ECozyUiColor::Warning : ECozyUiColor::InkMuted;
+		break;
 	default: break;
 	}
 	return R;
@@ -409,11 +413,76 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 	case ECozyUiValue::StoredFacilities:
 		R.Current = Estate->GetStoredFacilities().Num();
 		break;
+	case ECozyUiValue::StorageSpace:
+	{
+		const FCozyItemRow* Item = Estate->GetItemDef(Param);
+		if (Item && Item->Category == ECozyItemCategory::Material)
+		{
+			const int32 Space = Estate->GetStorageSpace(Param);
+			R.Current = Space;
+			R.Max = Estate->GetConfig().StorageCapPerItem;
+			R.Text = Space > 0 ? FText::Format(LOCTEXT("SpaceLeft", "더 받을 수 있음 {0}개"), FText::AsNumber(Space)) : LOCTEXT("SpaceFull", "가득 참 — 받을 수 있는 공간이 없습니다");
+			R.StateColor = Space > 0 ? ECozyUiColor::InkMuted : ECozyUiColor::Warning;
+		}
+		else
+		{
+			R.Text = LOCTEXT("SpaceCurrency", "재화 · 한도 없음");
+			R.StateColor = ECozyUiColor::InkMuted;
+		}
+		break;
+	}
 	default:
 		R.bValid = false;
 		break;
 	}
 	return R;
+}
+
+TArray<FCozyUiListRow> UCozyUiScreen::GetListRows(ECozyUiListSource Source) const
+{
+	TArray<FCozyUiListRow> Rows;
+	if (Source == ECozyUiListSource::None)
+	{
+		return Rows;
+	}
+	const UWorld* World = GetWorld();
+	const UCozyEstateSubsystem* Estate = World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
+	if (!Estate || IsDesignTime())
+	{
+		// 디자이너 미리보기용 예시 줄
+		Rows.Add({ TEXT("Wheat"), LOCTEXT("SampleWheat", "밀 (예시)") });
+		Rows.Add({ TEXT("Flour"), LOCTEXT("SampleFlour", "밀가루 (예시)") });
+		Rows.Add({ TEXT("Gold"), LOCTEXT("SampleGold", "골드 (예시)") });
+		return Rows;
+	}
+	auto AddItems = [&Rows, Estate](const TArray<FName>& Ids, TOptional<ECozyItemCategory> Only)
+	{
+		for (const FName& Id : Ids)
+		{
+			const FCozyItemRow* Item = Estate->GetItemDef(Id);
+			if (Item && (!Only.IsSet() || Item->Category == Only.GetValue()))
+			{
+				Rows.Add({ Id, Item->DisplayName });
+			}
+		}
+	};
+	switch (Source)
+	{
+	case ECozyUiListSource::StorageItems: AddItems(Estate->GetStorageItems(), {}); break;
+	case ECozyUiListSource::StorageMaterials: AddItems(Estate->GetStorageItems(), ECozyItemCategory::Material); break;
+	case ECozyUiListSource::StorageCurrencies: AddItems(Estate->GetStorageItems(), ECozyItemCategory::Currency); break;
+	case ECozyUiListSource::SaleItems: AddItems(Estate->GetSaleListItems(), {}); break;
+	case ECozyUiListSource::StoredFacilities:
+		for (const FGuid& Id : Estate->GetStoredFacilities())
+		{
+			const FCozyFacilityState* Facility = Estate->FindFacility(Id);
+			const FCozyFacilityRow* Def = Facility ? Estate->GetFacilityDef(Facility->DefinitionId) : nullptr;
+			Rows.Add({ FName(*Id.ToString()), Def ? Def->DisplayName : FText::FromString(Id.ToString()) });
+		}
+		break;
+	default: break;
+	}
+	return Rows;
 }
 
 FText UCozyUiScreen::GetActionName(ECozyUiAction Action)

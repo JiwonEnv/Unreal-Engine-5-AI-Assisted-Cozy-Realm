@@ -160,6 +160,9 @@ public:
 
 	/** 영역이 만든 요소의 내용 지정 */
 	void SetEntry(const FCozyUiElementEntry& InEntry, bool bInFromArea) { Entry = InEntry; bFromArea = bInFromArea; }
+
+	/** 반복 목록의 줄 (안쪽 영역에 {Row} · @Row로 전달) */
+	void SetRow(FName InRowId, const FText& InRowName) { RowId = InRowId; RowName = InRowName; }
 	const FCozyUiElementEntry& GetEntry() const { return Entry; }
 
 	virtual void ApplyCozyTheme(const UCozyUiScreen& Screen) override;
@@ -207,6 +210,8 @@ private:
 	FCozyUiElementEntry Entry;
 	bool bFromArea = false;
 	bool bTintByState = true;
+	FName RowId;
+	FText RowName;
 };
 
 /**
@@ -227,6 +232,12 @@ public:
 
 	virtual void ApplyCozyTheme(const UCozyUiScreen& Screen) override;
 
+	/** 이 영역이 놓인 줄 (반복 목록 안 · 안쪽 요소의 {Row} · @Row를 바꿈) */
+	void SetRowContext(FName InRowId, const FText& InRowName) { RowId = InRowId; RowName = InRowName; }
+
+	/** 반복 목록 모드: 출처의 줄마다 한 줄 영역(RowArea)을 담은 줄 상자를 만든다 · None이면 보통 영역 */
+	void SetList(ECozyUiListSource InSource, FName InRowArea, FName InRowBackground) { ListSource = InSource; ListRowArea = InRowArea; ListRowBackground = InRowBackground; }
+
 #if WITH_EDITOR
 	virtual const FText GetPaletteCategory() override { return FText::FromString(TEXT("Cozy UI")); }
 #endif
@@ -238,6 +249,11 @@ protected:
 
 private:
 	FString BuiltSignature;
+	FName RowId;
+	FText RowName;
+	ECozyUiListSource ListSource = ECozyUiListSource::None;
+	FName ListRowArea;
+	FName ListRowBackground;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UCozyUiElementWidget>> Spawned;
@@ -247,6 +263,12 @@ private:
 namespace CozyUiFit
 {
 	FVector2D Resolve(const FSlateBrush& Brush, const FVector2D& Box, ECozyUiImageFit Fit);
+}
+
+/** 반복 목록 줄 바꿔 넣기 · 글자의 {Row} → 줄 이름, Value Param·Image·Background의 @Row → 줄 ID */
+namespace CozyUiRow
+{
+	FCozyUiElementEntry Resolve(const FCozyUiElementEntry& In, FName RowId, const FText& RowName);
 }
 
 /** 시간 · 수량 글자 도우미 */
