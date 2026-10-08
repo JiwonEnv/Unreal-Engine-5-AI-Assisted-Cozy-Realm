@@ -159,6 +159,14 @@ struct FCozyJobRecord
 	/** 가공: 1회마다 나오는 개수 · 남은 회차 × 이 값만큼 미수령 공간을 확보해 둠 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Job")
 	int32 OutputPerRun = 0;
+
+	/**
+	 *  가공: 앞 작업 뒤에 이어서 할 '추가 제작' (가공 칸을 차지하지 않음 · 진행하지 않음).
+	 *  재료는 추가할 때 이미 차감했고, 공간은 남은 회차 × 1회 개수만큼 이미 확보한 것으로 계산된다.
+	 *  앞 작업이 끝나거나 취소되면 그 순간부터 시작한다 (StartGameSeconds를 그때 정함).
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Job")
+	bool bQueued = false;
 };
 
 /** 영지 전체 상태 (한 번에 같은 시점으로 저장할 묶음) */

@@ -1051,6 +1051,9 @@ void UCozyHudWidget::RefreshWindow()
 	ProcBlockText = nullptr;
 	ProcStorageNoteText = nullptr;
 	ProcStartButton = nullptr;
+	ProcStartLabel = nullptr;
+	ProcQueueRow = nullptr;
+	ProcQueueText = nullptr;
 	ProcSlotStatusTexts.Reset();
 	ProcSlotBars.Reset();
 	ProcSlotTimeTexts.Reset();
@@ -1530,6 +1533,7 @@ void UCozyHudWidget::BuildProcessingContent()
 			UpdateProcessingLive();
 		}
 	}, false, 16);
+	ProcStartLabel = Cast<UTextBlock>(ProcStartButton->GetContent());
 	WindowContent->AddChildToVerticalBox(ProcStartButton)->SetPadding(FMargin(0.f, 4.f, 0.f, 0.f));
 
 	// 가공 칸 (데이터의 동시 가공 수만큼 · 슬롯이 늘어도 같은 코드)
@@ -1544,7 +1548,8 @@ void UCozyHudWidget::BuildProcessingContent()
 		UButton* CancelButton = MakeButton(LOCTEXT("ProcCancel", "취소"), [this, FacilityId, SlotIndex]()
 		{
 			UCozyEstateSubsystem* EstateNow = GetEstate();
-			const TArray<FCozyProcessingJobView> Jobs = EstateNow ? EstateNow->GetProcessingJobs(FacilityId) : TArray<FCozyProcessingJobView>();
+			TArray<FCozyProcessingJobView> Jobs = EstateNow ? EstateNow->GetProcessingJobs(FacilityId) : TArray<FCozyProcessingJobView>();
+			Jobs.RemoveAll([](const FCozyProcessingJobView& Each) { return Each.bQueued; });
 			if (!Jobs.IsValidIndex(SlotIndex))
 			{
 				return;
@@ -1567,6 +1572,29 @@ void UCozyHudWidget::BuildProcessingContent()
 		ProcSlotTimeTexts.Add(TimeText);
 		ProcSlotCancelButtons.Add(CancelButton);
 	}
+
+	// 제작 추가로 기다리는 작업 (가공 칸을 차지하지 않음 · 앞 작업이 끝나면 이어서)
+	ProcQueueRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+	ProcQueueText = MakeText(FText::GetEmpty(), 15, CozyHud::MutedText);
+	UHorizontalBoxSlot* QueueTextSlot = ProcQueueRow->AddChildToHorizontalBox(ProcQueueText);
+	QueueTextSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+	QueueTextSlot->SetVerticalAlignment(VAlign_Center);
+	ProcQueueRow->AddChildToHorizontalBox(MakeButton(LOCTEXT("ProcQueueCancel", "추가분 취소"), [this, FacilityId]()
+	{
+		UCozyEstateSubsystem* EstateNow = GetEstate();
+		const TArray<FCozyProcessingJobView> Jobs = EstateNow ? EstateNow->GetProcessingJobs(FacilityId) : TArray<FCozyProcessingJobView>();
+		// 가장 나중에 추가한 대기 작업부터 취소 (확인 안내는 기존 취소와 같음)
+		for (int32 Index = Jobs.Num() - 1; Index >= 0; --Index)
+		{
+			if (Jobs[Index].bQueued)
+			{
+				ProcPendingCancelJob = Jobs[Index].JobId;
+				break;
+			}
+		}
+		UpdateProcessingLive();
+	}, true, 14))->SetPadding(FMargin(12.f, 0.f, 0.f, 0.f));
+	WindowContent->AddChildToVerticalBox(ProcQueueRow)->SetPadding(FMargin(0.f, 4.f));
 
 	// 취소 확인 (평소에는 숨김)
 	ProcConfirmBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
@@ -1666,11 +1694,15 @@ void UCozyHudWidget::UpdateProcessingLive()
 		ProcSelectedText->SetText(LOCTEXT("ProcNoRecipe", "이 시설에서 만들 수 있는 레시피가 없습니다"));
 	}
 
-	ProcRunsText->SetText(FText::Format(LOCTEXT("ProcRuns", "{0}회  →  {1} {2}개"), FText::AsNumber(ProcSelectedRuns), Quote.OutputName, FText::AsNumber(Quote.TotalOutput)));
+	ProcRunsText->SetText(Quote.bAppend
+		? FText::Format(LOCTEXT("ProcRunsAppend", "추가 {0}회  →  {1} {2}개   (현재 남은 {3}회 뒤에 이어서)"), FText::AsNumber(ProcSelectedRuns), Quote.OutputName, FText::AsNumber(Quote.TotalOutput), FText::AsNumber(Quote.CurrentRemainingRuns))
+		: FText::Format(LOCTEXT("ProcRuns", "{0}회  →  {1} {2}개"), FText::AsNumber(ProcSelectedRuns), Quote.OutputName, FText::AsNumber(Quote.TotalOutput)));
 	ProcMinusButton->SetIsEnabled(ProcSelectedRuns > 1);
 	ProcPlusButton->SetIsEnabled(ProcSelectedRuns < Quote.MaxRuns);
 	ProcMaxButton->SetIsEnabled(Quote.MaxRuns > 0 && ProcSelectedRuns != Quote.MaxRuns);
-	ProcMaxText->SetText(FText::Format(LOCTEXT("ProcMax", "지금 최대 {0}회  (재료로 {1}회분 · 남은 미수령 공간으로 {2}회분)"),
+	ProcMaxText->SetText(FText::Format(Quote.bAppend
+			? LOCTEXT("ProcMaxAppend", "지금 최대 추가 {0}회  (재료로 {1}회분 · 진행 중·대기 작업이 확보한 공간을 뺀 남은 미수령 공간으로 {2}회분)")
+			: LOCTEXT("ProcMax", "지금 최대 {0}회  (재료로 {1}회분 · 남은 미수령 공간으로 {2}회분)"),
 		FText::AsNumber(Quote.MaxRuns), FText::AsNumber(Quote.MaxByMaterials), FText::AsNumber(Quote.MaxBySpace)));
 
 	FString InputsNeed;
@@ -1684,6 +1716,10 @@ void UCozyHudWidget::UpdateProcessingLive()
 	ProcBlockText->SetText(Quote.BlockReason);
 	ProcBlockText->SetVisibility(Quote.BlockReason.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 	ProcStartButton->SetIsEnabled(Quote.bCanStart);
+	if (ProcStartLabel)
+	{
+		ProcStartLabel->SetText(Quote.bAppend ? LOCTEXT("ProcAppend", "제작 추가") : LOCTEXT("ProcStart", "제작 시작"));
+	}
 
 	// 🙋 완료품의 공용 창고가 가득해도 시작은 허용하고 안내만 (D35 · 확인 팝업 없음)
 	if (ProcStorageNoteText)
@@ -1696,8 +1732,28 @@ void UCozyHudWidget::UpdateProcessingLive()
 		ProcStorageNoteText->SetVisibility(bStorageFull ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
 
-	// 가공 칸
-	const TArray<FCozyProcessingJobView> Jobs = Estate->GetProcessingJobs(WindowFacility);
+	// 가공 칸 (진행·일시 정지 작업만) · 대기 작업은 아래 대기 줄에
+	const TArray<FCozyProcessingJobView> AllJobs = Estate->GetProcessingJobs(WindowFacility);
+	TArray<FCozyProcessingJobView> Jobs;
+	FString QueueLine;
+	int32 QueueRuns = 0;
+	for (const FCozyProcessingJobView& Each : AllJobs)
+	{
+		if (Each.bQueued)
+		{
+			QueueLine += (QueueLine.IsEmpty() ? TEXT("") : TEXT(" · ")) + FString::Printf(TEXT("%s %d회(%d개)"), *Each.OutputName.ToString(), Each.TotalRuns, Each.TotalRuns * Each.OutputPerRun);
+			QueueRuns += Each.TotalRuns;
+		}
+		else
+		{
+			Jobs.Add(Each);
+		}
+	}
+	if (ProcQueueRow && ProcQueueText)
+	{
+		ProcQueueText->SetText(FText::Format(LOCTEXT("ProcQueueLine", "제작 추가 대기 {0}회: {1} — 지금 작업이 끝나면 이어서 시작 (가공 칸을 차지하지 않음)"), FText::AsNumber(QueueRuns), FText::FromString(QueueLine)));
+		ProcQueueRow->SetVisibility(QueueRuns > 0 ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
 	for (int32 SlotIndex = 0; SlotIndex < ProcSlotStatusTexts.Num(); ++SlotIndex)
 	{
 		UTextBlock* StatusText = ProcSlotStatusTexts[SlotIndex];
@@ -1731,7 +1787,7 @@ void UCozyHudWidget::UpdateProcessingLive()
 
 	// 취소 확인: 안내를 띄운 동안 회차가 끝나도 숫자가 맞도록 매번 다시 씀 · 대상 작업이 이미 끝났으면 닫음
 	const FCozyProcessingJobView* PendingJob = ProcPendingCancelJob.IsValid()
-		? Jobs.FindByPredicate([this](const FCozyProcessingJobView& Job) { return Job.JobId == ProcPendingCancelJob; })
+		? AllJobs.FindByPredicate([this](const FCozyProcessingJobView& Job) { return Job.JobId == ProcPendingCancelJob; })
 		: nullptr;
 	const bool bPendingAlive = PendingJob != nullptr;
 	if (!bPendingAlive)
@@ -2471,6 +2527,13 @@ void UCozyHudWidget::RefreshDebugPanel()
 		}, true, 13))->SetPadding(FMargin(0.f, 0.f, 3.f, 0.f));
 	}
 	DebugContent->AddChildToVerticalBox(SkipRow)->SetPadding(FMargin(0.f, 3.f));
+	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("SelfCheckAppend", "자체 검사: 가공 제작 추가 (상태 되돌림)"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			ShowToast(FText::FromString(EstateNow->DebugRunProcessingAppendCheck()));
+		}
+	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
 
 	// UI 미리보기 (편집 가능한 화면만 · 실제 재료를 쓰지 않음 · 상태를 바꿔 가며 확인)
 	if (HudScreen)

@@ -73,6 +73,10 @@ struct FCozyRecipeQuote
 	FText OutputName;
 	/** 시작할 수 없는 이유 (시작 가능하면 비어 있음) */
 	FText BlockReason;
+	/** 같은 완료품을 만드는 작업이 칸을 모두 쓰고 있어 '제작 추가'(앞 작업 뒤에 이어서)로 넣는 경우 */
+	bool bAppend = false;
+	/** 같은 완료품 작업들의 아직 남은 회차 (진행 중 + 대기) · '제작 추가' 안내용 */
+	int32 CurrentRemainingRuns = 0;
 };
 
 /** 진행·일시 정지 중인 가공 작업 하나 (가공 창 표시용) */
@@ -84,6 +88,8 @@ struct FCozyProcessingJobView
 	int32 TotalRuns = 0;
 	int32 OutputPerRun = 0;
 	bool bPaused = false;
+	/** 앞 작업 뒤에서 기다리는 추가 제작 (가공 칸을 차지하지 않음) */
+	bool bQueued = false;
 	float RunProgress01 = 0.f;
 	float RunRemainingSeconds = 0.f;
 	float TotalRemainingSeconds = 0.f;
@@ -462,6 +468,8 @@ public:
 	void DismissOfflineReport() { bOfflineReportPending = false; }
 	/** 디버그: 방치 시간 건너뛰기 (저장 파일 없이 같은 정산 처리 · 정산 후 저장) */
 	void DebugSkipOffline(double Seconds);
+	/** 디버그: 가공 '제작 추가' 규칙 자체 검사 (실제 규칙 함수로 시험 · 끝나면 검사 전 상태로 되돌림 · 결과는 로그 [자체 검사]) */
+	FString DebugRunProcessingAppendCheck();
 
 	/** 상태가 바뀔 때마다 알림 (UI 새로 고침용) */
 	FOnCozyEstateChanged OnEstateChanged;
@@ -503,6 +511,8 @@ private:
 
 	/** 🙋 가공은 필요 인원이 부족해지면 현재 회차의 진행도를 유지한 채 일시 정지 · 다시 채워지면 이어서 (D30) */
 	void UpdateProcessingPause(FCozyFacilityState& Facility);
+	/** 가공 칸이 비면 대기 중인 추가 제작을 순서대로 시작 (StartAt = 시작 시각 · 앞 작업이 끝난 시각) */
+	void PromoteQueuedProcessing(const FGuid& FacilityId, double StartAt);
 	void StepProcessing(FCozyFacilityState& Facility, const FCozyFacilityRow& Def);
 	double GetProcessingDuration(const FCozyFacilityState& Facility, const FCozyRecipeRow& Recipe, const FCozyFacilityRow& Def) const;
 
