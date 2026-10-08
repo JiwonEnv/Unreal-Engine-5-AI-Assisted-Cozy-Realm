@@ -82,7 +82,42 @@ enum class ECozyUiValue : uint8
 	/** 사용 중인 업그레이드 칸 (최대 = 칸 수) */
 	UpgradeSlots,
 	/** 보관함 시설 수 */
+	StoredFacilities,
+	/** 창고에 더 받을 수 있는 수량 (매개변수: 재료 ID · {4} = '더 받을 수 있음 N개' 또는 '가득 참' · 가득 차면 경고색) */
+	StorageSpace
+};
+
+/** 반복 목록의 출처 · 줄 수가 게임 상태에 따라 바뀌는 목록 */
+UENUM(BlueprintType)
+enum class ECozyUiListSource : uint8
+{
+	None,
+	/** 창고의 모든 아이템 (재료 + 재화) */
+	StorageItems,
+	/** 창고의 재료만 (한도가 있는 것) */
+	StorageMaterials,
+	/** 창고의 재화만 (골드 · 부적 등) */
+	StorageCurrencies,
+	/** 판매할 수 있는 재료 */
+	SaleItems,
+	/** 보관함에 들어간 시설 */
 	StoredFacilities
+};
+
+/** 배경 안쪽 여백 */
+UENUM(BlueprintType)
+enum class ECozyUiPadding : uint8
+{
+	/** 자동 (배경이 없으면 0 · 정보 패널은 창 여백 · 그 밖은 패널 여백) */
+	Auto,
+	/** 없음 */
+	None,
+	/** 테마의 창 여백 */
+	Window,
+	/** 테마의 패널·칩 여백 */
+	Panel,
+	/** 테마의 버튼 여백 */
+	Button
 };
 
 /** 버튼 클릭 동작 · 이미 구현된 기능을 목록에서 고른다 */
@@ -124,6 +159,13 @@ enum class ECozyUiPreviewState : uint8
 	Claimable,
 	/** 비어 있음 (0) */
 	Empty
+};
+
+/** 반복 목록의 한 줄 (ID · 표시 이름) */
+struct FCozyUiListRow
+{
+	FName Id;
+	FText Name;
 };
 
 /** 값 하나 (현재 · 최대 · 남은 시간 · 상태) */
@@ -260,7 +302,9 @@ enum class ECozyUiElementKind : uint8
 	/** 정보 칩 (배경 + 아이콘 + 글자 · 재화 표시 등) */
 	Chip,
 	/** 정보 패널 (배경 + 안쪽 영역 · 다른 요소를 담음) */
-	Panel
+	Panel,
+	/** 반복 목록 (목록 출처의 줄마다 '한 줄 영역'의 요소들을 만듦 · 예: 창고 재료 목록) */
+	List
 };
 
 /** 이미지를 정해진 칸에 넣는 방법 · 이미지 비율이 바뀌어도 칸 크기는 그대로 */
@@ -282,7 +326,9 @@ enum class ECozyUiSizeMode : uint8
 	/** 내용에 맞춤 */
 	Content,
 	/** 고정 크기 (Size · 한쪽이 0이면 그쪽만 내용에 맞춤) */
-	Fixed
+	Fixed,
+	/** 줄의 남은 공간 채우기 (가로 줄이면 남은 폭 · 긴 글은 Wrap Text와 함께 쓰면 줄 안에서 줄바꿈) */
+	Fill
 };
 
 /** 자동 정렬 방향 */
@@ -428,7 +474,7 @@ struct FCozyUiElementEntry
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "3 이미지")
 	ECozyUiColor ImageTint = ECozyUiColor::None;
 
-	/** 배경 이미지 (칩·패널 · 테마 이미지 이름 · 예: Chip · Window · Panel) */
+	/** 배경 이미지 (칩·패널 · 테마 이미지 이름 · 예: Chip · Window · Panel) · 반복 목록이면 각 줄의 배경 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "3 이미지", meta = (GetOptions = "CozyUiTheme.GetImageNameOptions"))
 	FName Background;
 
@@ -480,9 +526,24 @@ struct FCozyUiElementEntry
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "6 동작")
 	FName ActionParam;
 
-	/** 정보 패널 안쪽 영역 이름 (이 영역에 넣은 요소들이 패널 안에 놓임) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "7 패널")
+	/** 배경 안쪽 여백 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "3 이미지")
+	ECozyUiPadding PaddingRole = ECozyUiPadding::Auto;
+
+	/** 정보 패널: 안쪽 영역 이름 (이 영역에 넣은 요소들이 패널 안에 놓임) · 반복 목록: 줄들을 늘어놓는 영역 이름 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "7 패널·목록")
 	FName ChildArea;
+
+	/** 반복 목록: 줄 출처 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "7 패널·목록")
+	ECozyUiListSource ListSource = ECozyUiListSource::None;
+
+	/**
+	 *  반복 목록: 한 줄 영역 이름. 이 영역에 넣은 요소들이 줄마다 만들어진다.
+	 *  그 요소들의 글자에 {Row}를 쓰면 줄 이름(예: 밀), Value Param·Image에 @Row를 쓰면 줄 ID(예: Wheat → Icon.@Row = Icon.Wheat)로 바뀐다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "7 패널·목록")
+	FName RowArea;
 
 	/** 이 요소만 다른 모양 틀 (비우면 테마의 종류별 틀) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "8 고급")

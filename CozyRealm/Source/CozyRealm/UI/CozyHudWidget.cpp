@@ -114,7 +114,8 @@ void UCozyHudWidget::BuildLayout()
 			{
 				ScreenSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
 				ScreenSlot->SetOffsets(FMargin(0.f));
-				ScreenSlot->SetZOrder(-10);
+				// 창 덮개(0)보다 위 · 창이 열려 있어도 HUD 버튼(창고·주민·배치·메뉴)이 눌린다
+				ScreenSlot->SetZOrder(5);
 			}
 			HudScreen->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 			TopBar->SetVisibility(ESlateVisibility::Collapsed);
@@ -133,6 +134,7 @@ void UCozyHudWidget::BuildLayout()
 	// 선택한 시설 위 기능 아이콘
 	IconBox = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("IconBox"));
 	IconSlot = RootCanvas->AddChildToCanvas(IconBox);
+	IconSlot->SetZOrder(6); // 새 HUD(5)보다 위
 	if (IconSlot)
 	{
 		IconSlot->SetAutoSize(true);
@@ -152,7 +154,9 @@ void UCozyHudWidget::BuildLayout()
 	PlacementBody->AddChildToVerticalBox(PlacementStoredBox);
 	if (UCanvasPanelSlot* PanelSlot = RootCanvas->AddChildToCanvas(PlacementPanel))
 	{
-		PanelSlot->SetPosition(FVector2D(12.f, 56.f));
+		PanelSlot->SetZOrder(6);
+		// 새 HUD의 칩 줄(위쪽 약 100) 아래
+		PanelSlot->SetPosition(FVector2D(24.f, 110.f));
 		PanelSlot->SetAutoSize(true);
 	}
 	PlacementPanel->SetVisibility(ESlateVisibility::Collapsed);
@@ -211,6 +215,7 @@ void UCozyHudWidget::BuildLayout()
 	ToastText = MakeText(FText::GetEmpty(), 17, CozyHud::AccentText);
 	if (UCanvasPanelSlot* ToastSlot = RootCanvas->AddChildToCanvas(ToastText))
 	{
+		ToastSlot->SetZOrder(10);
 		ToastSlot->SetAnchors(FAnchors(0.5f, 0.f));
 		ToastSlot->SetAlignment(FVector2D(0.5f, 0.f));
 		ToastSlot->SetPosition(FVector2D(0.f, 52.f));
@@ -230,6 +235,7 @@ void UCozyHudWidget::BuildLayout()
 	}
 
 	UBorder* WindowFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("WindowFrame"));
+	WindowFrameWidget = WindowFrame;
 	WindowFrame->SetBrushColor(CozyHud::WindowColor);
 	WindowFrame->SetPadding(FMargin(32.f, 24.f));
 	WindowOverlay->SetContent(WindowFrame);
@@ -265,6 +271,7 @@ void UCozyHudWidget::BuildLayout()
 	DebugPanel->SetContent(DebugContent);
 	if (UCanvasPanelSlot* DebugSlot = RootCanvas->AddChildToCanvas(DebugPanel))
 	{
+		DebugSlot->SetZOrder(6);
 		DebugSlot->SetAnchors(FAnchors(1.f, 0.f));
 		DebugSlot->SetAlignment(FVector2D(1.f, 0.f));
 		DebugSlot->SetPosition(FVector2D(-12.f, 56.f));
@@ -992,6 +999,23 @@ void UCozyHudWidget::RefreshWindow()
 	}
 	WindowContent->ClearChildren();
 	WindowActions.Reset();
+
+	// 편집 가능한 창 화면이 지정돼 있으면 예전 창 틀 대신 그 화면을 띄운다
+	if (UCozyUiScreen* Screen = GetWindowScreen(WindowKind))
+	{
+		Screen->ContextFacility = WindowFacility;
+		if (WindowOverlay->GetContent() != Screen)
+		{
+			WindowOverlay->SetContent(Screen);
+		}
+		Screen->RefreshTheme();
+		Screen->RefreshValues();
+		return;
+	}
+	if (WindowFrameWidget && WindowOverlay->GetContent() != WindowFrameWidget)
+	{
+		WindowOverlay->SetContent(WindowFrameWidget);
+	}
 	if (WindowContentSize)
 	{
 		// 제목·닫기 버튼·여백을 뺀 높이까지만 (화면 단위 = 픽셀 / DPI 배율)
@@ -1091,6 +1115,44 @@ void UCozyHudWidget::RefreshWindow()
 		WindowContent->AddChildToVerticalBox(MakeText(LastFeedback, 16, CozyHud::WarningText))->SetPadding(FMargin(0.f, 12.f, 0.f, 0.f));
 	}
 	ActionSink = nullptr;
+}
+
+FName UCozyHudWidget::GetWindowName(ECozyWindowKind Kind)
+{
+	switch (Kind)
+	{
+	case ECozyWindowKind::FacilityInfo: return TEXT("FacilityInfo");
+	case ECozyWindowKind::Nagaya: return TEXT("Nagaya");
+	case ECozyWindowKind::Placeholder: return TEXT("Placeholder");
+	case ECozyWindowKind::Storage: return TEXT("Storage");
+	case ECozyWindowKind::Processing: return TEXT("Processing");
+	case ECozyWindowKind::Sales: return TEXT("Sales");
+	case ECozyWindowKind::Upgrade: return TEXT("Upgrade");
+	case ECozyWindowKind::FieldManagement: return TEXT("FieldManagement");
+	case ECozyWindowKind::OfflineReport: return TEXT("OfflineReport");
+	default: return NAME_None;
+	}
+}
+
+UCozyUiScreen* UCozyHudWidget::GetWindowScreen(ECozyWindowKind Kind)
+{
+	const FName Name = GetWindowName(Kind);
+	if (Name.IsNone())
+	{
+		return nullptr;
+	}
+	if (TObjectPtr<UCozyUiScreen>* Cached = WindowScreenCache.Find(Name))
+	{
+		return *Cached;
+	}
+	const TSoftClassPtr<UCozyUiScreen>* Soft = UCozyUiSettings::Get()->WindowScreens.Find(Name);
+	UClass* ScreenClass = Soft ? Soft->LoadSynchronous() : nullptr;
+	UCozyUiScreen* Screen = ScreenClass ? CreateWidget<UCozyUiScreen>(this, ScreenClass) : nullptr;
+	if (Screen)
+	{
+		WindowScreenCache.Add(Name, Screen);
+	}
+	return Screen;
 }
 
 void UCozyHudWidget::BuildFacilityInfoContent()
