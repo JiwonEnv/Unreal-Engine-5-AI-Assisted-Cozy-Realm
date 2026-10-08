@@ -930,6 +930,13 @@ void UCozyHudWidget::RefreshIcons()
 
 void UCozyHudWidget::OpenWindow(ECozyWindowKind Kind, const FGuid& FacilityId, const FGuid& TargetFacility)
 {
+	// 시설 메뉴(가공·주민 등)에서 상세 창으로 넘어가면 메뉴 아이콘과 선택을 지운다
+	// → 창과 겹치지 않고, 창을 닫은 뒤 같은 시설을 다시 누르면 메뉴가 새로 뜬다
+	if (ACozyRealmEstatePlayerController* Controller = Cast<ACozyRealmEstatePlayerController>(GetOwningPlayer()))
+	{
+		Controller->ClearSelection();
+	}
+	HideFacilityIcons();
 	WindowKind = Kind;
 	WindowFacility = FacilityId;
 	WindowTargetFacility = TargetFacility;
@@ -1636,7 +1643,13 @@ void UCozyHudWidget::UpdateProcessingLive()
 	}
 
 	// 선택한 레시피 · 수량 · 견적 (계산은 서비스의 공통 함수)
-	const FCozyRecipeQuote Quote = Estate->GetRecipeQuote(WindowFacility, ProcSelectedRecipe, ProcSelectedRuns);
+	FCozyRecipeQuote Quote = Estate->GetRecipeQuote(WindowFacility, ProcSelectedRecipe, ProcSelectedRuns);
+	// 창을 연 동안 재고·수령·작업 완료로 최대가 줄면 선택 수량을 새 최대로 낮춘다 (최대 0이면 1로 두고 시작은 막힘 · 이유 표시)
+	if (ProcSelectedRuns > FMath::Max(1, Quote.MaxRuns))
+	{
+		ProcSelectedRuns = FMath::Max(1, Quote.MaxRuns);
+		Quote = Estate->GetRecipeQuote(WindowFacility, ProcSelectedRecipe, ProcSelectedRuns);
+	}
 	if (const FCozyRecipeRow* Recipe = Estate->GetRecipeDef(ProcSelectedRecipe))
 	{
 		FString InputsText;
@@ -2343,6 +2356,8 @@ void UCozyHudWidget::RefreshDebugPanel()
 			}
 		}
 	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
+	// 가공 창을 연 채 재료가 줄 때 선택 횟수가 새 최대로 내려가는지 검증용
+	SetResourceButton(LOCTEXT("SetWheat10", "창고 밀 10개로"), TEXT("Wheat"), 10);
 	SetResourceButton(LOCTEXT("SetWheat90", "창고 밀 90개로"), TEXT("Wheat"), 90);
 	// 업그레이드 반환 공간 경계값 검증용 (D38: 비용을 뺀 뒤의 최종 재고 기준)
 	SetResourceButton(LOCTEXT("SetWheat97", "창고 밀 97개로"), TEXT("Wheat"), 97);
