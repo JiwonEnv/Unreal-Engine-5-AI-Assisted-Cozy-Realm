@@ -258,6 +258,16 @@ void ACozyRealmEstatePlayerController::TickPlacement()
 	}
 }
 
+void ACozyRealmEstatePlayerController::CozySetResource(FName ItemId, int32 Amount)
+{
+	if (UCozyEstateSubsystem* Estate = GetWorld() ? GetWorld()->GetSubsystem<UCozyEstateSubsystem>() : nullptr)
+	{
+		const int32 Before = Estate->GetAmount(ItemId);
+		Estate->DebugSetResource(ItemId, Amount);
+		UE_LOG(LogCozyRealm, Log, TEXT("[개발] 수량 맞춤: %s %d → %d"), *ItemId.ToString(), Before, Estate->GetAmount(ItemId));
+	}
+}
+
 void ACozyRealmEstatePlayerController::ClearSelection()
 {
 	if (ACozyFacilityActor* Previous = SelectedFacility.Get())

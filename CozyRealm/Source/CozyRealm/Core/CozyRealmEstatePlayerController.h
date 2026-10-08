@@ -36,6 +36,13 @@ public:
 	/** 시설 선택 해제 (선택 표시 · 기능 아이콘 숨김) · 상세 창을 열 때 HUD도 부름 */
 	void ClearSelection();
 
+	/**
+	 *  개발용 콘솔 명령 (플레이 중 ` 키 → 입력): 재료·재화 수량을 정확히 맞춘다.
+	 *  검증에서 바꾼 저장 데이터를 원래대로 돌릴 때 쓴다. 예: CozySetResource TimeTalisman 1
+	 */
+	UFUNCTION(Exec)
+	void CozySetResource(FName ItemId, int32 Amount);
+
 protected:
 
 	virtual void BeginPlay() override;
