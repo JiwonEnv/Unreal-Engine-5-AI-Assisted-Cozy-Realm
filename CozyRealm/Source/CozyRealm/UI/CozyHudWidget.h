@@ -254,6 +254,14 @@ private:
 	TObjectPtr<UTextBlock> ProcStorageNoteText;
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> ProcStartButton;
+	/** 시작 버튼 글자 (작업 중이면 '제작 추가') */
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> ProcStartLabel;
+	/** 앞 작업 뒤에서 기다리는 추가 제작 줄 · 취소 버튼 */
+	UPROPERTY(Transient)
+	TObjectPtr<UHorizontalBox> ProcQueueRow;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> ProcQueueText;
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTextBlock>> ProcSlotStatusTexts;
 	UPROPERTY(Transient)
