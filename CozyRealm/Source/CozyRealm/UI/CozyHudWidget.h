@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "UI/Kit/CozyUiTypes.h"
 #include "CozyHudWidget.generated.h"
 
 class UCanvasPanel;
@@ -94,6 +95,16 @@ public:
 	void ToggleStorageWindow();
 
 	void ToggleDebugPanel();
+	/** UI 미리보기: HUD · 모든 창 화면 · 배치 패널 · 시설 메뉴 · 배치 버튼을 함께 가짜 값으로 (게임 상태는 바꾸지 않음) */
+	void SetUiPreview(bool bEnable);
+	void SetUiPreviewState(ECozyUiPreviewState State);
+	bool IsUiPreview() const { return bUiPreview; }
+	ECozyUiPreviewState GetUiPreviewState() const { return UiPreviewState; }
+	/** 미리보기용으로 창 열기 (그 기능이 있는 첫 시설 · 재료를 쓰지 않음) */
+	void OpenPreviewWindow(ECozyWindowKind Kind);
+	/** 미리보기용 배치 패널·배치 버튼 상자 보이기 (실제 배치 모드가 아님 · 시설을 옮기지 않음) */
+	void TogglePlacementPreview();
+	bool IsPlacementPreview() const { return bPlacementPreview; }
 
 	/** 편집 가능한 창 화면이 쓰는 기존 기능 (수령 · 방금 한 일) */
 	void CollectFromWindow(const FGuid& FacilityId) { HandleCollectClicked(FacilityId); }
@@ -225,6 +236,10 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UCozyUiAction>> PlacementActions;
 	TArray<FGuid> PlacementStoredIds;
+	bool bUiPreview = false;
+	ECozyUiPreviewState UiPreviewState = ECozyUiPreviewState::Progress;
+	bool bPlacementPreview = false;
+	void ApplyPreview(class UCozyUiScreen* Screen) const;
 
 	UPROPERTY(Transient)
 	TObjectPtr<class UCozyUiScreen> HudScreen;

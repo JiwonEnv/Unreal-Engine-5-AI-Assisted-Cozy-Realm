@@ -1798,7 +1798,7 @@ void UCozyEstateSubsystem::Tick(float DeltaTime)
 
 	// 자동 저장은 실제 시간 기준 (배속과 무관)
 	AutosaveAccumulator += DeltaTime;
-	if (Config.AutosaveSeconds > 0.f && AutosaveAccumulator >= Config.AutosaveSeconds)
+	if (!bAutosavePaused && Config.AutosaveSeconds > 0.f && AutosaveAccumulator >= Config.AutosaveSeconds)
 	{
 		SaveEstate(TEXT("자동"));
 	}

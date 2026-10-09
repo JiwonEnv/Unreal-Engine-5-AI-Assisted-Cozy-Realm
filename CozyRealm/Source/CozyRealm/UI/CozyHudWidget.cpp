@@ -315,7 +315,7 @@ void UCozyHudWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		}
 	}
 
-	if (bPlacementMode)
+	if (bPlacementMode || bPlacementPreview)
 	{
 		UpdatePlacementLive();
 	}
@@ -364,7 +364,7 @@ void UCozyHudWidget::SetPlacementMode(bool bEnable)
 void UCozyHudWidget::RefreshPlacementPanel()
 {
 	UCozyEstateSubsystem* Estate = GetEstate();
-	if (!PlacementStoredBox || !Estate || !bPlacementMode)
+	if (!PlacementStoredBox || !Estate || (!bPlacementMode && !bPlacementPreview))
 	{
 		return;
 	}
@@ -421,6 +421,27 @@ void UCozyHudWidget::UpdatePlacementLive()
 {
 	UCozyEstateSubsystem* Estate = GetEstate();
 	ACozyFacilityActor* Actor = Estate ? Estate->GetPlacementActor() : nullptr;
+	if (bPlacementPreview && PlacementActionBox && !(Estate && Estate->IsPlacing()))
+	{
+		// 미리보기: 실제로 옮기는 시설이 없어도 화면 가운데에 버튼 상자를 보여 줌 (버튼은 알림만)
+		if (UCozyUiScreen* ActionScreen = GetScreenByName(TEXT("PlacementActions")))
+		{
+			if (PlacementActionBox->GetChildrenCount() != 1 || PlacementActionBox->GetChildAt(0) != ActionScreen)
+			{
+				PlacementActionBox->ClearChildren();
+				PlacementActionBox->AddChildToVerticalBox(ActionScreen)->SetHorizontalAlignment(HAlign_Center);
+				ActionScreen->RefreshTheme();
+			}
+			ActionScreen->RefreshValues();
+		}
+		if (PlacementActionSlot)
+		{
+			const float Scale = FMath::Max(0.1f, UWidgetLayoutLibrary::GetViewportScale(this));
+			PlacementActionSlot->SetPosition(UWidgetLayoutLibrary::GetViewportSize(this) / Scale * 0.5f);
+		}
+		PlacementActionBox->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+		return;
+	}
 	if (!Estate || !Estate->IsPlacing() || !Actor || !PlacementActionBox)
 	{
 		if (PlacementActionBox)
@@ -1069,7 +1090,7 @@ void UCozyHudWidget::OpenWindow(ECozyWindowKind Kind, const FGuid& FacilityId, c
 void UCozyHudWidget::CloseWindow()
 {
 	// 방치 보상 창은 닫기도 '확인'과 같게 처리 · 안 하면 남은 보고서 때문에 바로 다시 열려 닫기가 안 되는 것처럼 보임
-	if (WindowKind == ECozyWindowKind::OfflineReport)
+	if (WindowKind == ECozyWindowKind::OfflineReport && !bUiPreview)
 	{
 		if (UCozyEstateSubsystem* Estate = GetEstate())
 		{
@@ -1296,8 +1317,94 @@ UCozyUiScreen* UCozyHudWidget::GetScreenByName(FName Name)
 	if (Screen)
 	{
 		WindowScreenCache.Add(Name, Screen);
+		ApplyPreview(Screen);
 	}
 	return Screen;
+}
+
+void UCozyHudWidget::ApplyPreview(UCozyUiScreen* Screen) const
+{
+	if (Screen && (Screen->bPreview != bUiPreview || Screen->PreviewState != UiPreviewState))
+	{
+		Screen->PreviewState = UiPreviewState;
+		Screen->SetPreview(bUiPreview);
+	}
+}
+
+void UCozyHudWidget::SetUiPreview(bool bEnable)
+{
+	bUiPreview = bEnable;
+	if (UCozyEstateSubsystem* Estate = GetEstate())
+	{
+		Estate->SetAutosavePaused(bEnable);
+	}
+	if (!bEnable && bPlacementPreview)
+	{
+		TogglePlacementPreview();
+	}
+	ApplyPreview(HudScreen);
+	for (const TPair<FName, TObjectPtr<UCozyUiScreen>>& Each : WindowScreenCache)
+	{
+		ApplyPreview(Each.Value);
+	}
+	RefreshIcons();
+	RefreshDebugPanel();
+}
+
+void UCozyHudWidget::SetUiPreviewState(ECozyUiPreviewState State)
+{
+	UiPreviewState = State;
+	ApplyPreview(HudScreen);
+	for (const TPair<FName, TObjectPtr<UCozyUiScreen>>& Each : WindowScreenCache)
+	{
+		ApplyPreview(Each.Value);
+	}
+	RefreshDebugPanel();
+}
+
+void UCozyHudWidget::OpenPreviewWindow(ECozyWindowKind Kind)
+{
+	UCozyEstateSubsystem* Estate = GetEstate();
+	if (!Estate)
+	{
+		return;
+	}
+	auto FindWith = [Estate](ECozyFacilityFunction Function) -> FGuid
+	{
+		for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
+		{
+			const FCozyFacilityRow* Def = Estate->GetFacilityDef(Facility.DefinitionId);
+			if (Def && !Facility.bStored && Def->Functions.Contains(Function))
+			{
+				return Facility.InstanceId;
+			}
+		}
+		return FGuid();
+	};
+	switch (Kind)
+	{
+	case ECozyWindowKind::FacilityInfo: OpenWindow(Kind, FindWith(ECozyFacilityFunction::Production)); break;
+	case ECozyWindowKind::Processing: OpenWindow(Kind, FindWith(ECozyFacilityFunction::Processing)); break;
+	case ECozyWindowKind::Sales: OpenWindow(Kind, FindWith(ECozyFacilityFunction::Sales)); break;
+	case ECozyWindowKind::Upgrade: OpenWindow(Kind, FindWith(ECozyFacilityFunction::UpgradeQueue)); break;
+	case ECozyWindowKind::FieldManagement: OpenWindow(Kind, FindWith(ECozyFacilityFunction::FieldManagement)); break;
+	default: OpenWindow(Kind, FGuid()); break;
+	}
+}
+
+void UCozyHudWidget::TogglePlacementPreview()
+{
+	bPlacementPreview = !bPlacementPreview;
+	if (PlacementPanel)
+	{
+		PlacementPanel->SetVisibility((bPlacementPreview || bPlacementMode) ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+	if (!bPlacementPreview && PlacementActionBox && !bPlacementMode)
+	{
+		PlacementActionBox->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	RefreshPlacementPanel();
+	UpdatePlacementLive();
 }
 
 void UCozyHudWidget::BuildFacilityInfoContent()
@@ -2670,34 +2777,53 @@ void UCozyHudWidget::RefreshDebugPanel()
 		}
 	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
 
-	// UI 미리보기 (편집 가능한 화면만 · 실제 재료를 쓰지 않음 · 상태를 바꿔 가며 확인)
-	if (HudScreen)
+	// UI 미리보기 (편집 가능한 화면 전부 · 실제 재료를 쓰지 않음 · 상태를 바꿔 가며 확인)
+	DebugContent->AddChildToVerticalBox(MakeButton(bUiPreview ? LOCTEXT("UiPreviewOff", "UI 미리보기 끄기") : LOCTEXT("UiPreviewOn", "UI 미리보기 켜기 (재료 안 씀)"), [this]()
 	{
-		DebugContent->AddChildToVerticalBox(MakeButton(HudScreen->bPreview ? LOCTEXT("UiPreviewOff", "UI 미리보기 끄기") : LOCTEXT("UiPreviewOn", "UI 미리보기 켜기 (재료 안 씀)"), [this]()
+		SetUiPreview(!bUiPreview);
+		ShowToast(bUiPreview ? LOCTEXT("UiPreviewOnToast", "UI 미리보기 켜짐 · 버튼은 알림만 띄웁니다") : LOCTEXT("UiPreviewOffToast", "UI 미리보기 꺼짐 · 실제 값으로 돌아갑니다"));
+	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
+	if (bUiPreview)
+	{
+		UHorizontalBox* StateRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+		for (const ECozyUiPreviewState State : { ECozyUiPreviewState::Progress, ECozyUiPreviewState::Paused, ECozyUiPreviewState::Full, ECozyUiPreviewState::Locked, ECozyUiPreviewState::Claimable, ECozyUiPreviewState::Empty })
 		{
-			if (HudScreen)
+			StateRow->AddChildToHorizontalBox(MakeButton(UCozyUiScreen::GetPreviewStateName(State), [this, State]()
 			{
-				HudScreen->SetPreview(!HudScreen->bPreview);
-				ShowToast(HudScreen->bPreview ? LOCTEXT("UiPreviewOnToast", "UI 미리보기 켜짐 · 버튼은 알림만 띄웁니다") : LOCTEXT("UiPreviewOffToast", "UI 미리보기 꺼짐 · 실제 값으로 돌아갑니다"));
-				RefreshDebugPanel();
-			}
-		}, true, 13))->SetPadding(FMargin(0.f, 3.f));
-		if (HudScreen->bPreview)
-		{
-			UHorizontalBox* StateRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
-			for (const ECozyUiPreviewState State : { ECozyUiPreviewState::Progress, ECozyUiPreviewState::Paused, ECozyUiPreviewState::Full, ECozyUiPreviewState::Locked, ECozyUiPreviewState::Claimable, ECozyUiPreviewState::Empty })
-			{
-				StateRow->AddChildToHorizontalBox(MakeButton(UCozyUiScreen::GetPreviewStateName(State), [this, State]()
-				{
-					if (HudScreen)
-					{
-						HudScreen->SetPreviewState(State);
-						ShowToast(FText::Format(LOCTEXT("UiPreviewState", "미리보기 상태: {0}"), UCozyUiScreen::GetPreviewStateName(State)));
-					}
-				}, HudScreen->PreviewState != State, 12))->SetPadding(FMargin(0.f, 0.f, 2.f, 0.f));
-			}
-			DebugContent->AddChildToVerticalBox(StateRow)->SetPadding(FMargin(0.f, 3.f));
+				SetUiPreviewState(State);
+				ShowToast(FText::Format(LOCTEXT("UiPreviewState", "미리보기 상태: {0}"), UCozyUiScreen::GetPreviewStateName(State)));
+			}, UiPreviewState != State, 12))->SetPadding(FMargin(0.f, 0.f, 2.f, 0.f));
 		}
+		DebugContent->AddChildToVerticalBox(StateRow)->SetPadding(FMargin(0.f, 3.f));
+		// 창 열어 보기 (그 기능이 있는 첫 시설로 · 미리보기 중이라 버튼은 실제로 동작하지 않음)
+		struct FPreviewWindow { ECozyWindowKind Kind; FText Label; };
+		const FPreviewWindow Windows[] = {
+			{ ECozyWindowKind::Storage, LOCTEXT("PvWinStorage", "창고") },
+			{ ECozyWindowKind::FacilityInfo, LOCTEXT("PvWinInfo", "시설 정보") },
+			{ ECozyWindowKind::Processing, LOCTEXT("PvWinProc", "가공") },
+			{ ECozyWindowKind::Sales, LOCTEXT("PvWinSales", "판매") },
+			{ ECozyWindowKind::Upgrade, LOCTEXT("PvWinUpgrade", "업그레이드") },
+			{ ECozyWindowKind::FieldManagement, LOCTEXT("PvWinField", "밭 관리") },
+			{ ECozyWindowKind::Nagaya, LOCTEXT("PvWinNagaya", "나가야") },
+			{ ECozyWindowKind::OfflineReport, LOCTEXT("PvWinOffline", "방치 보상") },
+		};
+		UHorizontalBox* WindowRow = nullptr;
+		int32 Count = 0;
+		for (const FPreviewWindow& Each : Windows)
+		{
+			if (Count++ % 4 == 0)
+			{
+				WindowRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+				DebugContent->AddChildToVerticalBox(WindowRow)->SetPadding(FMargin(0.f, 2.f));
+			}
+			const ECozyWindowKind Kind = Each.Kind;
+			WindowRow->AddChildToHorizontalBox(MakeButton(Each.Label, [this, Kind]() { OpenPreviewWindow(Kind); }, true, 12))->SetPadding(FMargin(0.f, 0.f, 2.f, 0.f));
+		}
+		DebugContent->AddChildToVerticalBox(MakeButton(bPlacementPreview ? LOCTEXT("PvPlaceOff", "배치 패널·버튼 상자 미리보기 끄기") : LOCTEXT("PvPlaceOn", "배치 패널·버튼 상자 미리보기 (시설을 옮기지 않음)"), [this]()
+		{
+			TogglePlacementPreview();
+			RefreshDebugPanel();
+		}, true, 12))->SetPadding(FMargin(0.f, 3.f));
 	}
 
 	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("Restart", "새 게임 다시 시작"), [this]()
