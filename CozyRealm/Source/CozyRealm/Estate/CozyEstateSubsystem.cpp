@@ -856,7 +856,7 @@ bool UCozyEstateSubsystem::CanPlaceFacility(const FGuid& FacilityId, FIntPoint C
 			&& Coord.Y < Other.GridCoord.Y + OtherSize.Y && Other.GridCoord.Y < Coord.Y + Size.Y;
 		if (bOverlap)
 		{
-			OutReason = FText::Format(LOCTEXT("PlaceOverlap", "{0}와(과) 겹쳐서 놓을 수 없습니다"), GetFacilityDisplayName(Other.InstanceId));
+			OutReason = FText::Format(LOCTEXT("PlaceOverlap", "{0}|hpp(과,와) 겹쳐서 놓을 수 없습니다"), GetFacilityDisplayName(Other.InstanceId));
 			return false;
 		}
 	}
@@ -896,7 +896,7 @@ bool UCozyEstateSubsystem::CanStoreFacility(const FGuid& FacilityId, FText& OutR
 	}
 	if (!Def->bCanStore)
 	{
-		OutReason = FText::Format(LOCTEXT("StoreCore", "{0}은(는) 하나뿐인 핵심 시설이라 보관할 수 없습니다 · 옮기기만 할 수 있습니다"), Def->DisplayName);
+		OutReason = FText::Format(LOCTEXT("StoreCore", "{0}|hpp(은,는) 하나뿐인 핵심 시설이라 보관할 수 없습니다 · 옮기기만 할 수 있습니다"), Def->DisplayName);
 		return false;
 	}
 	if (State.Jobs.ContainsByPredicate([&FacilityId](const FCozyJobRecord& Job) { return Job.FacilityId == FacilityId; }))
@@ -940,8 +940,8 @@ bool UCozyEstateSubsystem::StoreFacility(const FGuid& FacilityId, FText& OutMess
 	}
 	const FText Name = GetFacilityDisplayName(FacilityId);
 	OutMessage = Returned > 0
-		? FText::Format(LOCTEXT("StoredRes", "{0}을(를) 보관함에 넣었습니다 · 주민 {1}명은 나가야로 돌아갔습니다"), Name, FText::AsNumber(Returned))
-		: FText::Format(LOCTEXT("Stored", "{0}을(를) 보관함에 넣었습니다"), Name);
+		? FText::Format(LOCTEXT("StoredRes", "{0}|hpp(을,를) 보관함에 넣었습니다 · 주민 {1}명은 나가야로 돌아갔습니다"), Name, FText::AsNumber(Returned))
+		: FText::Format(LOCTEXT("Stored", "{0}|hpp(을,를) 보관함에 넣었습니다"), Name);
 	UE_LOG(LogCozyRealm, Log, TEXT("보관: %s Lv%d · 작물 %s · 주민 %d명 나가야로"), *Name.ToString(), Facility->Level, *Facility->SelectedCropId.ToString(), Returned);
 	NotifyChanged(true);
 	SaveEstate(TEXT("보관"));
@@ -1057,8 +1057,8 @@ bool UCozyEstateSubsystem::ConfirmPlacement(FText& OutMessage)
 	PlacementActor = nullptr;
 	PlacementId.Invalidate();
 	OutMessage = bFromStorage
-		? FText::Format(LOCTEXT("PlacedFromStorage", "{0}을(를) 다시 배치했습니다 · Lv{1} 그대로"), Name, FText::AsNumber(Facility->Level))
-		: FText::Format(LOCTEXT("Moved", "{0}을(를) 옮겼습니다 · 진행 중인 작업은 그대로 이어집니다"), Name);
+		? FText::Format(LOCTEXT("PlacedFromStorage", "{0}|hpp(을,를) 다시 배치했습니다 · Lv{1} 그대로"), Name, FText::AsNumber(Facility->Level))
+		: FText::Format(LOCTEXT("Moved", "{0}|hpp(을,를) 옮겼습니다 · 진행 중인 작업은 그대로 이어집니다"), Name);
 	UE_LOG(LogCozyRealm, Log, TEXT("배치 확정: %s (%d,%d)→(%d,%d) 회전 %d%s"), *Name.ToString(), From.X, From.Y, PlacementCoord.X, PlacementCoord.Y, PlacementRotation, bFromStorage ? TEXT(" · 보관함에서 꺼냄") : TEXT(""));
 	NotifyChanged(true);
 	SaveEstate(TEXT("배치"));
@@ -1442,14 +1442,14 @@ bool UCozyEstateSubsystem::CanAcceptOutputItem(const FGuid& FacilityId, FName It
 	if (Facility->UnclaimedAmount > 0 && Facility->UnclaimedItemId != ItemId)
 	{
 		const FText Name = GetItemName(Facility->UnclaimedItemId);
-		OutReason = FText::Format(LOCTEXT("OtherItemUnclaimed", "미수령 {0}이(가) 있어 다른 품목을 제작할 수 없습니다 · {0} {1}개를 모두 수령하면 만들 수 있습니다"), Name, FText::AsNumber(Facility->UnclaimedAmount));
+		OutReason = FText::Format(LOCTEXT("OtherItemUnclaimed", "미수령 {0}|hpp(이,가) 있어 다른 품목을 제작할 수 없습니다 · {0} {1}개를 모두 수령하면 만들 수 있습니다"), Name, FText::AsNumber(Facility->UnclaimedAmount));
 		return false;
 	}
 	for (const FCozyJobRecord& Job : State.Jobs)
 	{
 		if (Job.FacilityId == FacilityId && Job.Type == ECozyJobType::Processing && Job.OutputItemId != ItemId)
 		{
-			OutReason = FText::Format(LOCTEXT("OtherItemInProgress", "현재 {0}을(를) 제작 중이라 다른 품목을 제작할 수 없습니다 · 작업이 끝나거나 취소된 뒤에 만들 수 있습니다"), GetItemName(Job.OutputItemId));
+			OutReason = FText::Format(LOCTEXT("OtherItemInProgress", "현재 {0}|hpp(을,를) 제작 중이라 다른 품목을 제작할 수 없습니다 · 작업이 끝나거나 취소된 뒤에 만들 수 있습니다"), GetItemName(Job.OutputItemId));
 			return false;
 		}
 	}
@@ -1540,7 +1540,7 @@ FCozyCollectResult UCozyEstateSubsystem::CollectUnclaimed(const FGuid& FacilityI
 	// 이번 클릭의 결과만 담는다 (현재 미수령량·창고 수량은 UI가 최신 값으로 따로 보여 줌)
 	if (Result.Moved <= 0)
 	{
-		Result.Message = FText::Format(LOCTEXT("CollectStorageFull", "창고에 {0}을(를) 받을 공간이 없어 옮기지 못했습니다 · 생산물은 시설에 그대로"), FirstItemName);
+		Result.Message = FText::Format(LOCTEXT("CollectStorageFull", "창고에 {0}|hpp(을,를) 받을 공간이 없어 옮기지 못했습니다 · 생산물은 시설에 그대로"), FirstItemName);
 	}
 	else
 	{
@@ -1594,7 +1594,7 @@ FCozySellQuote UCozyEstateSubsystem::GetSellQuote(const FGuid& ShopFacilityId, F
 	}
 	if (!Item || Item->Category != ECozyItemCategory::Material || Item->SellPrice <= 0)
 	{
-		Quote.BlockReason = FText::Format(LOCTEXT("SellNotAllowed", "{0}은(는) 팔 수 없는 재료입니다"), Quote.ItemName);
+		Quote.BlockReason = FText::Format(LOCTEXT("SellNotAllowed", "{0}|hpp(은,는) 팔 수 없는 재료입니다"), Quote.ItemName);
 		return Quote;
 	}
 	if (!GetItemDef(Config.SaleCurrencyId))
@@ -1636,7 +1636,7 @@ bool UCozyEstateSubsystem::SellItem(const FGuid& ShopFacilityId, FName ItemId, i
 	State.Resources.FindOrAdd(ItemId) -= Quote.Amount;
 	AddResource(Config.SaleCurrencyId, Quote.TotalPrice);
 	const int32 After = GetAmount(Config.SaleCurrencyId);
-	OutMessage = FText::Format(LOCTEXT("SellOk", "{0} {1}개를 팔아 {2} {3}을(를) 받았습니다"), Quote.ItemName, FText::AsNumber(Quote.Amount), Quote.CurrencyName, FText::AsNumber(Quote.TotalPrice));
+	OutMessage = FText::Format(LOCTEXT("SellOk", "{0} {1}개를 팔아 {2} {3}|hpp(을,를) 받았습니다"), Quote.ItemName, FText::AsNumber(Quote.Amount), Quote.CurrencyName, FText::AsNumber(Quote.TotalPrice));
 	UE_LOG(LogCozyRealm, Log, TEXT("판매: %s ×%d · 개당 %d · %s %d → %d (+%d)"), *ItemId.ToString(), Quote.Amount, Quote.UnitPrice, *Config.SaleCurrencyId.ToString(), Before, After, After - Before);
 	NotifyChanged();
 	return true;
@@ -2994,7 +2994,7 @@ bool UCozyEstateSubsystem::SelectCrop(const FGuid& FacilityId, FName CropId, FTe
 	FCozyFacilityState* Facility = FindFacilityMutable(FacilityId);
 	const FCozyCropRow* Crop = GetCropDef(CropId);
 	Facility->SelectedCropId = CropId;
-	OutMessage = FText::Format(LOCTEXT("CropChanged", "키우는 작물을 {0}(으)로 바꿨습니다"), Crop->DisplayName);
+	OutMessage = FText::Format(LOCTEXT("CropChanged", "키우는 작물을 {0}|hpp(으로,로) 바꿨습니다"), Crop->DisplayName);
 	UE_LOG(LogCozyRealm, Log, TEXT("작물 변경: %s → %s"), *GetFacilityDisplayName(FacilityId).ToString(), *CropId.ToString());
 	NotifyChanged();
 	return true;
@@ -3226,9 +3226,44 @@ FString UCozyEstateSubsystem::DebugRunProcessingAppendCheck()
 	int32 RefundWheat = 0;
 	for (const FCozyUpgradeQuote::FAmount& R : Up.Refunds) { if (R.ItemId == TEXT("Wheat")) { RefundWheat = R.Amount; } }
 	C.Expect(RefundWheat == (1 + 3) * 3, FString::Printf(TEXT("⑧ 업그레이드 반환 견적: 남은 진행 1회 + 대기 3회 = 밀 12 (실제 %d)"), RefundWheat));
+	// ⑧-2 실제 업그레이드 시작: 비용 차감 · 진행+대기 가공 종료 · 미완료 재료 반환 · 예약 해제 · 완성품 유지
+	{
+		// 시작 조건을 맞춤 (검사용 · 끝나면 상태 되돌림): 골드 · 업그레이드 칸 비우기
+		State.Resources.FindOrAdd(TEXT("Gold")) = 1000;
+		State.Jobs.RemoveAll([](const FCozyJobRecord& Job) { return Job.Type == ECozyJobType::Growth; });
+		// 지금 저장 데이터에서 다음 레벨이 막혀 있을 수 있으므로 검사 복사본에서는 Lv1로 둠 (끝나면 되돌림)
+		FindFacilityMutable(MillId)->Level = 1;
+		const FCozyUpgradeQuote Ready = GetUpgradeQuote(MillId);
+		int32 CostGold = 0;
+		int32 CostWheat = 0;
+		for (const FCozyUpgradeQuote::FAmount& Cost : Ready.Costs)
+		{
+			CostGold += Cost.ItemId == TEXT("Gold") ? Cost.Amount : 0;
+			CostWheat += Cost.ItemId == TEXT("Wheat") ? Cost.Amount : 0;
+		}
+		const int32 WheatBefore = GetAmount(TEXT("Wheat"));
+		const int32 GoldBefore = GetAmount(TEXT("Gold"));
+		const int32 UnclaimedBefore = FindFacility(MillId)->UnclaimedAmount;
+		const bool bUpgradeStarted = StartUpgrade(MillId, Msg);
+		C.Expect(bUpgradeStarted, FString::Printf(TEXT("⑧ 실제 업그레이드 시작 (%s)"), *Msg.ToString()));
+		if (bUpgradeStarted)
+		{
+			int32 MillJobs = 0;
+			for (const FCozyJobRecord& Job : State.Jobs) { MillJobs += (Job.FacilityId == MillId && Job.Type == ECozyJobType::Processing) ? 1 : 0; }
+			C.Expect(MillJobs == 0 && Reserved() == 0, TEXT("⑧ 진행 작업과 대기 작업 모두 종료 · 예약 공간 0"));
+			C.Expect(GetAmount(TEXT("Wheat")) == WheatBefore - CostWheat + RefundWheat, FString::Printf(TEXT("⑧ 밀 %d → %d (비용 −%d · 반환 +%d)"), WheatBefore, GetAmount(TEXT("Wheat")), CostWheat, RefundWheat));
+			C.Expect(GetAmount(TEXT("Gold")) == GoldBefore - CostGold, FString::Printf(TEXT("⑧ 골드 비용 %d 차감"), CostGold));
+			C.Expect(FindFacility(MillId)->UnclaimedAmount == UnclaimedBefore, TEXT("⑧ 완성된 미수령 밀가루는 그대로"));
+			C.Expect(IsFacilityUpgrading(MillId) && !GetRecipeQuote(MillId, TEXT("Mill_Flour"), 1).bCanStart, TEXT("⑧ 업그레이드 중에는 새 가공·제작 추가 불가"));
+		}
+	}
 
 	// ⑨ 저장 구조: 대기 표시가 저장 상태에 들어 있음 (UPROPERTY) · 복사본에서 유지
 	{
+		// ⑧에서 시작한 업그레이드를 지우고 새로 1회 + 추가 1회
+		State.Jobs.RemoveAll([](const FCozyJobRecord& Job) { return Job.Type == ECozyJobType::Growth; });
+		Reset();
+		StartProcessing(MillId, TEXT("Mill_Flour"), 1, Msg);
 		StartProcessing(MillId, TEXT("Mill_Flour"), 1, Msg);
 		const FCozyEstateState Copy = State;
 		const bool bHasQueued = Copy.Jobs.ContainsByPredicate([&MillId](const FCozyJobRecord& Job) { return Job.FacilityId == MillId && Job.bQueued; });
