@@ -156,7 +156,9 @@ enum class ECozyUiValue : uint8
 	/** 업그레이드를 시작할 수 없는 이유 (매개변수: 시설 · {4} · 시작할 수 있으면 빈칸) */
 	UpgradeBlock UMETA(DisplayName = "Upgrade Block Reason (시작할 수 없는 이유)"),
 	/** 보관한 시설 한 줄 (매개변수: 시설 · 목록 안에서 @Row · {0} 레벨 · {4} '제분소 Lv2 · 밀') */
-	StoredLabel UMETA(DisplayName = "Stored Facility Label (보관 시설 이름)")
+	StoredLabel UMETA(DisplayName = "Stored Facility Label (보관 시설 이름)"),
+	/** 배치 중인 시설을 놓을 수 있는지 ({4} '놓을 수 있습니다' / 이유 · 보관 불가 이유 · 상태색: 충족 / 경고) */
+	PlacementStatus UMETA(DisplayName = "Placement Status (배치 가능 여부)")
 };
 
 /** 반복 목록의 출처 · 줄 수가 게임 상태에 따라 바뀌는 목록 */
@@ -197,7 +199,9 @@ enum class ECozyUiListSource : uint8
 	/** 업그레이드할 시설 (성장 설정표에 행이 있는 시설 · 줄 ID = 시설 고유 ID) */
 	UpgradeFacilities UMETA(DisplayName = "Upgrade Facilities (업그레이드할 시설)"),
 	/** 시설 한 줄 안에서: 조건 시설들 (줄 ID = 시설 정의 ID · '조건 시설로 이동' 버튼에 씀) */
-	UpgradeConditionTargets UMETA(DisplayName = "Upgrade Condition Targets (조건 시설)")
+	UpgradeConditionTargets UMETA(DisplayName = "Upgrade Condition Targets (조건 시설)"),
+	/** 고른 시설의 메뉴 버튼 (시설 정의의 기능 조합에서 · 줄 ID = Info · Nagaya · Processing · Sales · Upgrade · Shrine · FieldManagement · Resident) */
+	FacilityMenuItems UMETA(DisplayName = "Facility Menu Items (시설 메뉴 버튼)")
 };
 
 /** 배경 안쪽 여백 */
@@ -290,7 +294,17 @@ enum class ECozyUiAction : uint8
 	/** 창을 닫고 그 시설을 선택 (Action Param: 시설 정의 ID · @Row) */
 	GoToFacility UMETA(DisplayName = "Go To Facility (그 시설로 이동)"),
 	/** 보관함에서 꺼내 배치 시작 (Action Param: 시설 · 보관 시설 목록 안에서 @Row) */
-	TakeOutStored UMETA(DisplayName = "Take Out Stored (보관함에서 꺼내기)")
+	TakeOutStored UMETA(DisplayName = "Take Out Stored (보관함에서 꺼내기)"),
+	/** 시설 메뉴 버튼: 그 기능의 창 열기 (Action Param: 메뉴 줄 ID · 목록 안에서 @Row) */
+	OpenFacilityFunction UMETA(DisplayName = "Open Facility Function (시설 기능 창 열기)"),
+	/** 배치 중인 시설 회전 */
+	RotatePlacement UMETA(DisplayName = "Rotate Placement (배치 회전)"),
+	/** 배치 중인 시설을 보관함에 넣기 (보관할 수 없으면 꺼짐) */
+	StorePlacing UMETA(DisplayName = "Store Placing (배치 중 시설 보관)"),
+	/** 지금 자리에 확정 (놓을 수 없으면 꺼짐) */
+	ConfirmPlacing UMETA(DisplayName = "Confirm Placing (배치 확정)"),
+	/** 배치 취소 (원래 자리로) */
+	CancelPlacing UMETA(DisplayName = "Cancel Placing (배치 취소)")
 };
 
 /** 미리보기 상태 · 실제 값 대신 보여 줄 가짜 상태 */

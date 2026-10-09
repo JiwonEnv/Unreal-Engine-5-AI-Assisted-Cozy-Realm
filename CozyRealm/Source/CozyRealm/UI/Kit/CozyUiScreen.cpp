@@ -963,6 +963,23 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 		R.StateColor = ECozyUiColor::InkMuted;
 		break;
 	}
+	case ECozyUiValue::PlacementStatus:
+		if (Estate->IsPlacing())
+		{
+			FText PlaceReason;
+			const bool bCanPlace = Estate->CanPlaceFacility(Estate->GetPlacementId(), Estate->GetPlacementCoord(), Estate->GetPlacementRotation(), PlaceReason);
+			FText StoreReason;
+			const bool bCanStore = !Estate->IsPlacementFromStorage() && Estate->CanStoreFacility(Estate->GetPlacementId(), StoreReason);
+			FString Status = bCanPlace ? TEXT("놓을 수 있습니다") : PlaceReason.ToString();
+			if (!Estate->IsPlacementFromStorage() && !bCanStore)
+			{
+				Status += TEXT("\n보관 불가: ") + StoreReason.ToString();
+			}
+			R.Text = FText::FromString(Status);
+			R.Current = bCanPlace ? 1.f : 0.f;
+			R.StateColor = bCanPlace ? ECozyUiColor::Ok : ECozyUiColor::Warning;
+		}
+		break;
 	case ECozyUiValue::StoredLabel:
 		if (const FCozyFacilityState* Facility = FindFirst(Param))
 		{
@@ -1049,6 +1066,18 @@ TArray<FCozyUiListRow> UCozyUiScreen::GetListRows(ECozyUiListSource Source, FNam
 			for (int32 Index = 0; Index < FMath::Max(1, Def ? Def->ProcessingSlots : 1); ++Index)
 			{
 				Rows.Add({ FName(*FString::Printf(TEXT("Slot%d"), Index)), FText::Format(LOCTEXT("SlotName", "가공 칸 {0}"), FText::AsNumber(Index + 1)) });
+			}
+		}
+		break;
+	case ECozyUiListSource::FacilityMenuItems:
+		if (const FCozyFacilityState* Facility = Estate->FindFacility(ContextFacility))
+		{
+			if (const FCozyFacilityRow* Def = Estate->GetFacilityDef(Facility->DefinitionId))
+			{
+				for (const TPair<FName, FText>& Item : UCozyHudWidget::GetFacilityMenu(*Def))
+				{
+					Rows.Add({ Item.Key, Item.Value });
+				}
 			}
 		}
 		break;
@@ -1201,6 +1230,11 @@ FText UCozyUiScreen::GetActionName(ECozyUiAction Action)
 	case ECozyUiAction::StartUpgrade: return LOCTEXT("ActUpStart", "업그레이드 시작");
 	case ECozyUiAction::GoToFacility: return LOCTEXT("ActGoTo", "그 시설로 이동");
 	case ECozyUiAction::TakeOutStored: return LOCTEXT("ActTakeOut", "보관함에서 꺼내기");
+	case ECozyUiAction::OpenFacilityFunction: return LOCTEXT("ActFacFunc", "시설 기능 창 열기");
+	case ECozyUiAction::RotatePlacement: return LOCTEXT("ActRotate", "배치 회전");
+	case ECozyUiAction::StorePlacing: return LOCTEXT("ActStorePlacing", "보관함에 넣기");
+	case ECozyUiAction::ConfirmPlacing: return LOCTEXT("ActConfirmPlacing", "배치 확정");
+	case ECozyUiAction::CancelPlacing: return LOCTEXT("ActCancelPlacing", "배치 취소");
 	default: return LOCTEXT("ActNone", "동작 없음");
 	}
 }
@@ -1359,6 +1393,24 @@ bool UCozyUiScreen::CanRunAction(const FCozyUiElementEntry& Entry, FText& OutRea
 			return Speed.bCanApply;
 		}
 	}
+	case ECozyUiAction::RotatePlacement:
+	case ECozyUiAction::CancelPlacing:
+		OutReason = LOCTEXT("NotPlacing", "배치 중인 시설이 없습니다");
+		return Estate->IsPlacing();
+	case ECozyUiAction::StorePlacing:
+		if (!Estate->IsPlacing() || Estate->IsPlacementFromStorage())
+		{
+			OutReason = LOCTEXT("StoreFromStorage", "보관함에서 꺼낸 시설은 놓거나 취소합니다");
+			return false;
+		}
+		return Estate->CanStoreFacility(Estate->GetPlacementId(), OutReason);
+	case ECozyUiAction::ConfirmPlacing:
+		if (!Estate->IsPlacing())
+		{
+			OutReason = LOCTEXT("NotPlacing2", "배치 중인 시설이 없습니다");
+			return false;
+		}
+		return Estate->CanPlaceFacility(Estate->GetPlacementId(), Estate->GetPlacementCoord(), Estate->GetPlacementRotation(), OutReason);
 	case ECozyUiAction::StartUpgrade:
 	{
 		FGuid FacilityId;
@@ -1559,6 +1611,23 @@ void UCozyUiScreen::RunAction(const FCozyUiElementEntry& Entry)
 		}
 		break;
 	}
+	case ECozyUiAction::OpenFacilityFunction: Hud->OpenFacilityFunction(Entry.ActionParam, ContextFacility); break;
+	case ECozyUiAction::RotatePlacement: Estate->RotatePlacement(); break;
+	case ECozyUiAction::StorePlacing:
+	{
+		FText Message;
+		Estate->StoreFacility(Estate->GetPlacementId(), Message);
+		Hud->ShowToast(Message);
+		break;
+	}
+	case ECozyUiAction::ConfirmPlacing:
+	{
+		FText Message;
+		Estate->ConfirmPlacement(Message);
+		Hud->ShowToast(Message);
+		break;
+	}
+	case ECozyUiAction::CancelPlacing: Estate->CancelPlacement(); break;
 	case ECozyUiAction::TakeOutStored:
 	{
 		FGuid FacilityId;
