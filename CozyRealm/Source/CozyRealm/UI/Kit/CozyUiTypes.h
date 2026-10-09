@@ -84,7 +84,29 @@ enum class ECozyUiValue : uint8
 	/** 보관함 시설 수 */
 	StoredFacilities UMETA(DisplayName = "Stored Facilities (보관 시설 수)"),
 	/** 창고에 더 받을 수 있는 수량 (매개변수: 재료 ID · {4} = '더 받을 수 있음 N개' 또는 '가득 참' · 가득 차면 경고색) */
-	StorageSpace UMETA(DisplayName = "Storage Space (창고 남은 공간)")
+	StorageSpace UMETA(DisplayName = "Storage Space (창고 남은 공간)"),
+	/** 시설 이름 (매개변수: 시설 · {0} 레벨 · {4} 이름 · 밭처럼 개별 레벨이 없는 시설은 {4}만) */
+	FacilityName UMETA(DisplayName = "Facility Name (시설 이름·레벨)"),
+	/** 배치 주민 (매개변수: 시설 · {0} 인원 · {1} 최대 · {4} 이름들) */
+	Residents UMETA(DisplayName = "Residents (배치 주민)"),
+	/** 미수령 품목의 창고 상태 (매개변수: 시설 · {0} 창고 보유 · {1} 창고 한도 · {4} '지금 수령 가능 N개' 안내) */
+	UnclaimedStorage UMETA(DisplayName = "Unclaimed Storage (미수령 품목 창고 상태)"),
+	/** 공통 관리 효과 (매개변수: 시설 · {4} '생산 속도 ×1.2 (밭 관리 시설 Lv2)') */
+	GrowthEffect UMETA(DisplayName = "Growth Effect (공통 관리 효과)"),
+	/** 키우는 작물 (매개변수: 시설 · {4} 작물 이름) */
+	CurrentCrop UMETA(DisplayName = "Current Crop (키우는 작물)"),
+	/** 작물 선택지 하나 (매개변수: 작물 ID · 반복 목록 안에서 @Row · {4} '밀 (키우는 중)' · 고를 수 없으면 잠김색) */
+	CropOption UMETA(DisplayName = "Crop Option (작물 선택지)"),
+	/** 밭 관리 상태 (매개변수: 시설 · {0} 단계 · {4} 속도·작물·다음 단계 안내 여러 줄) */
+	FieldManagement UMETA(DisplayName = "Field Management (밭 관리 상태)"),
+	/** 방치 보상 요약 ({4} '자리를 비운 동안: 3시간' 등) */
+	OfflineSummary UMETA(DisplayName = "Offline Summary (방치 보상 요약)"),
+	/** 주민의 배치 상태 (매개변수: 주민 · 반복 목록 안에서 @Row · {4} '배치: 밭' / '미배치 (나가야)') */
+	ResidentPlacement UMETA(DisplayName = "Resident Placement (주민 배치 상태)"),
+	/** 나가야 창에서 배치할 시설 ({4} '배치할 시설: 제분소' · 바로가기로 열지 않았으면 빈칸) */
+	WindowTarget UMETA(DisplayName = "Window Target (배치할 시설)"),
+	/** 방금 한 일 (버튼 결과 안내 · {4}) */
+	Feedback UMETA(DisplayName = "Feedback (방금 한 일)")
 };
 
 /** 반복 목록의 출처 · 줄 수가 게임 상태에 따라 바뀌는 목록 */
@@ -101,7 +123,15 @@ enum class ECozyUiListSource : uint8
 	/** 판매할 수 있는 재료 */
 	SaleItems UMETA(DisplayName = "Sale Items (판매 가능 재료)"),
 	/** 보관함에 들어간 시설 */
-	StoredFacilities UMETA(DisplayName = "Stored Facilities (보관 시설)")
+	StoredFacilities UMETA(DisplayName = "Stored Facilities (보관 시설)"),
+	/** 방치 보상 결과 줄 (줄 이름 = 결과 글) */
+	OfflineReportLines UMETA(DisplayName = "Offline Report Lines (방치 보상 결과)"),
+	/** 모든 주민 (줄 ID = 주민 ID · 이름) */
+	Residents UMETA(DisplayName = "Residents (주민)"),
+	/** 창 시설이 고를 수 있는 작물 (줄 ID = 작물 ID) */
+	WindowCrops UMETA(DisplayName = "Window Crops (창 시설의 작물)"),
+	/** 주민 한 줄 안에서: 그 주민을 보낼 수 있는 시설 (줄 ID = '주민|시설' · 이름 = '제분소로 옮기기' 등 버튼 글자) */
+	AssignTargets UMETA(DisplayName = "Assign Targets (주민을 보낼 시설)")
 };
 
 /** 배경 안쪽 여백 */
@@ -140,7 +170,19 @@ enum class ECozyUiAction : uint8
 	/** 열린 창 닫기 */
 	CloseWindow UMETA(DisplayName = "Close Window (창 닫기)"),
 	/** UI 미리보기 켜기/끄기 */
-	TogglePreview UMETA(DisplayName = "Toggle Preview (UI 미리보기)")
+	TogglePreview UMETA(DisplayName = "Toggle Preview (UI 미리보기)"),
+	/** 창 시설의 미수령분 수령 */
+	CollectWindow UMETA(DisplayName = "Collect Window (창 시설 수령)"),
+	/** 창 시설에 주민 배치하러 나가야로 */
+	OpenNagayaForWindow UMETA(DisplayName = "Open Nagaya For Window (창 시설 주민 배치)"),
+	/** 방치 보상 확인 (닫기) */
+	ConfirmOfflineReport UMETA(DisplayName = "Confirm Offline Report (방치 보상 확인)"),
+	/** 작물 바꾸기 (Action Param: 작물 ID · 목록 안에서 @Row) */
+	SelectCrop UMETA(DisplayName = "Select Crop (작물 바꾸기)"),
+	/** 주민 배치 (Action Param: '주민|시설' · AssignTargets 목록 안에서 @Row) */
+	AssignResident UMETA(DisplayName = "Assign Resident (주민 배치)"),
+	/** 주민 배치 해제 (Action Param: 주민 ID · 목록 안에서 @Row) */
+	UnassignResident UMETA(DisplayName = "Unassign Resident (주민 배치 해제)")
 };
 
 /** 미리보기 상태 · 실제 값 대신 보여 줄 가짜 상태 */

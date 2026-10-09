@@ -59,10 +59,14 @@ public:
 	const FCozyUiAreaLayout* FindArea(FName AreaId) const;
 	TArray<FCozyUiElementEntry> GetElementsForArea(FName AreaId) const;
 	/** 반복 목록의 줄 (디자이너에서는 예시 3줄) */
-	TArray<FCozyUiListRow> GetListRows(ECozyUiListSource Source) const;
+	TArray<FCozyUiListRow> GetListRows(ECozyUiListSource Source, FName ParentRowId = NAME_None) const;
+	/** 지금 이 버튼의 동작을 할 수 있는가 (할 수 없으면 버튼을 끄고 OutReason을 툴팁으로) */
+	bool CanRunAction(const FCozyUiElementEntry& Entry, FText& OutReason) const;
 
 	/** 창 화면이 보여 주는 시설 (시설 정보·가공 창 등 · 창을 열 때 HUD가 정함) */
 	FGuid ContextFacility;
+	/** 나가야 창을 시설 바로가기로 열었을 때 그 시설 */
+	FGuid ContextTarget;
 	FCozyUiValueResult GetValue(ECozyUiValue Value, FName Param) const;
 
 	/** 버튼 클릭 → 기존 기능 (미리보기면 알림만) */

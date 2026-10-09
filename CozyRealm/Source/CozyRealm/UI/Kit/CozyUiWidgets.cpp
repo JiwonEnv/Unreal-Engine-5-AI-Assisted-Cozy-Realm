@@ -173,6 +173,7 @@ FCozyUiElementEntry CozyUiRow::Resolve(const FCozyUiElementEntry& In, FName RowI
 		}
 	};
 	Swap(Out.ValueParam);
+	Swap(Out.ActionParam);
 	Swap(Out.Image);
 	Swap(Out.Background);
 	const FString Label = In.Label.ToString();
@@ -277,7 +278,11 @@ void UCozyUiElementWidget::ApplyCozyTheme(const UCozyUiScreen& Screen)
 		{
 			Button->SetStyle(*Style);
 		}
-		Button->SetToolTipText(Entry.Action == ECozyUiAction::None ? FText::GetEmpty() : UCozyUiScreen::GetActionName(Entry.Action));
+		// 지금 할 수 없는 동작이면 버튼을 끄고 이유를 툴팁으로 (예: 수령할 것이 없음 · 잠긴 작물)
+		FText Why;
+		const bool bCan = Screen.CanRunAction(Entry, Why);
+		Button->SetIsEnabled(bCan);
+		Button->SetToolTipText(!bCan && !Why.IsEmpty() ? Why : (Entry.Action == ECozyUiAction::None ? FText::GetEmpty() : UCozyUiScreen::GetActionName(Entry.Action)));
 	}
 	if (Background)
 	{
@@ -429,10 +434,17 @@ void UCozyUiElementWidget::UpdateCozyValue(const UCozyUiScreen& Screen)
 	{
 		return;
 	}
+	if (Button && Entry.Action != ECozyUiAction::None)
+	{
+		FText Why;
+		Button->SetIsEnabled(Screen.CanRunAction(Entry, Why));
+	}
 	if (Label)
 	{
-		Label->SetText(Entry.Label.IsEmpty() ? FormatNumber(R.Current) : FormatValue(Entry.Label, R));
-		Label->SetVisibility(ESlateVisibility::HitTestInvisible);
+		const FText Shown = Entry.Label.IsEmpty() ? FormatNumber(R.Current) : FormatValue(Entry.Label, R);
+		Label->SetText(Shown);
+		// 값 글자가 비면 줄도 접음 (예: 바로가기로 열지 않은 나가야의 '배치할 시설' · 아직 없는 '방금 한 일')
+		Label->SetVisibility(Shown.IsEmptyOrWhitespace() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 		if (Entry.TextColor == ECozyUiColor::None)
 		{
 			// 글자 색 None = 값의 상태색 (예: 창고가 가득 차면 경고색)
@@ -497,7 +509,7 @@ void UCozyUiArea::ApplyCozyTheme(const UCozyUiScreen& Screen)
 	TArray<FCozyUiListRow> Rows;
 	if (ListSource != ECozyUiListSource::None)
 	{
-		Rows = Screen.GetListRows(ListSource);
+		Rows = Screen.GetListRows(ListSource, RowId);
 		for (int32 Index = 0; Index < Rows.Num(); ++Index)
 		{
 			FCozyUiElementEntry RowEntry;
