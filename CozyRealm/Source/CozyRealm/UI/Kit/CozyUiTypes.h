@@ -154,7 +154,9 @@ enum class ECozyUiValue : uint8
 	/** 비용·시간·조건·해금·효과·가공 반환 안내 (매개변수: 시설 · {4} · 여러 줄) */
 	UpgradeDetail UMETA(DisplayName = "Upgrade Detail (업그레이드 비용·조건)"),
 	/** 업그레이드를 시작할 수 없는 이유 (매개변수: 시설 · {4} · 시작할 수 있으면 빈칸) */
-	UpgradeBlock UMETA(DisplayName = "Upgrade Block Reason (시작할 수 없는 이유)")
+	UpgradeBlock UMETA(DisplayName = "Upgrade Block Reason (시작할 수 없는 이유)"),
+	/** 보관한 시설 한 줄 (매개변수: 시설 · 목록 안에서 @Row · {0} 레벨 · {4} '제분소 Lv2 · 밀') */
+	StoredLabel UMETA(DisplayName = "Stored Facility Label (보관 시설 이름)")
 };
 
 /** 반복 목록의 출처 · 줄 수가 게임 상태에 따라 바뀌는 목록 */
@@ -286,7 +288,9 @@ enum class ECozyUiAction : uint8
 	/** 이 시설 업그레이드 시작 (Action Param: 시설 · @Row · 시작 직전 재검사) */
 	StartUpgrade UMETA(DisplayName = "Start Upgrade (업그레이드 시작)"),
 	/** 창을 닫고 그 시설을 선택 (Action Param: 시설 정의 ID · @Row) */
-	GoToFacility UMETA(DisplayName = "Go To Facility (그 시설로 이동)")
+	GoToFacility UMETA(DisplayName = "Go To Facility (그 시설로 이동)"),
+	/** 보관함에서 꺼내 배치 시작 (Action Param: 시설 · 보관 시설 목록 안에서 @Row) */
+	TakeOutStored UMETA(DisplayName = "Take Out Stored (보관함에서 꺼내기)")
 };
 
 /** 미리보기 상태 · 실제 값 대신 보여 줄 가짜 상태 */

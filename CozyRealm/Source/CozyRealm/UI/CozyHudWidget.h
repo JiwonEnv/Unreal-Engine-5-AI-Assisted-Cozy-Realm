@@ -232,6 +232,8 @@ private:
 	static FName GetWindowName(ECozyWindowKind Kind);
 	/** 그 창에 지정된 화면 (없으면 예전 창) */
 	class UCozyUiScreen* GetWindowScreen(ECozyWindowKind Kind);
+	/** 이름으로 화면 찾기 (Window Screens에 지정된 화면 · 한 번 만들면 재사용 · 예: 배치 패널 'Placement') */
+	class UCozyUiScreen* GetScreenByName(FName Name);
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> WindowFrameWidget;
 	UPROPERTY(Transient)

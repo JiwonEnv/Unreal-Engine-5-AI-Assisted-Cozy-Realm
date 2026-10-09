@@ -358,6 +358,19 @@ void UCozyHudWidget::RefreshPlacementPanel()
 	{
 		return;
 	}
+	// 편집 가능한 배치 패널 화면이 지정돼 있으면 예전 패널 내용 대신 그 화면 (배경·안내·보관함 목록 모두 화면 설정에서)
+	if (UCozyUiScreen* Screen = GetScreenByName(TEXT("Placement")))
+	{
+		if (PlacementPanel->GetContent() != Screen)
+		{
+			PlacementPanel->SetContent(Screen);
+			PlacementPanel->SetBrushColor(FLinearColor::Transparent);
+			PlacementPanel->SetPadding(FMargin(0.f));
+		}
+		Screen->RefreshTheme();
+		Screen->RefreshValues();
+		return;
+	}
 	const TArray<FGuid> Stored = Estate->GetStoredFacilities();
 	if (Stored == PlacementStoredIds && PlacementStoredBox->GetChildrenCount() > 0)
 	{
@@ -1194,7 +1207,11 @@ void UCozyHudWidget::ClampProcessingSelection()
 
 UCozyUiScreen* UCozyHudWidget::GetWindowScreen(ECozyWindowKind Kind)
 {
-	const FName Name = GetWindowName(Kind);
+	return GetScreenByName(GetWindowName(Kind));
+}
+
+UCozyUiScreen* UCozyHudWidget::GetScreenByName(FName Name)
+{
 	if (Name.IsNone())
 	{
 		return nullptr;
