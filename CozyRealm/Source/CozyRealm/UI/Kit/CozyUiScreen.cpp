@@ -17,6 +17,30 @@
 
 #define LOCTEXT_NAMESPACE "CozyUi"
 
+namespace CozyUiScreenUtil
+{
+	const UCozyHudWidget* FindHud(const UUserWidget* Widget)
+	{
+		const ACozyRealmEstatePlayerController* Controller = Widget ? Cast<ACozyRealmEstatePlayerController>(Widget->GetOwningPlayer()) : nullptr;
+		return Controller ? Controller->GetHud() : nullptr;
+	}
+
+	/** 가공 칸에 놓인 작업 (진행·일시 정지 · 대기 작업 제외) */
+	TArray<FCozyProcessingJobView> ActiveJobs(const UCozyEstateSubsystem* Estate, const FGuid& FacilityId)
+	{
+		TArray<FCozyProcessingJobView> Jobs = Estate->GetProcessingJobs(FacilityId);
+		Jobs.RemoveAll([](const FCozyProcessingJobView& Each) { return Each.bQueued; });
+		return Jobs;
+	}
+
+	/** 'Slot0' → 0 · 형식이 다르면 -1 */
+	int32 SlotIndex(FName Param)
+	{
+		const FString Text = Param.ToString();
+		return Text.StartsWith(TEXT("Slot")) ? FCString::Atoi(*Text.Mid(4)) : -1;
+	}
+}
+
 void UCozyUiScreen::NativePreConstruct()
 {
 	Super::NativePreConstruct();
@@ -633,6 +657,168 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 		}
 		break;
 	}
+	case ECozyUiValue::RecipeOption:
+		if (const FCozyRecipeRow* Recipe = Estate->GetRecipeDef(Param))
+		{
+			const FCozyItemRow* Output = Estate->GetItemDef(Recipe->OutputItem);
+			const UCozyHudWidget* Hud = CozyUiScreenUtil::FindHud(this);
+			R.Text = FText::Format(Recipe->bTestOnly ? LOCTEXT("RecipeOptTest", "{0} ×{1} (테스트)") : LOCTEXT("RecipeOpt", "{0} ×{1}"),
+				Output ? Output->DisplayName : FText::FromName(Recipe->OutputItem), FText::AsNumber(Recipe->OutputAmount));
+			R.StateColor = (Hud && Hud->GetProcRecipe() == Param) ? ECozyUiColor::Point : ECozyUiColor::Ink;
+		}
+		break;
+	case ECozyUiValue::ProcSelection:
+	case ECozyUiValue::ProcRuns:
+	case ECozyUiValue::ProcMaxInfo:
+	case ECozyUiValue::ProcSummary:
+	case ECozyUiValue::ProcBlock:
+	case ECozyUiValue::ProcStorageNote:
+	case ECozyUiValue::ProcStartLabel:
+	{
+		const UCozyHudWidget* Hud = CozyUiScreenUtil::FindHud(this);
+		if (!Hud)
+		{
+			break;
+		}
+		const FName RecipeId = Hud->GetProcRecipe();
+		const int32 Runs = Hud->GetProcRuns();
+		const FCozyRecipeQuote Quote = Estate->GetRecipeQuote(ContextFacility, RecipeId, Runs);
+		const FCozyRecipeRow* Recipe = Estate->GetRecipeDef(RecipeId);
+		switch (Value)
+		{
+		case ECozyUiValue::ProcSelection:
+			if (Recipe)
+			{
+				FString InputsText;
+				for (const TPair<FName, int32>& Input : Recipe->Inputs)
+				{
+					const FCozyItemRow* Item = Estate->GetItemDef(Input.Key);
+					InputsText += FString::Printf(TEXT("%s%s %d"), InputsText.IsEmpty() ? TEXT("") : TEXT(" + "), *(Item ? Item->DisplayName : FText::FromName(Input.Key)).ToString(), Input.Value);
+				}
+				R.Text = FText::Format(LOCTEXT("ProcSel", "선택: {0} → {1} {2}개 · 1회 {3}"),
+					FText::FromString(InputsText), Quote.OutputName, FText::AsNumber(Quote.OutputPerRun), CozyUiFormat::Duration(Quote.SecondsPerRun));
+			}
+			else
+			{
+				R.Text = LOCTEXT("ProcNoRecipe2", "이 시설에서 만들 수 있는 레시피가 없습니다");
+			}
+			break;
+		case ECozyUiValue::ProcRuns:
+			R.Current = Runs;
+			R.Max = Quote.MaxRuns;
+			R.Text = Quote.bAppend
+				? FText::Format(LOCTEXT("ProcRunsAppend2", "추가 {0}회  →  {1} {2}개   (현재 남은 {3}회 뒤에 이어서)"), FText::AsNumber(Runs), Quote.OutputName, FText::AsNumber(Quote.TotalOutput), FText::AsNumber(Quote.CurrentRemainingRuns))
+				: FText::Format(LOCTEXT("ProcRuns2", "{0}회  →  {1} {2}개"), FText::AsNumber(Runs), Quote.OutputName, FText::AsNumber(Quote.TotalOutput));
+			break;
+		case ECozyUiValue::ProcMaxInfo:
+			R.Current = Quote.MaxRuns;
+			R.Text = FText::Format(Quote.bAppend
+					? LOCTEXT("ProcMaxAppend2", "지금 최대 추가 {0}회  (재료로 {1}회분 · 진행 중·대기 작업이 확보한 공간을 뺀 남은 미수령 공간으로 {2}회분)")
+					: LOCTEXT("ProcMax2", "지금 최대 {0}회  (재료로 {1}회분 · 남은 미수령 공간으로 {2}회분)"),
+				FText::AsNumber(Quote.MaxRuns), FText::AsNumber(Quote.MaxByMaterials), FText::AsNumber(Quote.MaxBySpace));
+			R.StateColor = ECozyUiColor::InkMuted;
+			break;
+		case ECozyUiValue::ProcSummary:
+		{
+			FString InputsNeed;
+			for (const FCozyRecipeQuote::FInput& Input : Quote.Inputs)
+			{
+				const FCozyItemRow* Item = Estate->GetItemDef(Input.ItemId);
+				InputsNeed += FString::Printf(TEXT("%s%s %d개 (보유 %d개)"), InputsNeed.IsEmpty() ? TEXT("") : TEXT(", "), *(Item ? Item->DisplayName : FText::FromName(Input.ItemId)).ToString(), Input.Need, Input.Have);
+			}
+			R.Text = Recipe ? FText::Format(LOCTEXT("ProcSummary2", "필요 재료: {0}\n완료품: {1} {2}개 (1회마다 {3}개씩 시설에 쌓임)\n예상 시간: {4} (주민 부족으로 멈춘 시간은 제외)"),
+				FText::FromString(InputsNeed), Quote.OutputName, FText::AsNumber(Quote.TotalOutput), FText::AsNumber(Quote.OutputPerRun), CozyUiFormat::Duration(Quote.TotalSeconds)) : FText::GetEmpty();
+			break;
+		}
+		case ECozyUiValue::ProcBlock:
+			R.Text = Quote.BlockReason;
+			R.StateColor = ECozyUiColor::Warning;
+			break;
+		case ECozyUiValue::ProcStorageNote:
+			// 🙋 완료품의 공용 창고가 가득해도 시작은 허용하고 안내만 (D35)
+			R.Text = (Recipe && Estate->GetStorageSpace(Recipe->OutputItem) <= 0)
+				? FText::Format(LOCTEXT("ProcStorageFull2", "창고에 {0} 공간이 없습니다. 완성품은 시설에 보관되며, 수령하려면 창고 공간이 필요합니다"), Quote.OutputName)
+				: FText::GetEmpty();
+			R.StateColor = ECozyUiColor::Point;
+			break;
+		default:
+			R.Text = Quote.bAppend ? LOCTEXT("ProcAppendLabel", "제작 추가") : LOCTEXT("ProcStartLabel", "제작 시작");
+			break;
+		}
+		break;
+	}
+	case ECozyUiValue::ProcSlotStatus:
+	case ECozyUiValue::ProcSlotTime:
+	{
+		const int32 Index = CozyUiScreenUtil::SlotIndex(Param);
+		const TArray<FCozyProcessingJobView> Jobs = CozyUiScreenUtil::ActiveJobs(Estate, ContextFacility);
+		R.Max = 100.f;
+		if (Jobs.IsValidIndex(Index))
+		{
+			const FCozyProcessingJobView& Job = Jobs[Index];
+			R.Current = Job.RunProgress01 * 100.f;
+			R.RemainingSeconds = Job.RunRemainingSeconds;
+			R.StateColor = Job.bPaused ? ECozyUiColor::Paused : ECozyUiColor::Progress;
+			if (Value == ECozyUiValue::ProcSlotStatus)
+			{
+				R.Text = Job.bPaused
+					? FText::Format(LOCTEXT("SlotPaused2", "{0} — {1} · {2}/{3}회 완성 · 현재 회차 진행도 유지"), Job.Status, Job.OutputName, FText::AsNumber(Job.CompletedRuns), FText::AsNumber(Job.TotalRuns))
+					: Job.Status;
+			}
+			else
+			{
+				R.Text = FText::Format(LOCTEXT("SlotTime2", "이번 회 남은 {0} · 전체 남은 {1} · 완성 {2}/{3}회 ({4}개)"),
+					CozyUiFormat::Duration(Job.RunRemainingSeconds), CozyUiFormat::Duration(Job.TotalRemainingSeconds),
+					FText::AsNumber(Job.CompletedRuns), FText::AsNumber(Job.TotalRuns), FText::AsNumber(Job.CompletedRuns * Job.OutputPerRun));
+				R.StateColor = ECozyUiColor::InkMuted;
+			}
+		}
+		else
+		{
+			R.StateColor = ECozyUiColor::InkMuted;
+			R.Text = Value == ECozyUiValue::ProcSlotStatus
+				? FText::Format(LOCTEXT("SlotEmpty2", "가공 칸 {0}: 비어 있음"), FText::AsNumber(Index + 1))
+				: FText::GetEmpty();
+		}
+		break;
+	}
+	case ECozyUiValue::ProcQueueLine:
+	{
+		FString QueueLine;
+		int32 QueueRuns = 0;
+		for (const FCozyProcessingJobView& Each : Estate->GetProcessingJobs(ContextFacility))
+		{
+			if (Each.bQueued)
+			{
+				QueueLine += (QueueLine.IsEmpty() ? TEXT("") : TEXT(" · ")) + FString::Printf(TEXT("%s %d회(%d개)"), *Each.OutputName.ToString(), Each.TotalRuns, Each.TotalRuns * Each.OutputPerRun);
+				QueueRuns += Each.TotalRuns;
+			}
+		}
+		R.Current = QueueRuns;
+		R.Text = QueueRuns > 0 ? FText::Format(LOCTEXT("ProcQueueLine2", "제작 추가 대기 {0}회: {1} — 지금 작업이 끝나면 이어서 시작 (가공 칸을 차지하지 않음)"), FText::AsNumber(QueueRuns), FText::FromString(QueueLine)) : FText::GetEmpty();
+		R.StateColor = ECozyUiColor::InkMuted;
+		break;
+	}
+	case ECozyUiValue::ProcCancelConfirm:
+	{
+		const UCozyHudWidget* Hud = CozyUiScreenUtil::FindHud(this);
+		const FGuid Pending = Hud ? Hud->GetProcPendingCancel() : FGuid();
+		const TArray<FCozyProcessingJobView> Jobs = Estate->GetProcessingJobs(ContextFacility);
+		const FCozyProcessingJobView* Job = Pending.IsValid() ? Jobs.FindByPredicate([&Pending](const FCozyProcessingJobView& Each) { return Each.JobId == Pending; }) : nullptr;
+		R.Text = Job ? FText::Format(LOCTEXT("ProcConfirm2", "취소하면 투입한 재료를 돌려받을 수 없습니다.\n완성된 {0}회분({1}개)은 시설에 남고, 남은 {2}회는 완료품 없이 종료됩니다. 취소할까요?"),
+			FText::AsNumber(Job->CompletedRuns), FText::AsNumber(Job->CompletedRuns * Job->OutputPerRun), FText::AsNumber(Job->TotalRuns - Job->CompletedRuns)) : FText::GetEmpty();
+		R.StateColor = ECozyUiColor::Warning;
+		break;
+	}
+	case ECozyUiValue::ProcReserved:
+	{
+		const FCozyFacilityState* Facility = FindFirst(Param);
+		const FCozyUnclaimedView View = Estate->GetUnclaimedView(Facility ? Facility->InstanceId : ContextFacility);
+		R.Current = View.Reserved;
+		R.Text = View.Reserved > 0 ? FText::Format(LOCTEXT("ProcReserved", "제작 중 확보 {0}"), FText::AsNumber(View.Reserved)) : FText::GetEmpty();
+		R.StateColor = ECozyUiColor::InkMuted;
+		break;
+	}
 	default:
 		R.bValid = false;
 		break;
@@ -683,6 +869,40 @@ TArray<FCozyUiListRow> UCozyUiScreen::GetListRows(ECozyUiListSource Source, FNam
 			}
 		}
 		break;
+	case ECozyUiListSource::ProcRecipes:
+		for (const FName& RecipeId : Estate->GetFacilityRecipes(ContextFacility))
+		{
+			const FCozyRecipeRow* Recipe = Estate->GetRecipeDef(RecipeId);
+			const FCozyItemRow* Output = Recipe ? Estate->GetItemDef(Recipe->OutputItem) : nullptr;
+			Rows.Add({ RecipeId, Output ? Output->DisplayName : FText::FromName(RecipeId) });
+		}
+		break;
+	case ECozyUiListSource::ProcSlots:
+		if (const FCozyFacilityState* Facility = Estate->FindFacility(ContextFacility))
+		{
+			const FCozyFacilityRow* Def = Estate->GetFacilityDef(Facility->DefinitionId);
+			for (int32 Index = 0; Index < FMath::Max(1, Def ? Def->ProcessingSlots : 1); ++Index)
+			{
+				Rows.Add({ FName(*FString::Printf(TEXT("Slot%d"), Index)), FText::Format(LOCTEXT("SlotName", "가공 칸 {0}"), FText::AsNumber(Index + 1)) });
+			}
+		}
+		break;
+	case ECozyUiListSource::ProcQueue:
+		if (Estate->GetProcessingJobs(ContextFacility).ContainsByPredicate([](const FCozyProcessingJobView& Each) { return Each.bQueued; }))
+		{
+			Rows.Add({ TEXT("Queue"), LOCTEXT("QueueRow", "제작 추가 대기") });
+		}
+		break;
+	case ECozyUiListSource::ProcPendingCancel:
+	{
+		const UCozyHudWidget* Hud = CozyUiScreenUtil::FindHud(this);
+		const FGuid Pending = Hud ? Hud->GetProcPendingCancel() : FGuid();
+		if (Pending.IsValid() && Estate->GetProcessingJobs(ContextFacility).ContainsByPredicate([&Pending](const FCozyProcessingJobView& Each) { return Each.JobId == Pending; }))
+		{
+			Rows.Add({ TEXT("Confirm"), LOCTEXT("ConfirmRow", "취소 확인") });
+		}
+		break;
+	}
 	case ECozyUiListSource::Residents:
 		for (const FCozyResidentState& Resident : Estate->GetState().Residents)
 		{
@@ -766,6 +986,15 @@ FText UCozyUiScreen::GetActionName(ECozyUiAction Action)
 	case ECozyUiAction::SaleMore: return LOCTEXT("ActSaleMore", "판매 수량 늘리기");
 	case ECozyUiAction::SaleAll: return LOCTEXT("ActSaleAll", "전부 팔기 수량");
 	case ECozyUiAction::SellSelected: return LOCTEXT("ActSell", "판매");
+	case ECozyUiAction::SelectRecipe: return LOCTEXT("ActRecipe", "레시피 고르기");
+	case ECozyUiAction::ProcLess: return LOCTEXT("ActProcLess", "제작 횟수 줄이기");
+	case ECozyUiAction::ProcMore: return LOCTEXT("ActProcMore", "제작 횟수 늘리기");
+	case ECozyUiAction::ProcMax: return LOCTEXT("ActProcMax", "최대 횟수");
+	case ECozyUiAction::StartProcessing: return LOCTEXT("ActProcStart", "제작 시작·추가");
+	case ECozyUiAction::CancelSlot: return LOCTEXT("ActCancelSlot", "이 칸 취소 묻기");
+	case ECozyUiAction::CancelQueued: return LOCTEXT("ActCancelQueued", "추가분 취소 묻기");
+	case ECozyUiAction::ConfirmCancel: return LOCTEXT("ActConfirmCancel", "취소 확정");
+	case ECozyUiAction::KeepProcessing: return LOCTEXT("ActKeep", "계속 제작");
 	default: return LOCTEXT("ActNone", "동작 없음");
 	}
 }
@@ -865,6 +1094,40 @@ bool UCozyUiScreen::CanRunAction(const FCozyUiElementEntry& Entry, FText& OutRea
 			return Quote.bCanSell;
 		}
 	}
+	case ECozyUiAction::ProcLess:
+	case ECozyUiAction::ProcMore:
+	case ECozyUiAction::ProcMax:
+	case ECozyUiAction::StartProcessing:
+	{
+		const UCozyHudWidget* Hud = CozyUiScreenUtil::FindHud(this);
+		if (!Hud)
+		{
+			return false;
+		}
+		const int32 Runs = Hud->GetProcRuns();
+		const FCozyRecipeQuote Quote = Estate->GetRecipeQuote(ContextFacility, Hud->GetProcRecipe(), Runs);
+		switch (Entry.Action)
+		{
+		case ECozyUiAction::ProcLess:
+			OutReason = LOCTEXT("ProcMin", "1회보다 적게 만들 수 없습니다");
+			return Runs > 1;
+		case ECozyUiAction::ProcMore:
+			OutReason = Quote.BlockReason.IsEmpty() ? LOCTEXT("ProcMaxReached", "지금 최대 횟수까지 골랐습니다") : Quote.BlockReason;
+			return Runs < Quote.MaxRuns;
+		case ECozyUiAction::ProcMax:
+			OutReason = Quote.MaxRuns > 0 ? LOCTEXT("ProcAlreadyMax", "이미 최대 횟수입니다") : Quote.BlockReason;
+			return Quote.MaxRuns > 0 && Runs != Quote.MaxRuns;
+		default:
+			OutReason = Quote.BlockReason;
+			return Quote.bCanStart;
+		}
+	}
+	case ECozyUiAction::CancelSlot:
+		OutReason = LOCTEXT("SlotEmptyReason", "비어 있는 칸입니다");
+		return CozyUiScreenUtil::ActiveJobs(Estate, ContextFacility).IsValidIndex(CozyUiScreenUtil::SlotIndex(Entry.ActionParam));
+	case ECozyUiAction::CancelQueued:
+		OutReason = LOCTEXT("NoQueued", "기다리는 추가분이 없습니다");
+		return Estate->GetProcessingJobs(ContextFacility).ContainsByPredicate([](const FCozyProcessingJobView& Each) { return Each.bQueued; });
 	case ECozyUiAction::UnassignResident:
 	{
 		FGuid ResidentId;
@@ -956,6 +1219,53 @@ void UCozyUiScreen::RunAction(const FCozyUiElementEntry& Entry)
 		Hud->SetSellSelection(Hud->GetSellItem(), Hud->GetSellAmount());
 		break;
 	}
+	case ECozyUiAction::SelectRecipe: Hud->SetProcSelection(Entry.ActionParam, 1); break;
+	case ECozyUiAction::ProcLess: Hud->SetProcSelection(Hud->GetProcRecipe(), Hud->GetProcRuns() - 1); break;
+	case ECozyUiAction::ProcMore: Hud->SetProcSelection(Hud->GetProcRecipe(), Hud->GetProcRuns() + 1); break;
+	case ECozyUiAction::ProcMax: Hud->SetProcSelection(Hud->GetProcRecipe(), Estate->GetRecipeQuote(ContextFacility, Hud->GetProcRecipe(), 1).MaxRuns); break;
+	case ECozyUiAction::StartProcessing:
+	{
+		// 시작 직전에 서비스가 조건을 다시 확인 · 실패하면 아무것도 바뀌지 않음
+		FText Message;
+		Estate->StartProcessing(ContextFacility, Hud->GetProcRecipe(), Hud->GetProcRuns(), Message);
+		Hud->SetFeedbackText(Message);
+		Hud->SetProcSelection(Hud->GetProcRecipe(), Hud->GetProcRuns());
+		break;
+	}
+	case ECozyUiAction::CancelSlot:
+	{
+		// 🙋 취소 전 안내와 확인 (D29) · 확인 줄의 숫자는 매번 최신 값
+		const TArray<FCozyProcessingJobView> Jobs = CozyUiScreenUtil::ActiveJobs(Estate, ContextFacility);
+		const int32 Index = CozyUiScreenUtil::SlotIndex(Entry.ActionParam);
+		if (Jobs.IsValidIndex(Index))
+		{
+			Hud->SetProcPendingCancel(Jobs[Index].JobId);
+		}
+		break;
+	}
+	case ECozyUiAction::CancelQueued:
+	{
+		// 가장 나중에 추가한 대기 작업부터 취소 (확인 안내는 기존 취소와 같음)
+		const TArray<FCozyProcessingJobView> Jobs = Estate->GetProcessingJobs(ContextFacility);
+		for (int32 Index = Jobs.Num() - 1; Index >= 0; --Index)
+		{
+			if (Jobs[Index].bQueued)
+			{
+				Hud->SetProcPendingCancel(Jobs[Index].JobId);
+				break;
+			}
+		}
+		break;
+	}
+	case ECozyUiAction::ConfirmCancel:
+	{
+		FText Message;
+		Estate->CancelProcessing(Hud->GetProcPendingCancel(), Message);
+		Hud->SetFeedbackText(Message);
+		Hud->SetProcPendingCancel(FGuid());
+		break;
+	}
+	case ECozyUiAction::KeepProcessing: Hud->SetProcPendingCancel(FGuid()); break;
 	case ECozyUiAction::OpenUpgrade:
 		for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
 		{

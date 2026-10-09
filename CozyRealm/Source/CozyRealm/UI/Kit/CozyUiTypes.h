@@ -116,7 +116,33 @@ enum class ECozyUiValue : uint8
 	/** 받을 재화 확인 ({0} 받을 금액 · {4} '밀 3개 × 2 = 6 골드 (창고 보유 …)') */
 	SaleSummary UMETA(DisplayName = "Sale Summary (판매 확인)"),
 	/** 팔 수 없는 이유 ({4} · 팔 수 있으면 빈칸) */
-	SaleBlock UMETA(DisplayName = "Sale Block Reason (팔 수 없는 이유)")
+	SaleBlock UMETA(DisplayName = "Sale Block Reason (팔 수 없는 이유)"),
+	/** 레시피 버튼 글자 (매개변수: 레시피 · 목록 안에서 @Row · {4} '밀가루 ×1' · 고른 레시피는 강조색) */
+	RecipeOption UMETA(DisplayName = "Recipe Option (레시피 버튼)"),
+	/** 고른 레시피 ({4} '선택: 밀 3 → 밀가루 1개 · 1회 15초') */
+	ProcSelection UMETA(DisplayName = "Processing Selection (고른 레시피)"),
+	/** 제작 횟수 ({0} 고른 횟수 · {1} 지금 최대 · {4} '2회 → 밀가루 2개' / 제작 추가 안내) */
+	ProcRuns UMETA(DisplayName = "Processing Runs (제작 횟수)"),
+	/** 지금 최대 횟수와 이유 ({4} '지금 최대 3회 (재료로 … · 남은 미수령 공간으로 …)') */
+	ProcMaxInfo UMETA(DisplayName = "Processing Max Info (최대 횟수 안내)"),
+	/** 필요 재료 · 완료품 · 예상 시간 ({4} · 세 줄) */
+	ProcSummary UMETA(DisplayName = "Processing Summary (재료·시간 확인)"),
+	/** 시작할 수 없는 이유 ({4} · 시작할 수 있으면 빈칸) */
+	ProcBlock UMETA(DisplayName = "Processing Block Reason (시작할 수 없는 이유)"),
+	/** 완료품의 창고가 가득하다는 안내 ({4} · 공간이 있으면 빈칸) */
+	ProcStorageNote UMETA(DisplayName = "Processing Storage Note (창고 가득 안내)"),
+	/** 시작 버튼 글자 ({4} '제작 시작' / '제작 추가') */
+	ProcStartLabel UMETA(DisplayName = "Processing Start Label (시작 버튼 글자)"),
+	/** 가공 칸 상태 (매개변수: 칸 · 목록 안에서 @Row · 게이지 = 이번 회차 진행 · {3} 이번 회 남은 시간 · {4} 상태) */
+	ProcSlotStatus UMETA(DisplayName = "Processing Slot Status (가공 칸 상태)"),
+	/** 가공 칸 시간 ({4} '이번 회 남은 … · 전체 남은 … · 완성 1/3회' · 빈 칸이면 빈칸) */
+	ProcSlotTime UMETA(DisplayName = "Processing Slot Time (가공 칸 시간)"),
+	/** 제작 추가 대기 줄 ({4} · 대기가 없으면 빈칸) */
+	ProcQueueLine UMETA(DisplayName = "Processing Queue Line (제작 추가 대기)"),
+	/** 취소 확인 안내 ({4} · 완성분·남은 회차 · 확인 중이 아니면 빈칸) */
+	ProcCancelConfirm UMETA(DisplayName = "Processing Cancel Confirm (취소 확인 안내)"),
+	/** 제작 중 확보한 미수령 공간 ({0} · {4} '제작 중 확보 3' · 없으면 빈칸) */
+	ProcReserved UMETA(DisplayName = "Processing Reserved (제작 중 확보 공간)")
 };
 
 /** 반복 목록의 출처 · 줄 수가 게임 상태에 따라 바뀌는 목록 */
@@ -141,7 +167,15 @@ enum class ECozyUiListSource : uint8
 	/** 창 시설이 고를 수 있는 작물 (줄 ID = 작물 ID) */
 	WindowCrops UMETA(DisplayName = "Window Crops (창 시설의 작물)"),
 	/** 주민 한 줄 안에서: 그 주민을 보낼 수 있는 시설 (줄 ID = '주민|시설' · 이름 = '제분소로 옮기기' 등 버튼 글자) */
-	AssignTargets UMETA(DisplayName = "Assign Targets (주민을 보낼 시설)")
+	AssignTargets UMETA(DisplayName = "Assign Targets (주민을 보낼 시설)"),
+	/** 창 시설의 레시피 (줄 ID = 레시피 ID) */
+	ProcRecipes UMETA(DisplayName = "Processing Recipes (창 시설의 레시피)"),
+	/** 창 시설의 가공 칸 (동시 가공 수만큼 · 줄 ID = Slot0, Slot1 … · 이름 = '가공 칸 1') */
+	ProcSlots UMETA(DisplayName = "Processing Slots (가공 칸)"),
+	/** 제작 추가 대기가 있으면 한 줄 · 없으면 0줄 (조건부로 보이는 줄에 씀) */
+	ProcQueue UMETA(DisplayName = "Processing Queue (제작 추가 대기 · 있을 때만 한 줄)"),
+	/** 취소 확인 중이면 한 줄 · 아니면 0줄 */
+	ProcPendingCancel UMETA(DisplayName = "Processing Pending Cancel (취소 확인 · 확인 중일 때만 한 줄)")
 };
 
 /** 배경 안쪽 여백 */
@@ -202,7 +236,25 @@ enum class ECozyUiAction : uint8
 	/** 판매 수량 = 전부 */
 	SaleAll UMETA(DisplayName = "Sale All (전부 팔기 수량)"),
 	/** 고른 재료·수량 판매 (판매 직전에 조건을 다시 확인) */
-	SellSelected UMETA(DisplayName = "Sell Selected (판매)")
+	SellSelected UMETA(DisplayName = "Sell Selected (판매)"),
+	/** 레시피 고르기 (Action Param: 레시피 ID · 목록 안에서 @Row) */
+	SelectRecipe UMETA(DisplayName = "Select Recipe (레시피 고르기)"),
+	/** 제작 횟수 −1 */
+	ProcLess UMETA(DisplayName = "Processing Less (제작 횟수 줄이기)"),
+	/** 제작 횟수 +1 (최대 = 재료·미수령 공간) */
+	ProcMore UMETA(DisplayName = "Processing More (제작 횟수 늘리기)"),
+	/** 제작 횟수 = 지금 최대 (누르는 순간 다시 계산) */
+	ProcMax UMETA(DisplayName = "Processing Max (최대 횟수)"),
+	/** 제작 시작 · 제작 추가 (시작 직전에 조건을 다시 확인) */
+	StartProcessing UMETA(DisplayName = "Start Processing (제작 시작·추가)"),
+	/** 이 칸의 작업 취소 묻기 (Action Param: 칸 · 목록 안에서 @Row) → 취소 확인 줄이 나타남 */
+	CancelSlot UMETA(DisplayName = "Cancel Slot (이 칸 취소 묻기)"),
+	/** 가장 나중에 추가한 대기분 취소 묻기 */
+	CancelQueued UMETA(DisplayName = "Cancel Queued (추가분 취소 묻기)"),
+	/** 취소 확정 */
+	ConfirmCancel UMETA(DisplayName = "Confirm Cancel (취소 확정)"),
+	/** 취소하지 않고 계속 제작 */
+	KeepProcessing UMETA(DisplayName = "Keep Processing (계속 제작)")
 };
 
 /** 미리보기 상태 · 실제 값 대신 보여 줄 가짜 상태 */
