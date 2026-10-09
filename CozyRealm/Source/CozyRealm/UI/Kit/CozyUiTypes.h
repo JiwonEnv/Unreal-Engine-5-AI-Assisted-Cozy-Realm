@@ -106,7 +106,17 @@ enum class ECozyUiValue : uint8
 	/** 나가야 창에서 배치할 시설 ({4} '배치할 시설: 제분소' · 바로가기로 열지 않았으면 빈칸) */
 	WindowTarget UMETA(DisplayName = "Window Target (배치할 시설)"),
 	/** 방금 한 일 (버튼 결과 안내 · {4}) */
-	Feedback UMETA(DisplayName = "Feedback (방금 한 일)")
+	Feedback UMETA(DisplayName = "Feedback (방금 한 일)"),
+	/** 판매 목록 한 줄 (매개변수: 재료 · 목록 안에서 @Row · {0} 창고 보유량 · {4} '창고 N개 · 1개 P골드 ◀ 선택' / '판매 불가') */
+	SaleLine UMETA(DisplayName = "Sale Line (판매 재료 한 줄)"),
+	/** 고른 판매 재료 ({4} '선택: 밀 · 1개 2골드') */
+	SaleSelection UMETA(DisplayName = "Sale Selection (고른 판매 재료)"),
+	/** 판매 수량 ({0} 고른 수량 · {1} 지금 팔 수 있는 최대) */
+	SaleAmount UMETA(DisplayName = "Sale Amount (판매 수량)"),
+	/** 받을 재화 확인 ({0} 받을 금액 · {4} '밀 3개 × 2 = 6 골드 (창고 보유 …)') */
+	SaleSummary UMETA(DisplayName = "Sale Summary (판매 확인)"),
+	/** 팔 수 없는 이유 ({4} · 팔 수 있으면 빈칸) */
+	SaleBlock UMETA(DisplayName = "Sale Block Reason (팔 수 없는 이유)")
 };
 
 /** 반복 목록의 출처 · 줄 수가 게임 상태에 따라 바뀌는 목록 */
@@ -182,7 +192,17 @@ enum class ECozyUiAction : uint8
 	/** 주민 배치 (Action Param: '주민|시설' · AssignTargets 목록 안에서 @Row) */
 	AssignResident UMETA(DisplayName = "Assign Resident (주민 배치)"),
 	/** 주민 배치 해제 (Action Param: 주민 ID · 목록 안에서 @Row) */
-	UnassignResident UMETA(DisplayName = "Unassign Resident (주민 배치 해제)")
+	UnassignResident UMETA(DisplayName = "Unassign Resident (주민 배치 해제)"),
+	/** 판매할 재료 고르기 (Action Param: 재료 ID · 목록 안에서 @Row · 판매가 0이면 꺼짐) */
+	SelectSaleItem UMETA(DisplayName = "Select Sale Item (판매 재료 고르기)"),
+	/** 판매 수량 −1 */
+	SaleLess UMETA(DisplayName = "Sale Less (판매 수량 줄이기)"),
+	/** 판매 수량 +1 (최대 = 창고 보유량) */
+	SaleMore UMETA(DisplayName = "Sale More (판매 수량 늘리기)"),
+	/** 판매 수량 = 전부 */
+	SaleAll UMETA(DisplayName = "Sale All (전부 팔기 수량)"),
+	/** 고른 재료·수량 판매 (판매 직전에 조건을 다시 확인) */
+	SellSelected UMETA(DisplayName = "Sell Selected (판매)")
 };
 
 /** 미리보기 상태 · 실제 값 대신 보여 줄 가짜 상태 */
