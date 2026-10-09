@@ -316,11 +316,21 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 
 	FCozyUiValueResult R;
 	R.bValid = true;
-	auto FindFirst = [Estate](FName DefinitionId) -> const FCozyFacilityState*
+	// 매개변수: @Window = 이 창의 시설 · 시설 고유 ID 글자 · 시설 정의 ID(같은 시설이 여럿이면 첫 번째)
+	auto FindFirst = [this, Estate](FName Param) -> const FCozyFacilityState*
 	{
+		if (Param == TEXT("@Window") || Param.IsNone())
+		{
+			return ContextFacility.IsValid() ? Estate->FindFacility(ContextFacility) : nullptr;
+		}
+		FGuid Id;
+		if (FGuid::Parse(Param.ToString(), Id))
+		{
+			return Estate->FindFacility(Id);
+		}
 		for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
 		{
-			if (Facility.DefinitionId == DefinitionId && !Facility.bStored)
+			if (Facility.DefinitionId == Param && !Facility.bStored)
 			{
 				return &Facility;
 			}
@@ -431,6 +441,140 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 		}
 		break;
 	}
+	case ECozyUiValue::FacilityName:
+		if (const FCozyFacilityState* Facility = FindFirst(Param))
+		{
+			const FCozyFacilityRow* Def = Estate->GetFacilityDef(Facility->DefinitionId);
+			R.Current = Facility->Level;
+			// 관리 시설의 효과를 받는 시설(밭)은 개별 레벨이 없음 (D39)
+			R.Text = (Def && Def->ManagerFacilityId.IsNone())
+				? FText::Format(LOCTEXT("FacNameLv", "{0}  Lv.{1}"), Estate->GetFacilityDisplayName(Facility->InstanceId), FText::AsNumber(Facility->Level))
+				: Estate->GetFacilityDisplayName(Facility->InstanceId);
+		}
+		break;
+	case ECozyUiValue::Residents:
+		if (const FCozyFacilityState* Facility = FindFirst(Param))
+		{
+			const FCozyFacilityRow* Def = Estate->GetFacilityDef(Facility->DefinitionId);
+			FString Names;
+			for (const FGuid& ResidentId : Facility->AssignedResidents)
+			{
+				Names += (Names.IsEmpty() ? TEXT("") : TEXT(", ")) + Estate->GetResidentDisplayName(ResidentId).ToString();
+			}
+			R.Current = Facility->AssignedResidents.Num();
+			R.Max = Def ? Def->MaxResidents : 0;
+			R.Text = Names.IsEmpty() ? LOCTEXT("NoResidents", "없음") : FText::FromString(Names);
+			R.StateColor = (Def && Facility->AssignedResidents.Num() < FMath::Max(1, Def->MinResidents)) ? ECozyUiColor::Warning : ECozyUiColor::Ink;
+		}
+		break;
+	case ECozyUiValue::UnclaimedStorage:
+		if (const FCozyFacilityState* Facility = FindFirst(Param))
+		{
+			const FCozyUnclaimedView View = Estate->GetUnclaimedView(Facility->InstanceId);
+			R.Current = View.StoredAmount;
+			R.Max = View.StorageCap;
+			R.Text = View.Amount <= 0 ? LOCTEXT("NothingToCollect", "지금 수령할 것이 없습니다")
+				: View.CollectableNow > 0 ? FText::Format(LOCTEXT("CollectableNow", "창고 {0} {1}/{2} · 지금 수령 가능 {3}개"), View.ItemName, FText::AsNumber(View.StoredAmount), FText::AsNumber(View.StorageCap), FText::AsNumber(View.CollectableNow))
+				: FText::Format(LOCTEXT("StorageNoRoom", "창고에 {0}|hpp(을,를) 받을 공간이 없습니다 ({1}/{2})"), View.ItemName, FText::AsNumber(View.StoredAmount), FText::AsNumber(View.StorageCap));
+			R.StateColor = (View.Amount > 0 && View.CollectableNow <= 0) ? ECozyUiColor::Warning : ECozyUiColor::InkMuted;
+		}
+		break;
+	case ECozyUiValue::GrowthEffect:
+		if (const FCozyFacilityState* Facility = FindFirst(Param))
+		{
+			const FCozyProductionView View = Estate->GetProductionView(Facility->InstanceId);
+			FNumberFormattingOptions Fmt;
+			Fmt.MinimumFractionalDigits = 1;
+			Fmt.MaximumFractionalDigits = 2;
+			R.Current = View.SpeedMultiplier;
+			R.Text = !View.bHasGrowthSource ? FText::GetEmpty()
+				: View.GrowthSourceLevel > 0
+					? FText::Format(LOCTEXT("GrowthLine", "공통 관리 효과: 생산 속도 ×{0} ({1} Lv{2}) · 단계가 오르면 다음 주기부터 적용"), FText::AsNumber(View.SpeedMultiplier, &Fmt), View.GrowthSourceName, FText::AsNumber(View.GrowthSourceLevel))
+					: FText::Format(LOCTEXT("GrowthLineNone", "공통 관리 효과: 기본 속도 ×{0} ({1}|hpp(이,가) 아직 없습니다)"), FText::AsNumber(View.SpeedMultiplier, &Fmt), View.GrowthSourceName);
+		}
+		break;
+	case ECozyUiValue::CurrentCrop:
+		if (const FCozyFacilityState* Facility = FindFirst(Param))
+		{
+			const FCozyCropRow* Crop = Estate->GetCropDef(Facility->SelectedCropId);
+			R.Text = Crop ? Crop->DisplayName : LOCTEXT("NoCrop", "없음");
+		}
+		break;
+	case ECozyUiValue::CropOption:
+	{
+		const FCozyFacilityState* Facility = ContextFacility.IsValid() ? Estate->FindFacility(ContextFacility) : nullptr;
+		const FCozyCropRow* Crop = Estate->GetCropDef(Param);
+		const FText Name = Crop ? Crop->DisplayName : FText::FromName(Param);
+		const bool bCurrent = Facility && Facility->SelectedCropId == Param;
+		const bool bUnlocked = Estate->IsCropUnlocked(Param);
+		R.Text = bCurrent ? FText::Format(LOCTEXT("CropCurrent", "{0} (키우는 중)"), Name) : bUnlocked ? Name : FText::Format(LOCTEXT("CropLocked", "{0} (잠김)"), Name);
+		R.StateColor = bCurrent ? ECozyUiColor::Ok : bUnlocked ? ECozyUiColor::Ink : ECozyUiColor::Locked;
+		break;
+	}
+	case ECozyUiValue::FieldManagement:
+		if (const FCozyFacilityState* Facility = FindFirst(Param))
+		{
+			const FCozyFieldManagementView View = Estate->GetFieldManagementView(Facility->InstanceId);
+			auto Join = [](const TArray<FText>& Items)
+			{
+				FString Out;
+				for (const FText& Item : Items)
+				{
+					Out += (Out.IsEmpty() ? TEXT("") : TEXT(", ")) + Item.ToString();
+				}
+				return Out.IsEmpty() ? FString(TEXT("없음")) : Out;
+			};
+			FNumberFormattingOptions Fmt;
+			Fmt.MinimumFractionalDigits = 1;
+			Fmt.MaximumFractionalDigits = 2;
+			FString Text = FString::Printf(TEXT("관리 단계 Lv%d%s\n모든 밭 생산 속도 ×%s (관리하는 밭 %d개 · 새로 지은 밭도 같은 효과)\n고를 수 있는 작물: %s"),
+				View.Level, View.bUpgrading ? TEXT(" (업그레이드 중 · 밭은 지금 효과로 계속 생산)") : TEXT(""),
+				*FText::AsNumber(View.CurrentMultiplier, &Fmt).ToString(), View.ManagedFacilities, *Join(View.UnlockedCrops));
+			Text += View.NextMultiplier > 0.f
+				? FString::Printf(TEXT("\n다음 단계: 속도 ×%s · 해금 작물 %s"), *FText::AsNumber(View.NextMultiplier, &Fmt).ToString(), *Join(View.NextUnlockCrops))
+				: FString(TEXT("\n다음 단계: 아직 없음"));
+			R.Current = View.Level;
+			R.Text = FText::FromString(Text);
+		}
+		break;
+	case ECozyUiValue::OfflineSummary:
+		if (const FCozyOfflineReport* Report = Estate->GetPendingOfflineReport())
+		{
+			const int32 Minutes = FMath::FloorToInt(Report->AwaySeconds / 60.0);
+			R.Current = Report->AwaySeconds;
+			R.Text = FText::Format(Report->bClamped ? LOCTEXT("OfflineAwayClamped", "자리를 비운 동안: {0}분 · 최대 {1}분까지만 정산") : LOCTEXT("OfflineAway2", "자리를 비운 동안: {0}분"),
+				FText::AsNumber(Minutes), FText::AsNumber(FMath::FloorToInt(Report->AppliedSeconds / 60.0)));
+			if (Report->Lines.Num() == 0)
+			{
+				R.Text = FText::Format(LOCTEXT("OfflineNothing2", "{0}\n그동안 쌓인 것이 없습니다 (주민 배치·미수령 공간을 확인해 주세요)"), R.Text);
+			}
+		}
+		else
+		{
+			R.Text = LOCTEXT("OfflineNone2", "새로 받은 방치 보상이 없습니다");
+		}
+		break;
+	case ECozyUiValue::ResidentPlacement:
+	{
+		FGuid ResidentId;
+		FGuid::Parse(Param.ToString(), ResidentId);
+		const FCozyResidentState* Resident = Estate->GetState().Residents.FindByPredicate([&ResidentId](const FCozyResidentState& Each) { return Each.InstanceId == ResidentId; });
+		R.Text = (Resident && Resident->AssignedFacility.IsValid())
+			? FText::Format(LOCTEXT("AssignedAt2", "배치: {0}"), Estate->GetFacilityDisplayName(Resident->AssignedFacility))
+			: LOCTEXT("Unassigned2", "미배치 (나가야)");
+		R.StateColor = (Resident && Resident->AssignedFacility.IsValid()) ? ECozyUiColor::InkMuted : ECozyUiColor::Point;
+		break;
+	}
+	case ECozyUiValue::WindowTarget:
+		R.Text = ContextTarget.IsValid() ? FText::Format(LOCTEXT("TargetLine2", "배치할 시설: {0}"), Estate->GetFacilityDisplayName(ContextTarget)) : FText::GetEmpty();
+		break;
+	case ECozyUiValue::Feedback:
+	{
+		const ACozyRealmEstatePlayerController* Controller = Cast<ACozyRealmEstatePlayerController>(GetOwningPlayer());
+		const FText Last = (Controller && Controller->GetHud()) ? Controller->GetHud()->GetLastFeedback() : FText::GetEmpty();
+		R.Text = Last.IsEmpty() ? FText::GetEmpty() : FText::Format(LOCTEXT("JustDid2", "방금 한 일 — {0}"), Last);
+		break;
+	}
 	default:
 		R.bValid = false;
 		break;
@@ -438,7 +582,7 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 	return R;
 }
 
-TArray<FCozyUiListRow> UCozyUiScreen::GetListRows(ECozyUiListSource Source) const
+TArray<FCozyUiListRow> UCozyUiScreen::GetListRows(ECozyUiListSource Source, FName ParentRowId) const
 {
 	TArray<FCozyUiListRow> Rows;
 	if (Source == ECozyUiListSource::None)
@@ -472,6 +616,62 @@ TArray<FCozyUiListRow> UCozyUiScreen::GetListRows(ECozyUiListSource Source) cons
 	case ECozyUiListSource::StorageMaterials: AddItems(Estate->GetStorageItems(), ECozyItemCategory::Material); break;
 	case ECozyUiListSource::StorageCurrencies: AddItems(Estate->GetStorageItems(), ECozyItemCategory::Currency); break;
 	case ECozyUiListSource::SaleItems: AddItems(Estate->GetSaleListItems(), {}); break;
+	case ECozyUiListSource::OfflineReportLines:
+		if (const FCozyOfflineReport* Report = Estate->GetPendingOfflineReport())
+		{
+			for (int32 Index = 0; Index < Report->Lines.Num(); ++Index)
+			{
+				Rows.Add({ FName(*FString::Printf(TEXT("Line%d"), Index)), Report->Lines[Index] });
+			}
+		}
+		break;
+	case ECozyUiListSource::Residents:
+		for (const FCozyResidentState& Resident : Estate->GetState().Residents)
+		{
+			Rows.Add({ FName(*Resident.InstanceId.ToString()), Estate->GetResidentDisplayName(Resident.InstanceId) });
+		}
+		break;
+	case ECozyUiListSource::WindowCrops:
+		if (const FCozyFacilityState* Facility = ContextFacility.IsValid() ? Estate->FindFacility(ContextFacility) : nullptr)
+		{
+			const FCozyFacilityRow* Def = Estate->GetFacilityDef(Facility->DefinitionId);
+			if (Def && Def->bProductionItemSelectable)
+			{
+				for (const FName& CropId : Def->ProductionItems)
+				{
+					const FCozyCropRow* Crop = Estate->GetCropDef(CropId);
+					Rows.Add({ CropId, Crop ? Crop->DisplayName : FText::FromName(CropId) });
+				}
+			}
+		}
+		break;
+	case ECozyUiListSource::AssignTargets:
+	{
+		// 부모 줄 = 주민 · 바로가기로 연 나가야면 그 시설만, 아니면 주민을 받을 수 있는 모든 시설 (지금 있는 곳 제외)
+		FGuid ResidentId;
+		FGuid::Parse(ParentRowId.ToString(), ResidentId);
+		const FCozyResidentState* Resident = Estate->GetState().Residents.FindByPredicate([&ResidentId](const FCozyResidentState& Each) { return Each.InstanceId == ResidentId; });
+		if (!Resident)
+		{
+			break;
+		}
+		const bool bAssigned = Resident->AssignedFacility.IsValid();
+		for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
+		{
+			const FCozyFacilityRow* Def = Estate->GetFacilityDef(Facility.DefinitionId);
+			if (!Def || Def->MaxResidents <= 0 || Facility.bStored || Facility.InstanceId == Resident->AssignedFacility
+				|| (ContextTarget.IsValid() && Facility.InstanceId != ContextTarget))
+			{
+				continue;
+			}
+			const FText FacilityName = Estate->GetFacilityDisplayName(Facility.InstanceId);
+			const FText Label = bAssigned
+				? (ContextTarget.IsValid() ? LOCTEXT("MoveHere2", "이 시설로 옮기기") : FText::Format(LOCTEXT("MoveTo2", "{0}|hpp(으로,로) 옮기기"), FacilityName))
+				: (ContextTarget.IsValid() ? LOCTEXT("AssignHere2", "이 시설에 배치") : FText::Format(LOCTEXT("AssignTo2", "{0}에 배치"), FacilityName));
+			Rows.Add({ FName(*FString::Printf(TEXT("%s|%s"), *ResidentId.ToString(), *Facility.InstanceId.ToString())), Label });
+		}
+		break;
+	}
 	case ECozyUiListSource::StoredFacilities:
 		for (const FGuid& Id : Estate->GetStoredFacilities())
 		{
@@ -497,6 +697,12 @@ FText UCozyUiScreen::GetActionName(ECozyUiAction Action)
 	case ECozyUiAction::ToggleDebug: return LOCTEXT("ActDebug", "디버그 창");
 	case ECozyUiAction::CloseWindow: return LOCTEXT("ActClose", "창 닫기");
 	case ECozyUiAction::TogglePreview: return LOCTEXT("ActPreview", "UI 미리보기");
+	case ECozyUiAction::CollectWindow: return LOCTEXT("ActCollectWindow", "이 시설의 미수령분 수령");
+	case ECozyUiAction::OpenNagayaForWindow: return LOCTEXT("ActNagayaWindow", "이 시설에 주민 배치");
+	case ECozyUiAction::ConfirmOfflineReport: return LOCTEXT("ActOfflineOk", "방치 보상 확인");
+	case ECozyUiAction::SelectCrop: return LOCTEXT("ActSelectCrop", "이 작물로 바꾸기");
+	case ECozyUiAction::AssignResident: return LOCTEXT("ActAssign", "주민 배치");
+	case ECozyUiAction::UnassignResident: return LOCTEXT("ActUnassign", "주민 배치 해제");
 	default: return LOCTEXT("ActNone", "동작 없음");
 	}
 }
@@ -522,6 +728,55 @@ void UCozyUiScreen::ShowMessage(const FText& Message) const
 		{
 			Hud->ShowToast(Message);
 		}
+	}
+}
+
+bool UCozyUiScreen::CanRunAction(const FCozyUiElementEntry& Entry, FText& OutReason) const
+{
+	const UWorld* World = GetWorld();
+	const UCozyEstateSubsystem* Estate = World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
+	if (!Estate || bPreview || IsDesignTime())
+	{
+		return true;
+	}
+	switch (Entry.Action)
+	{
+	case ECozyUiAction::CollectWindow:
+	{
+		const FCozyUnclaimedView View = Estate->GetUnclaimedView(ContextFacility);
+		if (View.Amount <= 0)
+		{
+			OutReason = LOCTEXT("CanNotCollectNone", "수령할 것이 없습니다");
+			return false;
+		}
+		return true;
+	}
+	case ECozyUiAction::SelectCrop:
+		return Estate->CanSelectCrop(ContextFacility, Entry.ActionParam, OutReason);
+	case ECozyUiAction::AssignResident:
+	{
+		FString ResidentText, FacilityText;
+		FGuid FacilityId;
+		if (!Entry.ActionParam.ToString().Split(TEXT("|"), &ResidentText, &FacilityText) || !FGuid::Parse(FacilityText, FacilityId))
+		{
+			return false;
+		}
+		return Estate->CanAcceptResident(FacilityId, OutReason);
+	}
+	case ECozyUiAction::UnassignResident:
+	{
+		FGuid ResidentId;
+		FGuid::Parse(Entry.ActionParam.ToString(), ResidentId);
+		const FCozyResidentState* Resident = Estate->GetState().Residents.FindByPredicate([&ResidentId](const FCozyResidentState& Each) { return Each.InstanceId == ResidentId; });
+		if (!Resident || !Resident->AssignedFacility.IsValid())
+		{
+			OutReason = LOCTEXT("NotAssigned", "배치되어 있지 않습니다");
+			return false;
+		}
+		return true;
+	}
+	default:
+		return true;
 	}
 }
 
@@ -555,6 +810,37 @@ void UCozyUiScreen::RunAction(const FCozyUiElementEntry& Entry)
 	case ECozyUiAction::CollectAll: Hud->ShowToast(Estate->CollectAllProduction()); break;
 	case ECozyUiAction::ToggleDebug: Hud->ToggleDebugPanel(); break;
 	case ECozyUiAction::CloseWindow: Hud->CloseWindow(); break;
+	case ECozyUiAction::ConfirmOfflineReport: Estate->DismissOfflineReport(); Hud->CloseWindow(); break;
+	case ECozyUiAction::CollectWindow: Hud->CollectFromWindow(ContextFacility); break;
+	case ECozyUiAction::OpenNagayaForWindow: Hud->OpenWindow(ECozyWindowKind::Nagaya, FGuid(), ContextFacility); break;
+	case ECozyUiAction::SelectCrop:
+	{
+		FText Message;
+		Estate->SelectCrop(ContextFacility, Entry.ActionParam, Message);
+		Hud->SetFeedbackText(Message);
+		break;
+	}
+	case ECozyUiAction::AssignResident:
+	{
+		FString ResidentText, FacilityText;
+		FGuid ResidentId, FacilityId;
+		if (Entry.ActionParam.ToString().Split(TEXT("|"), &ResidentText, &FacilityText) && FGuid::Parse(ResidentText, ResidentId) && FGuid::Parse(FacilityText, FacilityId))
+		{
+			FText Reason;
+			Hud->SetFeedbackText(Estate->AssignResident(ResidentId, FacilityId, Reason) ? FText::GetEmpty() : Reason);
+		}
+		break;
+	}
+	case ECozyUiAction::UnassignResident:
+	{
+		FGuid ResidentId;
+		if (FGuid::Parse(Entry.ActionParam.ToString(), ResidentId))
+		{
+			FText Reason;
+			Hud->SetFeedbackText(Estate->UnassignResident(ResidentId, Reason) ? FText::GetEmpty() : Reason);
+		}
+		break;
+	}
 	case ECozyUiAction::OpenUpgrade:
 		for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
 		{

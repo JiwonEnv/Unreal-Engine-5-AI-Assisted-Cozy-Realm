@@ -95,6 +95,11 @@ public:
 
 	void ToggleDebugPanel();
 
+	/** 편집 가능한 창 화면이 쓰는 기존 기능 (수령 · 방금 한 일) */
+	void CollectFromWindow(const FGuid& FacilityId) { HandleCollectClicked(FacilityId); }
+	void SetFeedbackText(const FText& Message) { SetFeedback(Message); }
+	const FText& GetLastFeedback() const { return LastFeedback; }
+
 protected:
 
 	virtual TSharedRef<SWidget> RebuildWidget() override;

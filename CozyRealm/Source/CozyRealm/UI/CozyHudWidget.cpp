@@ -526,8 +526,14 @@ void UCozyHudWidget::HandleEstateChanged(bool bStructural)
 	{
 		RefreshNameLabels();
 	}
+	// 편집 가능한 창 화면이면 화면이 목록·버튼 상태를 다시 적용 (예전 창 갱신은 건너뜀)
+	if (UCozyUiScreen* Screen = WindowKind != ECozyWindowKind::None ? GetWindowScreen(WindowKind) : nullptr)
+	{
+		Screen->RefreshTheme();
+		Screen->RefreshValues();
+	}
 	// 숫자만 바뀌는 창(시설 정보 · 창고)은 다시 만들지 않고 글자만 바꿈 → 버튼 클릭이 끊기지 않음
-	if (WindowKind == ECozyWindowKind::FacilityInfo)
+	else if (WindowKind == ECozyWindowKind::FacilityInfo)
 	{
 		UpdateFacilityInfoLive();
 	}
@@ -1011,6 +1017,7 @@ void UCozyHudWidget::RefreshWindow()
 	if (UCozyUiScreen* Screen = GetWindowScreen(WindowKind))
 	{
 		Screen->ContextFacility = WindowFacility;
+		Screen->ContextTarget = WindowTargetFacility;
 		if (WindowOverlay->GetContent() != Screen)
 		{
 			WindowOverlay->SetContent(Screen);
