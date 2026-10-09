@@ -963,6 +963,18 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 		R.StateColor = ECozyUiColor::InkMuted;
 		break;
 	}
+	case ECozyUiValue::StoredLabel:
+		if (const FCozyFacilityState* Facility = FindFirst(Param))
+		{
+			R.Current = Facility->Level;
+			FString Label = FString::Printf(TEXT("%s Lv%d"), *Estate->GetFacilityDisplayName(Facility->InstanceId).ToString(), Facility->Level);
+			if (const FCozyCropRow* Crop = Facility->SelectedCropId.IsNone() ? nullptr : Estate->GetCropDef(Facility->SelectedCropId))
+			{
+				Label += FString::Printf(TEXT(" · %s"), *Crop->DisplayName.ToString());
+			}
+			R.Text = FText::FromString(Label);
+		}
+		break;
 	case ECozyUiValue::ProcReserved:
 	{
 		const FCozyFacilityState* Facility = FindFirst(Param);
@@ -1188,6 +1200,7 @@ FText UCozyUiScreen::GetActionName(ECozyUiAction Action)
 	case ECozyUiAction::ApplySpeedup: return LOCTEXT("ActSpeedApply", "단축 확정");
 	case ECozyUiAction::StartUpgrade: return LOCTEXT("ActUpStart", "업그레이드 시작");
 	case ECozyUiAction::GoToFacility: return LOCTEXT("ActGoTo", "그 시설로 이동");
+	case ECozyUiAction::TakeOutStored: return LOCTEXT("ActTakeOut", "보관함에서 꺼내기");
 	default: return LOCTEXT("ActNone", "동작 없음");
 	}
 }
@@ -1543,6 +1556,15 @@ void UCozyUiScreen::RunAction(const FCozyUiElementEntry& Entry)
 			Estate->StartUpgrade(FacilityId, Message);
 			Hud->SetFeedbackText(Message);
 			Hud->RefreshWindowScreen();
+		}
+		break;
+	}
+	case ECozyUiAction::TakeOutStored:
+	{
+		FGuid FacilityId;
+		if (FGuid::Parse(Entry.ActionParam.ToString(), FacilityId))
+		{
+			Estate->BeginPlacement(FacilityId);
 		}
 		break;
 	}

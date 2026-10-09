@@ -101,6 +101,7 @@ public:
 	/**
 	 *  창 화면 (창 이름 → Widget Blueprint). 지정한 창은 예전 창 대신 이 화면을 띄운다 (틀 · 제목 · 닫기까지 화면이 그림).
 	 *  창 이름: Storage · FacilityInfo · Processing · Sales · Upgrade · FieldManagement · Nagaya · OfflineReport · Placeholder
+	 *  배치 모드 왼쪽 위 패널: Placement
 	 */
 	UPROPERTY(Config, EditAnywhere, Category = "2 화면 (Screens)", meta = (DisplayName = "Window Screens (창별 화면)"))
 	TMap<FName, TSoftClassPtr<UCozyUiScreen>> WindowScreens;
