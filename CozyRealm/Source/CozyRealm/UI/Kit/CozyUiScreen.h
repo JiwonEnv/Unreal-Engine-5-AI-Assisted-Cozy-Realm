@@ -90,6 +90,8 @@ private:
 	void UnbindAssetEvents();
 	void HandleAssetChanged(const UObject* Asset);
 	FCozyUiValueResult GetPreviewValue(ECozyUiValue Value) const;
+	/** 실제 게임 상태로 만든 목록 줄 (미리보기는 GetListRows가 이것을 바탕으로 예시 줄을 섞음) */
+	TArray<FCozyUiListRow> GetRealListRows(ECozyUiListSource Source, FName ParentRowId) const;
 	void ShowMessage(const FText& Message) const;
 
 	TWeakObjectPtr<UCozyUiTheme> BoundTheme;

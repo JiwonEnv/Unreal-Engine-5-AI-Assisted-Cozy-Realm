@@ -325,6 +325,9 @@ public:
 
 	bool GetShowTestRecipes() const { return bShowTestRecipes; }
 	void SetShowTestRecipes(bool bShow);
+	/** UI 미리보기 중 자동 저장 멈춤 (미리보기는 게임 상태를 바꾸지 않지만, 확인하는 동안 저장 파일도 건드리지 않게) */
+	void SetAutosavePaused(bool bPaused) { bAutosavePaused = bPaused; }
+	bool IsAutosavePaused() const { return bAutosavePaused; }
 
 	// --- 공통 성장 · 업그레이드 (후신소 · D9·D25·D36~D40) ---
 
@@ -580,6 +583,7 @@ private:
 	/** 마지막 저장 시각 (UTC) · 자동 저장까지 흐른 실제 시간 */
 	FDateTime LastSavedUtc;
 	double AutosaveAccumulator = 0.0;
+	bool bAutosavePaused = false;
 	FCozyOfflineReport OfflineReport;
 	bool bOfflineReportPending = false;
 

@@ -150,6 +150,7 @@ void UCozyUiScreen::SetPreview(bool bEnable)
 void UCozyUiScreen::SetPreviewState(ECozyUiPreviewState NewState)
 {
 	PreviewState = NewState;
+	RefreshTheme();
 	RefreshValues();
 }
 
@@ -323,6 +324,13 @@ FCozyUiValueResult UCozyUiScreen::GetPreviewValue(ECozyUiValue Value) const
 	case ECozyUiValue::ShrineLevel:
 	case ECozyUiValue::FacilityLevelCap: R.Current = 2.f; R.Max = 0.f; break;
 	case ECozyUiValue::GameClock: R.Text = LOCTEXT("PvClock", "미리보기 · 14:20"); break;
+	// 버튼·제목에 쓰는 값은 짧은 예시 글자 (긴 '(미리보기) …' 글자가 버튼 밖으로 넘치지 않게)
+	case ECozyUiValue::ProcStartLabel: R.Text = LOCTEXT("PvStartLabel", "제작 시작"); break;
+	case ECozyUiValue::RecipeOption: R.Text = LOCTEXT("PvRecipe", "밀가루 ×1"); break;
+	case ECozyUiValue::CropOption: R.Text = LOCTEXT("PvCrop", "밀"); break;
+	case ECozyUiValue::SpeedCount: R.Text = LOCTEXT("PvSpeedCount", "1장 (보유 3장)"); break;
+	case ECozyUiValue::StoredLabel: R.Text = LOCTEXT("PvStored", "제분소 Lv2"); break;
+	case ECozyUiValue::FacilityName: R.Text = LOCTEXT("PvFacName", "제분소  Lv.2 (예시)"); break;
 	case ECozyUiValue::UpgradeSlots: R.Current = PreviewState == ECozyUiPreviewState::Empty ? 0.f : 1.f; R.Max = 1.f; break;
 	case ECozyUiValue::StoredFacilities: R.Current = 1.f; R.Max = 0.f; break;
 	case ECozyUiValue::StorageSpace:
@@ -330,6 +338,21 @@ FCozyUiValueResult UCozyUiScreen::GetPreviewValue(ECozyUiValue Value) const
 		R.StateColor = PreviewState == ECozyUiPreviewState::Full ? ECozyUiColor::Warning : ECozyUiColor::InkMuted;
 		break;
 	default: break;
+	}
+	if (PreviewState == ECozyUiPreviewState::Empty)
+	{
+		return R;
+	}
+	if (R.Text.IsEmpty())
+	{
+		// 표시 이름 'Sale Line (판매 재료 한 줄)'의 괄호 안 한글을 꺼내 '(미리보기) 판매 재료 한 줄'로 · 빈 줄이 접히지 않아 배치를 확인할 수 있음
+		FString Name = UEnum::GetDisplayValueAsText(Value).ToString();
+		int32 Open = INDEX_NONE;
+		if (Name.FindChar(TEXT('('), Open) && Name.EndsWith(TEXT(")")))
+		{
+			Name = Name.Mid(Open + 1, Name.Len() - Open - 2);
+		}
+		R.Text = FText::Format(LOCTEXT("PvValueName", "(미리보기) {0}"), FText::FromString(Name));
 	}
 	return R;
 }
@@ -1010,6 +1033,45 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 
 TArray<FCozyUiListRow> UCozyUiScreen::GetListRows(ECozyUiListSource Source, FName ParentRowId) const
 {
+	if (!bPreview || Source == ECozyUiListSource::None || IsDesignTime())
+	{
+		return GetRealListRows(Source, ParentRowId);
+	}
+	// 미리보기: '비어 있음' 상태는 0줄 · 조건부 줄은 늘 한 줄 · 메뉴는 모든 버튼 · 나머지는 실제 줄(없으면 예시 2줄)
+	TArray<FCozyUiListRow> Rows;
+	if (PreviewState == ECozyUiPreviewState::Empty)
+	{
+		return Rows;
+	}
+	switch (Source)
+	{
+	case ECozyUiListSource::ProcQueue: Rows.Add({ TEXT("Queue"), LOCTEXT("PvQueueRow", "제작 추가 대기 (미리보기)") }); return Rows;
+	case ECozyUiListSource::ProcPendingCancel: Rows.Add({ TEXT("Confirm"), LOCTEXT("PvConfirmRow", "취소 확인 (미리보기)") }); return Rows;
+	case ECozyUiListSource::UpgradeSpeed: Rows.Add({ ParentRowId.IsNone() ? FName(TEXT("Slot0")) : ParentRowId, LOCTEXT("PvSpeedRow", "시간 단축 (미리보기)") }); return Rows;
+	case ECozyUiListSource::FacilityMenuItems:
+		Rows.Add({ TEXT("Info"), LOCTEXT("PvMenuInfo", "정보") });
+		Rows.Add({ TEXT("Processing"), LOCTEXT("PvMenuProc", "가공") });
+		Rows.Add({ TEXT("Sales"), LOCTEXT("PvMenuSales", "판매") });
+		Rows.Add({ TEXT("Upgrade"), LOCTEXT("PvMenuUp", "업그레이드") });
+		Rows.Add({ TEXT("FieldManagement"), LOCTEXT("PvMenuField", "밭 관리") });
+		Rows.Add({ TEXT("Nagaya"), LOCTEXT("PvMenuNagaya", "주민 관리") });
+		Rows.Add({ TEXT("Resident"), LOCTEXT("PvMenuResident", "주민") });
+		return Rows;
+	default:
+		break;
+	}
+	Rows = GetRealListRows(Source, ParentRowId);
+	if (Rows.Num() == 0)
+	{
+		const bool bSlots = Source == ECozyUiListSource::ProcSlots || Source == ECozyUiListSource::UpgradeSlots;
+		Rows.Add({ bSlots ? FName(TEXT("Slot0")) : FName(TEXT("Sample1")), LOCTEXT("PvSample1", "예시 1 (미리보기)") });
+		Rows.Add({ bSlots ? FName(TEXT("Slot1")) : FName(TEXT("Sample2")), LOCTEXT("PvSample2", "예시 2 (미리보기)") });
+	}
+	return Rows;
+}
+
+TArray<FCozyUiListRow> UCozyUiScreen::GetRealListRows(ECozyUiListSource Source, FName ParentRowId) const
+{
 	TArray<FCozyUiListRow> Rows;
 	if (Source == ECozyUiListSource::None)
 	{
@@ -1267,7 +1329,18 @@ bool UCozyUiScreen::CanRunAction(const FCozyUiElementEntry& Entry, FText& OutRea
 {
 	const UWorld* World = GetWorld();
 	const UCozyEstateSubsystem* Estate = World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
-	if (!Estate || bPreview || IsDesignTime())
+	if (bPreview)
+	{
+		const bool bAlwaysOn = Entry.Action == ECozyUiAction::CloseWindow || Entry.Action == ECozyUiAction::TogglePreview
+			|| Entry.Action == ECozyUiAction::ToggleDebug || Entry.Action == ECozyUiAction::None;
+		if (!bAlwaysOn && PreviewState == ECozyUiPreviewState::Locked)
+		{
+			OutReason = LOCTEXT("PvLockedButton", "미리보기: '잠김' 상태에서 버튼이 꺼진 모습입니다");
+			return false;
+		}
+		return true;
+	}
+	if (!Estate || IsDesignTime())
 	{
 		return true;
 	}
@@ -1451,6 +1524,18 @@ void UCozyUiScreen::RunAction(const FCozyUiElementEntry& Entry)
 	{
 		SetPreview(!bPreview);
 		ShowMessage(bPreview ? LOCTEXT("PvOn", "UI 미리보기 켜짐 · 실제 재료를 쓰지 않습니다") : LOCTEXT("PvOff", "UI 미리보기 꺼짐"));
+		return;
+	}
+	// 미리보기 중에도 창 닫기 · 디버그 창 열고 닫기는 동작 (게임 상태를 바꾸지 않는 화면 조작)
+	if (bPreview && (Entry.Action == ECozyUiAction::CloseWindow || Entry.Action == ECozyUiAction::ToggleDebug))
+	{
+		if (const ACozyRealmEstatePlayerController* Controller = Cast<ACozyRealmEstatePlayerController>(GetOwningPlayer()))
+		{
+			if (UCozyHudWidget* Hud = Controller->GetHud())
+			{
+				Entry.Action == ECozyUiAction::CloseWindow ? Hud->CloseWindow() : Hud->ToggleDebugPanel();
+			}
+		}
 		return;
 	}
 	if (bPreview)
