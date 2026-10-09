@@ -142,7 +142,19 @@ enum class ECozyUiValue : uint8
 	/** 취소 확인 안내 ({4} · 완성분·남은 회차 · 확인 중이 아니면 빈칸) */
 	ProcCancelConfirm UMETA(DisplayName = "Processing Cancel Confirm (취소 확인 안내)"),
 	/** 제작 중 확보한 미수령 공간 ({0} · {4} '제작 중 확보 3' · 없으면 빈칸) */
-	ProcReserved UMETA(DisplayName = "Processing Reserved (제작 중 확보 공간)")
+	ProcReserved UMETA(DisplayName = "Processing Reserved (제작 중 확보 공간)"),
+	/** 업그레이드 작업 칸 (매개변수: 칸 · 목록 안에서 @Row · 게이지 = 진행률 · {3} 남은 시간 · {4} '제분소 → Lv3 · 남은 20초' / '작업 칸 1: 비어 있음') */
+	UpgradeJob UMETA(DisplayName = "Upgrade Job (업그레이드 작업 칸)"),
+	/** 시간 부적 장수 (매개변수: 칸 · {0} 고른 장수 · {1} 보유 · {4} '1장 (보유 3장)') */
+	SpeedCount UMETA(DisplayName = "Speedup Count (시간 부적 장수)"),
+	/** 시간 단축 미리보기 (매개변수: 칸 · {4} '1장 = … 단축 · 남은 시간 … → …') */
+	SpeedPreview UMETA(DisplayName = "Speedup Preview (시간 단축 미리보기)"),
+	/** 업그레이드할 시설 제목 (매개변수: 시설 · 목록 안에서 @Row · {4} '제분소   Lv2 → Lv3') */
+	UpgradeTitle UMETA(DisplayName = "Upgrade Title (업그레이드 시설 제목)"),
+	/** 비용·시간·조건·해금·효과·가공 반환 안내 (매개변수: 시설 · {4} · 여러 줄) */
+	UpgradeDetail UMETA(DisplayName = "Upgrade Detail (업그레이드 비용·조건)"),
+	/** 업그레이드를 시작할 수 없는 이유 (매개변수: 시설 · {4} · 시작할 수 있으면 빈칸) */
+	UpgradeBlock UMETA(DisplayName = "Upgrade Block Reason (시작할 수 없는 이유)")
 };
 
 /** 반복 목록의 출처 · 줄 수가 게임 상태에 따라 바뀌는 목록 */
@@ -175,7 +187,15 @@ enum class ECozyUiListSource : uint8
 	/** 제작 추가 대기가 있으면 한 줄 · 없으면 0줄 (조건부로 보이는 줄에 씀) */
 	ProcQueue UMETA(DisplayName = "Processing Queue (제작 추가 대기 · 있을 때만 한 줄)"),
 	/** 취소 확인 중이면 한 줄 · 아니면 0줄 */
-	ProcPendingCancel UMETA(DisplayName = "Processing Pending Cancel (취소 확인 · 확인 중일 때만 한 줄)")
+	ProcPendingCancel UMETA(DisplayName = "Processing Pending Cancel (취소 확인 · 확인 중일 때만 한 줄)"),
+	/** 후신소 작업 칸 (동시 업그레이드 수만큼 · 줄 ID = Slot0, Slot1 …) */
+	UpgradeSlots UMETA(DisplayName = "Upgrade Slots (업그레이드 작업 칸)"),
+	/** 작업 칸 한 줄 안에서: 그 칸에 작업이 있으면 한 줄(시간 단축 줄) · 없으면 0줄 · 줄 ID = 칸 */
+	UpgradeSpeed UMETA(DisplayName = "Upgrade Speedup (시간 단축 · 작업이 있을 때만 한 줄)"),
+	/** 업그레이드할 시설 (성장 설정표에 행이 있는 시설 · 줄 ID = 시설 고유 ID) */
+	UpgradeFacilities UMETA(DisplayName = "Upgrade Facilities (업그레이드할 시설)"),
+	/** 시설 한 줄 안에서: 조건 시설들 (줄 ID = 시설 정의 ID · '조건 시설로 이동' 버튼에 씀) */
+	UpgradeConditionTargets UMETA(DisplayName = "Upgrade Condition Targets (조건 시설)")
 };
 
 /** 배경 안쪽 여백 */
@@ -254,7 +274,19 @@ enum class ECozyUiAction : uint8
 	/** 취소 확정 */
 	ConfirmCancel UMETA(DisplayName = "Confirm Cancel (취소 확정)"),
 	/** 취소하지 않고 계속 제작 */
-	KeepProcessing UMETA(DisplayName = "Keep Processing (계속 제작)")
+	KeepProcessing UMETA(DisplayName = "Keep Processing (계속 제작)"),
+	/** 시간 부적 −1 (Action Param: 칸 · @Row) */
+	SpeedLess UMETA(DisplayName = "Speedup Less (부적 줄이기)"),
+	/** 시간 부적 +1 (최대 = 보유량과 필요량 중 큰 값) */
+	SpeedMore UMETA(DisplayName = "Speedup More (부적 늘리기)"),
+	/** 남은 시간에 딱 맞는 장수 */
+	SpeedFit UMETA(DisplayName = "Speedup Fit (딱 맞게)"),
+	/** 시간 단축 확정 (확정할 때 다시 계산 · 실패하면 부적·시간 그대로) */
+	ApplySpeedup UMETA(DisplayName = "Apply Speedup (단축 확정)"),
+	/** 이 시설 업그레이드 시작 (Action Param: 시설 · @Row · 시작 직전 재검사) */
+	StartUpgrade UMETA(DisplayName = "Start Upgrade (업그레이드 시작)"),
+	/** 창을 닫고 그 시설을 선택 (Action Param: 시설 정의 ID · @Row) */
+	GoToFacility UMETA(DisplayName = "Go To Facility (그 시설로 이동)")
 };
 
 /** 미리보기 상태 · 실제 값 대신 보여 줄 가짜 상태 */

@@ -33,6 +33,15 @@ namespace CozyUiScreenUtil
 		return Jobs;
 	}
 
+	/** 배율 글자 (1.4) */
+	FText Multiplier(float Value)
+	{
+		FNumberFormattingOptions Fmt;
+		Fmt.MinimumFractionalDigits = 1;
+		Fmt.MaximumFractionalDigits = 2;
+		return FText::AsNumber(Value, &Fmt);
+	}
+
 	/** 'Slot0' → 0 · 형식이 다르면 -1 */
 	int32 SlotIndex(FName Param)
 	{
@@ -810,6 +819,150 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 		R.StateColor = ECozyUiColor::Warning;
 		break;
 	}
+	case ECozyUiValue::UpgradeJob:
+	case ECozyUiValue::SpeedCount:
+	case ECozyUiValue::SpeedPreview:
+	{
+		const int32 Index = CozyUiScreenUtil::SlotIndex(Param);
+		const TArray<FCozyUpgradeJobView> Jobs = Estate->GetUpgradeJobs();
+		const FCozyUpgradeJobView* Job = Jobs.IsValidIndex(Index) ? &Jobs[Index] : nullptr;
+		if (Value == ECozyUiValue::UpgradeJob)
+		{
+			R.Max = 100.f;
+			if (Job)
+			{
+				R.Current = Job->Progress01 * 100.f;
+				R.RemainingSeconds = Job->RemainingSeconds;
+				R.StateColor = ECozyUiColor::Progress;
+				R.Text = FText::Format(LOCTEXT("UpJob2", "{0} → Lv{1} · 남은 {2}"), Job->FacilityName, FText::AsNumber(Job->ToLevel), CozyUiFormat::Duration(Job->RemainingSeconds));
+			}
+			else
+			{
+				R.StateColor = ECozyUiColor::InkMuted;
+				R.Text = FText::Format(LOCTEXT("UpJobEmpty2", "작업 칸 {0}: 비어 있음"), FText::AsNumber(Index + 1));
+			}
+			break;
+		}
+		const UCozyHudWidget* Hud = CozyUiScreenUtil::FindHud(this);
+		if (!Job || !Hud)
+		{
+			break;
+		}
+		const FCozySpeedupQuote Speed = Estate->GetSpeedupQuote(Job->JobId, Hud->GetUpgradeSpeedCount(Index));
+		if (Value == ECozyUiValue::SpeedCount)
+		{
+			R.Current = Speed.Count;
+			R.Max = Speed.Owned;
+			R.Text = FText::Format(LOCTEXT("SpeedCount2", "{0}장 (보유 {1}장)"), FText::AsNumber(Speed.Count), FText::AsNumber(Speed.Owned));
+		}
+		else
+		{
+			FString Preview = FString::Printf(TEXT("미리보기: 1장 = %s 단축 · %d장 → %s 단축 · 남은 시간 %s → %s"),
+				*CozyUiFormat::Duration(Speed.SecondsPerItem).ToString(), Speed.Count, *CozyUiFormat::Duration(Speed.Reduce).ToString(),
+				*CozyUiFormat::Duration(Speed.RemainingBefore).ToString(), *CozyUiFormat::Duration(Speed.RemainingAfter).ToString());
+			if (Speed.Wasted > 0.f)
+			{
+				Preview += FString::Printf(TEXT(" · 남은 시간보다 많아 %s은 버려집니다"), *CozyUiFormat::Duration(Speed.Wasted).ToString());
+			}
+			if (!Speed.BlockReason.IsEmpty())
+			{
+				Preview += TEXT(" · ") + Speed.BlockReason.ToString();
+			}
+			R.Text = FText::FromString(Preview);
+			R.StateColor = ECozyUiColor::InkMuted;
+		}
+		break;
+	}
+	case ECozyUiValue::UpgradeTitle:
+	case ECozyUiValue::UpgradeDetail:
+	case ECozyUiValue::UpgradeBlock:
+	{
+		const FCozyFacilityState* Facility = FindFirst(Param);
+		if (!Facility)
+		{
+			break;
+		}
+		const FCozyUpgradeQuote Quote = Estate->GetUpgradeQuote(Facility->InstanceId);
+		if (Value == ECozyUiValue::UpgradeTitle)
+		{
+			const FText Name = Estate->GetFacilityDisplayName(Facility->InstanceId);
+			R.Current = Quote.FromLevel;
+			R.Max = Quote.ToLevel;
+			R.Text = Quote.bValid
+				? FText::Format(LOCTEXT("UpRowTitle2", "{0}   Lv{1} → Lv{2}"), Name, FText::AsNumber(Quote.FromLevel), FText::AsNumber(Quote.ToLevel))
+				: FText::Format(LOCTEXT("UpRowTitleMax2", "{0}   Lv{1}"), Name, FText::AsNumber(Quote.FromLevel));
+			break;
+		}
+		if (Value == ECozyUiValue::UpgradeBlock)
+		{
+			R.Text = Quote.BlockReason;
+			R.StateColor = ECozyUiColor::Warning;
+			break;
+		}
+		FString Detail;
+		if (Quote.bValid)
+		{
+			FString Costs;
+			for (const FCozyUpgradeQuote::FAmount& Cost : Quote.Costs)
+			{
+				const FCozyItemRow* Item = Estate->GetItemDef(Cost.ItemId);
+				Costs += FString::Printf(TEXT("%s%s %d개 (보유 %d)"), Costs.IsEmpty() ? TEXT("") : TEXT(" · "), *(Item ? Item->DisplayName : FText::FromName(Cost.ItemId)).ToString(), Cost.Amount, Cost.Have);
+			}
+			Detail = FString::Printf(TEXT("비용: %s · 시간: %s"), Costs.IsEmpty() ? TEXT("없음") : *Costs, *CozyUiFormat::Duration(Quote.Seconds).ToString());
+			// 조건마다 충족 여부 (신사 상한 · 선행 시설 D41)
+			if (Quote.Conditions.Num() > 0)
+			{
+				FString Conditions;
+				for (const FCozyUpgradeQuote::FCondition& Condition : Quote.Conditions)
+				{
+					Conditions += FString::Printf(TEXT("%s%s %s"), Conditions.IsEmpty() ? TEXT("") : TEXT(" · "), *Condition.Label.ToString(),
+						Condition.bMet ? TEXT("(충족)") : *FString::Printf(TEXT("(부족 · 지금 Lv%d)"), Condition.Current));
+				}
+				Detail += FString::Printf(TEXT("\n조건: %s"), *Conditions);
+			}
+			if (Quote.UnlockFacilityNames.Num() > 0)
+			{
+				FString Facilities;
+				for (const FText& Each : Quote.UnlockFacilityNames)
+				{
+					Facilities += (Facilities.IsEmpty() ? TEXT("") : TEXT(", ")) + Each.ToString();
+				}
+				Detail += FString::Printf(TEXT("\n해금 시설: %s"), *Facilities);
+			}
+			if (Quote.NextFieldSpeedMultiplier > 0.f)
+			{
+				Detail += FString::Printf(TEXT("\n효과: 모든 밭 생산 속도 ×%s (진행 중인 주기는 그대로, 다음 주기부터)"), *CozyUiScreenUtil::Multiplier(Quote.NextFieldSpeedMultiplier).ToString());
+			}
+			if (Quote.UnlockCropNames.Num() > 0)
+			{
+				FString Crops;
+				for (const FText& Crop : Quote.UnlockCropNames)
+				{
+					Crops += (Crops.IsEmpty() ? TEXT("") : TEXT(", ")) + Crop.ToString();
+				}
+				Detail += FString::Printf(TEXT("\n해금 작물: %s (각 밭의 작물 선택에 표시 · 자동으로 바뀌지 않음)"), *Crops);
+			}
+			// D36: 시작하면 종료될 가공과 반환될 재료
+			if (Quote.EndingJobs.Num() > 0)
+			{
+				FString Ending;
+				for (const FText& Line : Quote.EndingJobs)
+				{
+					Ending += (Ending.IsEmpty() ? TEXT("") : TEXT(" / ")) + Line.ToString();
+				}
+				FString Refunds;
+				for (const FCozyUpgradeQuote::FAmount& Refund : Quote.Refunds)
+				{
+					const FCozyItemRow* Item = Estate->GetItemDef(Refund.ItemId);
+					Refunds += FString::Printf(TEXT("%s%s %d개"), Refunds.IsEmpty() ? TEXT("") : TEXT(", "), *(Item ? Item->DisplayName : FText::FromName(Refund.ItemId)).ToString(), Refund.Amount);
+				}
+				Detail += FString::Printf(TEXT("\n시작하면 진행 중인 가공이 종료됩니다: %s\n미완료 회차 재료 반환: %s · 완성된 가공품은 시설에 남습니다"), *Ending, Refunds.IsEmpty() ? TEXT("없음") : *Refunds);
+			}
+		}
+		R.Text = FText::FromString(Detail);
+		R.StateColor = ECozyUiColor::InkMuted;
+		break;
+	}
 	case ECozyUiValue::ProcReserved:
 	{
 		const FCozyFacilityState* Facility = FindFirst(Param);
@@ -887,6 +1040,40 @@ TArray<FCozyUiListRow> UCozyUiScreen::GetListRows(ECozyUiListSource Source, FNam
 			}
 		}
 		break;
+	case ECozyUiListSource::UpgradeSlots:
+		for (int32 Index = 0; Index < FMath::Max(1, Estate->GetUpgradeSlotCount()); ++Index)
+		{
+			Rows.Add({ FName(*FString::Printf(TEXT("Slot%d"), Index)), FText::Format(LOCTEXT("UpSlotName", "작업 칸 {0}"), FText::AsNumber(Index + 1)) });
+		}
+		break;
+	case ECozyUiListSource::UpgradeSpeed:
+		if (Estate->GetUpgradeJobs().IsValidIndex(CozyUiScreenUtil::SlotIndex(ParentRowId)))
+		{
+			Rows.Add({ ParentRowId, LOCTEXT("SpeedRow", "시간 단축") });
+		}
+		break;
+	case ECozyUiListSource::UpgradeFacilities:
+		for (const FGuid& FacilityId : Estate->GetUpgradableFacilities())
+		{
+			Rows.Add({ FName(*FacilityId.ToString()), Estate->GetFacilityDisplayName(FacilityId) });
+		}
+		break;
+	case ECozyUiListSource::UpgradeConditionTargets:
+	{
+		FGuid FacilityId;
+		if (FGuid::Parse(ParentRowId.ToString(), FacilityId))
+		{
+			for (const FCozyUpgradeQuote::FCondition& Condition : Estate->GetUpgradeQuote(FacilityId).Conditions)
+			{
+				const FCozyFacilityRow* TargetDef = Condition.FacilityId.IsNone() ? nullptr : Estate->GetFacilityDef(Condition.FacilityId);
+				if (TargetDef)
+				{
+					Rows.Add({ Condition.FacilityId, TargetDef->DisplayName });
+				}
+			}
+		}
+		break;
+	}
 	case ECozyUiListSource::ProcQueue:
 		if (Estate->GetProcessingJobs(ContextFacility).ContainsByPredicate([](const FCozyProcessingJobView& Each) { return Each.bQueued; }))
 		{
@@ -995,6 +1182,12 @@ FText UCozyUiScreen::GetActionName(ECozyUiAction Action)
 	case ECozyUiAction::CancelQueued: return LOCTEXT("ActCancelQueued", "추가분 취소 묻기");
 	case ECozyUiAction::ConfirmCancel: return LOCTEXT("ActConfirmCancel", "취소 확정");
 	case ECozyUiAction::KeepProcessing: return LOCTEXT("ActKeep", "계속 제작");
+	case ECozyUiAction::SpeedLess: return LOCTEXT("ActSpeedLess", "부적 줄이기");
+	case ECozyUiAction::SpeedMore: return LOCTEXT("ActSpeedMore", "부적 늘리기");
+	case ECozyUiAction::SpeedFit: return LOCTEXT("ActSpeedFit", "딱 맞게");
+	case ECozyUiAction::ApplySpeedup: return LOCTEXT("ActSpeedApply", "단축 확정");
+	case ECozyUiAction::StartUpgrade: return LOCTEXT("ActUpStart", "업그레이드 시작");
+	case ECozyUiAction::GoToFacility: return LOCTEXT("ActGoTo", "그 시설로 이동");
 	default: return LOCTEXT("ActNone", "동작 없음");
 	}
 }
@@ -1121,6 +1314,48 @@ bool UCozyUiScreen::CanRunAction(const FCozyUiElementEntry& Entry, FText& OutRea
 			OutReason = Quote.BlockReason;
 			return Quote.bCanStart;
 		}
+	}
+	case ECozyUiAction::SpeedLess:
+	case ECozyUiAction::SpeedMore:
+	case ECozyUiAction::SpeedFit:
+	case ECozyUiAction::ApplySpeedup:
+	{
+		const UCozyHudWidget* Hud = CozyUiScreenUtil::FindHud(this);
+		const int32 Index = CozyUiScreenUtil::SlotIndex(Entry.ActionParam);
+		const TArray<FCozyUpgradeJobView> Jobs = Estate->GetUpgradeJobs();
+		if (!Hud || !Jobs.IsValidIndex(Index))
+		{
+			OutReason = LOCTEXT("NoUpgradeJob", "진행 중인 업그레이드가 없습니다");
+			return false;
+		}
+		const int32 Count = Hud->GetUpgradeSpeedCount(Index);
+		const FCozySpeedupQuote Speed = Estate->GetSpeedupQuote(Jobs[Index].JobId, Count);
+		switch (Entry.Action)
+		{
+		case ECozyUiAction::SpeedLess:
+			OutReason = LOCTEXT("SpeedMin", "1장보다 적게 쓸 수 없습니다");
+			return Count > 1;
+		case ECozyUiAction::SpeedMore:
+			OutReason = LOCTEXT("SpeedMaxReached", "보유량·필요량까지 골랐습니다");
+			return Count < FMath::Max(1, FMath::Max(Speed.Owned, Speed.MaxUseful));
+		case ECozyUiAction::SpeedFit:
+			OutReason = LOCTEXT("SpeedAlreadyFit", "이미 딱 맞는 장수입니다");
+			return Count != FMath::Max(1, FMath::Min(Speed.Owned, Speed.MaxUseful));
+		default:
+			OutReason = Speed.BlockReason;
+			return Speed.bCanApply;
+		}
+	}
+	case ECozyUiAction::StartUpgrade:
+	{
+		FGuid FacilityId;
+		if (!FGuid::Parse(Entry.ActionParam.ToString(), FacilityId))
+		{
+			return false;
+		}
+		const FCozyUpgradeQuote Quote = Estate->GetUpgradeQuote(FacilityId);
+		OutReason = Quote.BlockReason;
+		return Quote.bCanStart;
 	}
 	case ECozyUiAction::CancelSlot:
 		OutReason = LOCTEXT("SlotEmptyReason", "비어 있는 칸입니다");
@@ -1266,6 +1501,55 @@ void UCozyUiScreen::RunAction(const FCozyUiElementEntry& Entry)
 		break;
 	}
 	case ECozyUiAction::KeepProcessing: Hud->SetProcPendingCancel(FGuid()); break;
+	case ECozyUiAction::SpeedLess:
+	case ECozyUiAction::SpeedMore:
+	case ECozyUiAction::SpeedFit:
+	case ECozyUiAction::ApplySpeedup:
+	{
+		const int32 Index = CozyUiScreenUtil::SlotIndex(Entry.ActionParam);
+		const TArray<FCozyUpgradeJobView> Jobs = Estate->GetUpgradeJobs();
+		if (!Jobs.IsValidIndex(Index))
+		{
+			break;
+		}
+		const int32 Count = Hud->GetUpgradeSpeedCount(Index);
+		const FCozySpeedupQuote Speed = Estate->GetSpeedupQuote(Jobs[Index].JobId, 1);
+		if (Entry.Action == ECozyUiAction::ApplySpeedup)
+		{
+			// 확정할 때 서비스가 다시 계산 · 실패하면 부적·시간 그대로
+			FText Message;
+			Estate->ApplySpeedup(Jobs[Index].JobId, Count, Message);
+			Hud->SetFeedbackText(Message);
+			Hud->SetUpgradeSpeedCount(Index, 1);
+		}
+		else if (Entry.Action == ECozyUiAction::SpeedFit)
+		{
+			Hud->SetUpgradeSpeedCount(Index, FMath::Min(Speed.Owned, Speed.MaxUseful));
+		}
+		else
+		{
+			const int32 Limit = FMath::Max(1, FMath::Max(Speed.Owned, Speed.MaxUseful));
+			Hud->SetUpgradeSpeedCount(Index, FMath::Clamp(Count + (Entry.Action == ECozyUiAction::SpeedMore ? 1 : -1), 1, Limit));
+		}
+		break;
+	}
+	case ECozyUiAction::StartUpgrade:
+	{
+		FGuid FacilityId;
+		if (FGuid::Parse(Entry.ActionParam.ToString(), FacilityId))
+		{
+			// 시작 직전에 서비스가 최신 상태로 다시 검사 · 실패하면 아무것도 바뀌지 않음 (D38)
+			FText Message;
+			Estate->StartUpgrade(FacilityId, Message);
+			Hud->SetFeedbackText(Message);
+			Hud->RefreshWindowScreen();
+		}
+		break;
+	}
+	case ECozyUiAction::GoToFacility:
+		Hud->CloseWindow();
+		Controller->SelectFacilityByDefinition(Entry.ActionParam);
+		break;
 	case ECozyUiAction::OpenUpgrade:
 		for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
 		{

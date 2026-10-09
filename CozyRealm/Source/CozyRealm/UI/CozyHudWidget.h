@@ -109,6 +109,23 @@ public:
 	const FGuid& GetProcPendingCancel() const { return ProcPendingCancelJob; }
 	void SetProcSelection(FName RecipeId, int32 Runs) { ProcSelectedRecipe = RecipeId; ProcSelectedRuns = FMath::Max(1, Runs); RefreshWindow(); }
 	void SetProcPendingCancel(const FGuid& JobId) { ProcPendingCancelJob = JobId; RefreshWindow(); }
+	/** 후신소 창: 작업 칸마다 고른 시간 부적 장수 (편집 가능한 업그레이드 화면이 읽고 바꿈) */
+	int32 GetUpgradeSpeedCount(int32 SlotIndex) const { return UpgradeSpeedCounts.IsValidIndex(SlotIndex) ? FMath::Max(1, UpgradeSpeedCounts[SlotIndex]) : 1; }
+	/** 창 화면을 최신 상태로 다시 그림 (게임 상태가 바뀌지 않은 버튼 결과 안내 등) */
+	void RefreshWindowScreen() { RefreshWindow(); }
+	void SetUpgradeSpeedCount(int32 SlotIndex, int32 Count)
+	{
+		if (SlotIndex < 0)
+		{
+			return;
+		}
+		while (UpgradeSpeedCounts.Num() <= SlotIndex)
+		{
+			UpgradeSpeedCounts.Add(1);
+		}
+		UpgradeSpeedCounts[SlotIndex] = FMath::Max(1, Count);
+		RefreshWindow();
+	}
 
 protected:
 
