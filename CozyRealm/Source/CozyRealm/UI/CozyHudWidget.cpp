@@ -305,6 +305,16 @@ void UCozyHudWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 
 	UpdateNameLabelPositions();
 
+	// 창 화면 높이 상한: 시작 직후에는 화면 크기를 아직 모를 수 있어 매 프레임 이 위젯의 실제 높이로 맞춘다 (HUD 아래 공간)
+	if (WindowScreenSize && WindowKind != ECozyWindowKind::None)
+	{
+		const float MaxHeight = FMath::Max(200.f, MyGeometry.GetLocalSize().Y - 130.f);
+		if (MyGeometry.GetLocalSize().Y > 1.f && !FMath::IsNearlyEqual(WindowScreenSize->GetMaxDesiredHeight(), MaxHeight, 1.f))
+		{
+			WindowScreenSize->SetMaxDesiredHeight(MaxHeight);
+		}
+	}
+
 	if (bPlacementMode)
 	{
 		UpdatePlacementLive();
@@ -419,6 +429,24 @@ void UCozyHudWidget::UpdatePlacementLive()
 		}
 		return;
 	}
+	FVector2D ScreenPosition;
+	if (PlacementActionSlot && UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(GetOwningPlayer(), Actor->GetIconAnchorLocation(), ScreenPosition, false))
+	{
+		PlacementActionSlot->SetPosition(ScreenPosition);
+	}
+	// 편집 가능한 배치 버튼 화면이 지정돼 있으면 그 화면 (상태 글 · 회전·보관·확정·취소 버튼은 화면 설정에서)
+	if (UCozyUiScreen* ActionScreen = GetScreenByName(TEXT("PlacementActions")))
+	{
+		if (PlacementActionBox->GetChildrenCount() != 1 || PlacementActionBox->GetChildAt(0) != ActionScreen)
+		{
+			PlacementActionBox->ClearChildren();
+			PlacementActionBox->AddChildToVerticalBox(ActionScreen)->SetHorizontalAlignment(HAlign_Center);
+			ActionScreen->RefreshTheme();
+		}
+		ActionScreen->RefreshValues();
+		PlacementActionBox->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+		return;
+	}
 	FText PlaceReason;
 	const bool bCanPlace = Estate->CanPlaceFacility(Estate->GetPlacementId(), Estate->GetPlacementCoord(), Estate->GetPlacementRotation(), PlaceReason);
 	FText StoreReason;
@@ -433,11 +461,6 @@ void UCozyHudWidget::UpdatePlacementLive()
 	PlacementConfirmButton->SetIsEnabled(bCanPlace);
 	PlacementStoreButton->SetIsEnabled(bCanStore);
 	PlacementActionBox->SetVisibility(ESlateVisibility::Visible);
-	FVector2D ScreenPosition;
-	if (PlacementActionSlot && UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(GetOwningPlayer(), Actor->GetIconAnchorLocation(), ScreenPosition, false))
-	{
-		PlacementActionSlot->SetPosition(ScreenPosition);
-	}
 }
 
 void UCozyHudWidget::ShowToast(const FText& Message)
@@ -860,6 +883,42 @@ void UCozyHudWidget::RefreshTopBar()
 // ---------------------------------------------------------------------------
 // 기능 아이콘
 
+TArray<TPair<FName, FText>> UCozyHudWidget::GetFacilityMenu(const FCozyFacilityRow& Def)
+{
+	TArray<TPair<FName, FText>> Items;
+	for (const ECozyFacilityFunction Function : Def.Functions)
+	{
+		switch (Function)
+		{
+		case ECozyFacilityFunction::Production: Items.Add({ TEXT("Info"), LOCTEXT("IconInfo2", "정보") }); break;
+		case ECozyFacilityFunction::ResidentHousing: Items.Add({ TEXT("Nagaya"), LOCTEXT("IconNagaya2", "주민 관리") }); break;
+		case ECozyFacilityFunction::Processing: Items.Add({ TEXT("Processing"), LOCTEXT("IconProcess2", "가공") }); break;
+		case ECozyFacilityFunction::Sales: Items.Add({ TEXT("Sales"), LOCTEXT("IconSell2", "판매") }); break;
+		case ECozyFacilityFunction::UpgradeQueue: Items.Add({ TEXT("Upgrade"), LOCTEXT("IconUpgrade2", "업그레이드") }); break;
+		case ECozyFacilityFunction::ShrineCore: Items.Add({ TEXT("Shrine"), LOCTEXT("IconShrine2", "신사") }); break;
+		case ECozyFacilityFunction::FieldManagement: Items.Add({ TEXT("FieldManagement"), LOCTEXT("IconFieldMgmt2", "밭 관리") }); break;
+		default: break;
+		}
+	}
+	if (Def.MaxResidents > 0)
+	{
+		Items.Add({ TEXT("Resident"), LOCTEXT("IconResident2", "주민") });
+	}
+	return Items;
+}
+
+void UCozyHudWidget::OpenFacilityFunction(FName Function, const FGuid& FacilityId)
+{
+	if (Function == TEXT("Info")) { OpenWindow(ECozyWindowKind::FacilityInfo, FacilityId); }
+	else if (Function == TEXT("Nagaya")) { OpenWindow(ECozyWindowKind::Nagaya, FacilityId); }
+	else if (Function == TEXT("Processing")) { OpenWindow(ECozyWindowKind::Processing, FacilityId); }
+	else if (Function == TEXT("Sales")) { OpenWindow(ECozyWindowKind::Sales, FacilityId); }
+	else if (Function == TEXT("Upgrade")) { OpenWindow(ECozyWindowKind::Upgrade, FacilityId); }
+	else if (Function == TEXT("Shrine")) { PlaceholderLabel = LOCTEXT("PhShrine2", "신사"); OpenWindow(ECozyWindowKind::Placeholder, FacilityId); }
+	else if (Function == TEXT("FieldManagement")) { OpenWindow(ECozyWindowKind::FieldManagement, FacilityId); }
+	else if (Function == TEXT("Resident")) { OpenWindow(ECozyWindowKind::Nagaya, FGuid(), FacilityId); }
+}
+
 void UCozyHudWidget::ShowFacilityIcons(ACozyFacilityActor* FacilityActor)
 {
 	IconFacility = FacilityActor;
@@ -897,6 +956,17 @@ void UCozyHudWidget::RefreshIcons()
 
 	IconBox->ClearChildren();
 	IconActions.Reset();
+
+	// 편집 가능한 시설 메뉴 화면이 지정돼 있으면 그 화면 (버튼 글자·이미지·크기·간격은 화면 설정에서)
+	if (UCozyUiScreen* MenuScreen = GetScreenByName(TEXT("FacilityMenu")))
+	{
+		MenuScreen->ContextFacility = FacilityId;
+		IconBox->AddChildToHorizontalBox(MenuScreen);
+		MenuScreen->RefreshTheme();
+		MenuScreen->RefreshValues();
+		IconBox->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+		return;
+	}
 	ActionSink = &IconActions;
 
 	auto AddIcon = [this](const FText& Label, TFunction<void()> OnClick)
