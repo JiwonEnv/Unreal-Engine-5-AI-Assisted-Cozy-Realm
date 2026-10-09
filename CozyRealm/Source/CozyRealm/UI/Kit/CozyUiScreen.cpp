@@ -575,6 +575,64 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 		R.Text = Last.IsEmpty() ? FText::GetEmpty() : FText::Format(LOCTEXT("JustDid2", "방금 한 일 — {0}"), Last);
 		break;
 	}
+	case ECozyUiValue::SaleLine:
+	{
+		const FCozyItemRow* Item = Estate->GetItemDef(Param);
+		const ACozyRealmEstatePlayerController* Controller = Cast<ACozyRealmEstatePlayerController>(GetOwningPlayer());
+		const bool bSelected = Controller && Controller->GetHud() && Controller->GetHud()->GetSellItem() == Param;
+		R.Current = Estate->GetAmount(Param);
+		if (Item && Item->SellPrice > 0)
+		{
+			R.Text = FText::Format(LOCTEXT("SaleLine", "창고 {0}개 · 1개 {1}골드{2}"), FText::AsNumber(R.Current), FText::AsNumber(Item->SellPrice),
+				bSelected ? LOCTEXT("SaleLineSel", "  ◀ 선택") : FText::GetEmpty());
+			R.StateColor = bSelected ? ECozyUiColor::Point : ECozyUiColor::InkMuted;
+		}
+		else
+		{
+			R.Text = FText::Format(LOCTEXT("SaleLineNo", "창고 {0}개 · 판매 불가"), FText::AsNumber(R.Current));
+			R.StateColor = ECozyUiColor::Locked;
+		}
+		break;
+	}
+	case ECozyUiValue::SaleSelection:
+	case ECozyUiValue::SaleAmount:
+	case ECozyUiValue::SaleSummary:
+	case ECozyUiValue::SaleBlock:
+	{
+		const ACozyRealmEstatePlayerController* Controller = Cast<ACozyRealmEstatePlayerController>(GetOwningPlayer());
+		const UCozyHudWidget* Hud = Controller ? Controller->GetHud() : nullptr;
+		if (!Hud)
+		{
+			break;
+		}
+		const FName ItemId = Hud->GetSellItem();
+		const int32 Amount = Hud->GetSellAmount();
+		const FCozySellQuote Quote = Estate->GetSellQuote(ContextFacility, ItemId, Amount);
+		if (Value == ECozyUiValue::SaleSelection)
+		{
+			R.Text = ItemId.IsNone()
+				? LOCTEXT("SaleNothing", "팔 수 있는 재료가 없습니다")
+				: FText::Format(LOCTEXT("SaleSel", "선택: {0} · 1개 {1}{2}"), Quote.ItemName, FText::AsNumber(Quote.UnitPrice), Quote.CurrencyName);
+		}
+		else if (Value == ECozyUiValue::SaleAmount)
+		{
+			R.Current = Amount;
+			R.Max = Quote.MaxAmount;
+		}
+		else if (Value == ECozyUiValue::SaleSummary)
+		{
+			R.Current = Quote.TotalPrice;
+			R.Text = ItemId.IsNone() ? FText::GetEmpty() : FText::Format(LOCTEXT("SaleSum", "{0} {1}개 × {2} = {3} {4}  (창고 보유 {5}개 · 판매 후 {6}개)"),
+				Quote.ItemName, FText::AsNumber(Amount), FText::AsNumber(Quote.UnitPrice), FText::AsNumber(Quote.TotalPrice), Quote.CurrencyName,
+				FText::AsNumber(Quote.MaxAmount), FText::AsNumber(FMath::Max(0, Quote.MaxAmount - Amount)));
+		}
+		else
+		{
+			R.Text = Quote.BlockReason;
+			R.StateColor = ECozyUiColor::Warning;
+		}
+		break;
+	}
 	default:
 		R.bValid = false;
 		break;
@@ -703,6 +761,11 @@ FText UCozyUiScreen::GetActionName(ECozyUiAction Action)
 	case ECozyUiAction::SelectCrop: return LOCTEXT("ActSelectCrop", "이 작물로 바꾸기");
 	case ECozyUiAction::AssignResident: return LOCTEXT("ActAssign", "주민 배치");
 	case ECozyUiAction::UnassignResident: return LOCTEXT("ActUnassign", "주민 배치 해제");
+	case ECozyUiAction::SelectSaleItem: return LOCTEXT("ActSaleItem", "판매 재료 고르기");
+	case ECozyUiAction::SaleLess: return LOCTEXT("ActSaleLess", "판매 수량 줄이기");
+	case ECozyUiAction::SaleMore: return LOCTEXT("ActSaleMore", "판매 수량 늘리기");
+	case ECozyUiAction::SaleAll: return LOCTEXT("ActSaleAll", "전부 팔기 수량");
+	case ECozyUiAction::SellSelected: return LOCTEXT("ActSell", "판매");
 	default: return LOCTEXT("ActNone", "동작 없음");
 	}
 }
@@ -762,6 +825,45 @@ bool UCozyUiScreen::CanRunAction(const FCozyUiElementEntry& Entry, FText& OutRea
 			return false;
 		}
 		return Estate->CanAcceptResident(FacilityId, OutReason);
+	}
+	case ECozyUiAction::SelectSaleItem:
+	{
+		const FCozyItemRow* Item = Estate->GetItemDef(Entry.ActionParam);
+		if (!Item || Item->SellPrice <= 0)
+		{
+			OutReason = LOCTEXT("CanNotSellItem", "판매할 수 없는 재료입니다");
+			return false;
+		}
+		return true;
+	}
+	case ECozyUiAction::SaleLess:
+	case ECozyUiAction::SaleMore:
+	case ECozyUiAction::SaleAll:
+	case ECozyUiAction::SellSelected:
+	{
+		const ACozyRealmEstatePlayerController* Controller = Cast<ACozyRealmEstatePlayerController>(GetOwningPlayer());
+		const UCozyHudWidget* Hud = Controller ? Controller->GetHud() : nullptr;
+		if (!Hud)
+		{
+			return false;
+		}
+		const int32 Amount = Hud->GetSellAmount();
+		const FCozySellQuote Quote = Estate->GetSellQuote(ContextFacility, Hud->GetSellItem(), Amount);
+		switch (Entry.Action)
+		{
+		case ECozyUiAction::SaleLess:
+			OutReason = LOCTEXT("SaleMin", "1개보다 적게 팔 수 없습니다");
+			return Amount > 1;
+		case ECozyUiAction::SaleMore:
+			OutReason = LOCTEXT("SaleMaxReached", "창고 보유량까지 골랐습니다");
+			return Amount < Quote.MaxAmount;
+		case ECozyUiAction::SaleAll:
+			OutReason = Quote.MaxAmount > 0 ? LOCTEXT("SaleAlreadyAll", "이미 전부 골랐습니다") : LOCTEXT("SaleNone", "창고에 없습니다");
+			return Quote.MaxAmount > 0 && Amount != Quote.MaxAmount;
+		default:
+			OutReason = Quote.BlockReason;
+			return Quote.bCanSell;
+		}
 	}
 	case ECozyUiAction::UnassignResident:
 	{
@@ -839,6 +941,19 @@ void UCozyUiScreen::RunAction(const FCozyUiElementEntry& Entry)
 			FText Reason;
 			Hud->SetFeedbackText(Estate->UnassignResident(ResidentId, Reason) ? FText::GetEmpty() : Reason);
 		}
+		break;
+	}
+	case ECozyUiAction::SelectSaleItem: Hud->SetSellSelection(Entry.ActionParam, 1); break;
+	case ECozyUiAction::SaleLess: Hud->SetSellSelection(Hud->GetSellItem(), Hud->GetSellAmount() - 1); break;
+	case ECozyUiAction::SaleMore: Hud->SetSellSelection(Hud->GetSellItem(), Hud->GetSellAmount() + 1); break;
+	case ECozyUiAction::SaleAll: Hud->SetSellSelection(Hud->GetSellItem(), Estate->GetSellQuote(ContextFacility, Hud->GetSellItem(), 1).MaxAmount); break;
+	case ECozyUiAction::SellSelected:
+	{
+		// 판매 직전에 서비스가 조건을 다시 확인 · 실패하면 아무것도 바뀌지 않음
+		FText Message;
+		Estate->SellItem(ContextFacility, Hud->GetSellItem(), Hud->GetSellAmount(), Message);
+		Hud->SetFeedbackText(Message);
+		Hud->SetSellSelection(Hud->GetSellItem(), Hud->GetSellAmount());
 		break;
 	}
 	case ECozyUiAction::OpenUpgrade:

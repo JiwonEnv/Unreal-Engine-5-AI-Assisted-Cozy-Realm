@@ -99,6 +99,10 @@ public:
 	void CollectFromWindow(const FGuid& FacilityId) { HandleCollectClicked(FacilityId); }
 	void SetFeedbackText(const FText& Message) { SetFeedback(Message); }
 	const FText& GetLastFeedback() const { return LastFeedback; }
+	/** 판매 창 선택값 (편집 가능한 판매 화면이 읽고 바꿈) */
+	FName GetSellItem() const { return SellSelectedItem; }
+	int32 GetSellAmount() const { return SellSelectedAmount; }
+	void SetSellSelection(FName ItemId, int32 Amount) { SellSelectedItem = ItemId; SellSelectedAmount = FMath::Max(1, Amount); RefreshWindow(); }
 
 protected:
 
