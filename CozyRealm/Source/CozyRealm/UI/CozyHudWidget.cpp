@@ -1310,7 +1310,7 @@ void UCozyHudWidget::BuildNagayaContent()
 			const bool bCanAccept = Estate->CanAcceptResident(FacilityId, Reason);
 			const FText FacilityName = Estate->GetFacilityDisplayName(FacilityId);
 			const FText Label = bAssigned
-				? (WindowTargetFacility.IsValid() ? LOCTEXT("MoveHere", "이 시설로 옮기기") : FText::Format(LOCTEXT("MoveTo", "{0}(으)로 옮기기"), FacilityName))
+				? (WindowTargetFacility.IsValid() ? LOCTEXT("MoveHere", "이 시설로 옮기기") : FText::Format(LOCTEXT("MoveTo", "{0}|hpp(으로,로) 옮기기"), FacilityName))
 				: (WindowTargetFacility.IsValid() ? LOCTEXT("AssignHere", "이 시설에 배치") : FText::Format(LOCTEXT("AssignTo", "{0}에 배치"), FacilityName));
 			Row->AddChildToHorizontalBox(MakeButton(Label, [this, ResidentId, FacilityId]()
 			{
