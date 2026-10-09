@@ -529,6 +529,7 @@ void UCozyHudWidget::HandleEstateChanged(bool bStructural)
 	// 편집 가능한 창 화면이면 화면이 목록·버튼 상태를 다시 적용 (예전 창 갱신은 건너뜀)
 	if (UCozyUiScreen* Screen = WindowKind != ECozyWindowKind::None ? GetWindowScreen(WindowKind) : nullptr)
 	{
+		ClampProcessingSelection();
 		Screen->RefreshTheme();
 		Screen->RefreshValues();
 	}
@@ -1018,9 +1019,26 @@ void UCozyHudWidget::RefreshWindow()
 	{
 		Screen->ContextFacility = WindowFacility;
 		Screen->ContextTarget = WindowTargetFacility;
-		if (WindowOverlay->GetContent() != Screen)
+		ClampProcessingSelection();
+		if (!WindowScreenSize)
 		{
-			WindowOverlay->SetContent(Screen);
+			WindowScreenSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("WindowScreenSize"));
+			WindowScreenScroll = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("WindowScreenScroll"));
+			WindowScreenSize->SetContent(WindowScreenScroll);
+		}
+		// 위쪽 HUD(칩 줄·버튼)와 겹치지 않게 그 아래 공간에 맞춤 · 넘치면 스크롤
+		const float Scale = FMath::Max(0.1f, UWidgetLayoutLibrary::GetViewportScale(this));
+		const float ViewHeight = UWidgetLayoutLibrary::GetViewportSize(this).Y / Scale;
+		WindowScreenSize->SetMaxDesiredHeight(FMath::Max(200.f, ViewHeight - 130.f));
+		WindowOverlay->SetPadding(FMargin(0.f, 100.f, 0.f, 20.f));
+		if (WindowScreenScroll->GetChildrenCount() != 1 || WindowScreenScroll->GetChildAt(0) != Screen)
+		{
+			WindowScreenScroll->ClearChildren();
+			WindowScreenScroll->AddChild(Screen);
+		}
+		if (WindowOverlay->GetContent() != WindowScreenSize)
+		{
+			WindowOverlay->SetContent(WindowScreenSize);
 		}
 		Screen->RefreshTheme();
 		Screen->RefreshValues();
@@ -1030,6 +1048,7 @@ void UCozyHudWidget::RefreshWindow()
 	{
 		WindowOverlay->SetContent(WindowFrameWidget);
 	}
+	WindowOverlay->SetPadding(FMargin(4.f, 2.f));
 	if (WindowContentSize)
 	{
 		// 제목·닫기 버튼·여백을 뺀 높이까지만 (화면 단위 = 픽셀 / DPI 배율)
@@ -1148,6 +1167,28 @@ FName UCozyHudWidget::GetWindowName(ECozyWindowKind Kind)
 	case ECozyWindowKind::FieldManagement: return TEXT("FieldManagement");
 	case ECozyWindowKind::OfflineReport: return TEXT("OfflineReport");
 	default: return NAME_None;
+	}
+}
+
+void UCozyHudWidget::ClampProcessingSelection()
+{
+	UCozyEstateSubsystem* Estate = GetEstate();
+	if (WindowKind != ECozyWindowKind::Processing || !Estate)
+	{
+		return;
+	}
+	const FCozyRecipeQuote Quote = Estate->GetRecipeQuote(WindowFacility, ProcSelectedRecipe, ProcSelectedRuns);
+	if (ProcSelectedRuns > FMath::Max(1, Quote.MaxRuns))
+	{
+		ProcSelectedRuns = FMath::Max(1, Quote.MaxRuns);
+	}
+	if (ProcPendingCancelJob.IsValid())
+	{
+		const TArray<FCozyProcessingJobView> Jobs = Estate->GetProcessingJobs(WindowFacility);
+		if (!Jobs.ContainsByPredicate([this](const FCozyProcessingJobView& Job) { return Job.JobId == ProcPendingCancelJob; }))
+		{
+			ProcPendingCancelJob.Invalidate();
+		}
 	}
 }
 

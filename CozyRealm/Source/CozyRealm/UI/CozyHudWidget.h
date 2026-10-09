@@ -103,6 +103,12 @@ public:
 	FName GetSellItem() const { return SellSelectedItem; }
 	int32 GetSellAmount() const { return SellSelectedAmount; }
 	void SetSellSelection(FName ItemId, int32 Amount) { SellSelectedItem = ItemId; SellSelectedAmount = FMath::Max(1, Amount); RefreshWindow(); }
+	/** 가공 창 선택값 (편집 가능한 가공 화면이 읽고 바꿈) */
+	FName GetProcRecipe() const { return ProcSelectedRecipe; }
+	int32 GetProcRuns() const { return ProcSelectedRuns; }
+	const FGuid& GetProcPendingCancel() const { return ProcPendingCancelJob; }
+	void SetProcSelection(FName RecipeId, int32 Runs) { ProcSelectedRecipe = RecipeId; ProcSelectedRuns = FMath::Max(1, Runs); RefreshWindow(); }
+	void SetProcPendingCancel(const FGuid& JobId) { ProcPendingCancelJob = JobId; RefreshWindow(); }
 
 protected:
 
@@ -137,6 +143,8 @@ private:
 	void UpdateNameLabelPositions();
 	void RefreshIcons();
 	void RefreshWindow();
+	/** 가공 화면용: 최대가 줄면 선택 횟수를 낮추고, 끝난 작업의 취소 확인은 닫음 (예전 창의 UpdateProcessingLive와 같은 규칙) */
+	void ClampProcessingSelection();
 	void RefreshDebugPanel();
 
 	void BuildFacilityInfoContent();
@@ -211,6 +219,11 @@ private:
 	TObjectPtr<UBorder> WindowFrameWidget;
 	UPROPERTY(Transient)
 	TMap<FName, TObjectPtr<class UCozyUiScreen>> WindowScreenCache;
+	/** 창 화면이 화면보다 길면 스크롤 (높이 상한은 RefreshWindow 때 화면 크기에 맞춤 · HUD 아래부터) */
+	UPROPERTY(Transient)
+	TObjectPtr<class USizeBox> WindowScreenSize;
+	UPROPERTY(Transient)
+	TObjectPtr<class UScrollBox> WindowScreenScroll;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> ToastText;
