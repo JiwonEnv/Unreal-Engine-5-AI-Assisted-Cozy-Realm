@@ -268,7 +268,14 @@ void UCozyHudWidget::BuildLayout()
 	DebugPanel->SetBrushColor(CozyHud::PanelColor);
 	DebugPanel->SetPadding(FMargin(12.f));
 	DebugContent = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("DebugContent"));
-	DebugPanel->SetContent(DebugContent);
+	// 길어도 화면 안에 들어가게 높이 상한(매 프레임 화면 높이에 맞춤) + 스크롤
+	DebugSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("DebugSize"));
+	UScrollBox* DebugScroll = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("DebugScroll"));
+	DebugScroll->AddChild(DebugContent);
+	DebugSize->SetContent(DebugScroll);
+	DebugSize->SetMaxDesiredHeight(700.f);
+	DebugSize->SetWidthOverride(500.f);
+	DebugPanel->SetContent(DebugSize);
 	if (UCanvasPanelSlot* DebugSlot = RootCanvas->AddChildToCanvas(DebugPanel))
 	{
 		DebugSlot->SetZOrder(6);
@@ -312,6 +319,15 @@ void UCozyHudWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		if (MyGeometry.GetLocalSize().Y > 1.f && !FMath::IsNearlyEqual(WindowScreenSize->GetMaxDesiredHeight(), MaxHeight, 1.f))
 		{
 			WindowScreenSize->SetMaxDesiredHeight(MaxHeight);
+		}
+	}
+
+	if (DebugSize)
+	{
+		const float DebugMax = FMath::Max(240.f, MyGeometry.GetLocalSize().Y - 110.f);
+		if (MyGeometry.GetLocalSize().Y > 1.f && !FMath::IsNearlyEqual(DebugSize->GetMaxDesiredHeight(), DebugMax, 1.f))
+		{
+			DebugSize->SetMaxDesiredHeight(DebugMax);
 		}
 	}
 
@@ -2588,62 +2604,144 @@ void UCozyHudWidget::RefreshDebugPanel()
 	DebugActions.Reset();
 	ActionSink = &DebugActions;
 
-	DebugContent->AddChildToVerticalBox(MakeText(LOCTEXT("DebugTitle", "디버그 (F1)"), 18, CozyHud::AccentText))->SetPadding(FMargin(0.f, 0.f, 0.f, 8.f));
+	// 공통 테마 (HUD 화면의 색·글꼴 덮어쓰기까지 같이 씀) · HUD 화면이 없으면 예전 모습
+	UCozyUiTheme* Theme = HudScreen ? HudScreen->GetTheme() : nullptr;
+	if (DebugPanel && Theme)
+	{
+		if (const FSlateBrush* Brush = Theme->Images.Find(TEXT("Window")))
+		{
+			DebugPanel->SetBrush(*Brush);
+			DebugPanel->SetBrushColor(FLinearColor::White);
+		}
+		DebugPanel->SetPadding(FMargin(18.f, 14.f));
+	}
+	const FButtonStyle* ButtonStyle = Theme ? Theme->ButtonStyles.Find(TEXT("Default")) : nullptr;
 
-	// 시간 배속
-	UHorizontalBox* SpeedRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
-	SpeedRow->AddChildToHorizontalBox(MakeText(FText::Format(LOCTEXT("SpeedNow", "배속 {0}"), CozyHud::TimeScaleText(Estate->GetTimeScale())), 15))->SetPadding(FMargin(0.f, 0.f, 8.f, 0.f));
+	UHorizontalBox* CurrentRow = nullptr;
+	auto Text = [this, Theme](const FText& Value, ECozyUiTextRole Role, ECozyUiColor Color, bool bWrap) -> UTextBlock*
+	{
+		UTextBlock* Block = MakeText(Value, Role == ECozyUiTextRole::Title ? 18 : 13, Role == ECozyUiTextRole::Small ? CozyHud::MutedText : FLinearColor::White);
+		if (Theme)
+		{
+			Block->SetFont(HudScreen->GetFont(Role));
+			Block->SetColorAndOpacity(FSlateColor(HudScreen->GetColor(Color)));
+		}
+		if (bWrap)
+		{
+			Block->SetAutoWrapText(true);
+			Block->SetWrapTextAt(440.f);
+		}
+		return Block;
+	};
+	auto Section = [this, &Text, &CurrentRow](const FText& Title, const FText& Help)
+	{
+		CurrentRow = nullptr;
+		DebugContent->AddChildToVerticalBox(Text(Title, ECozyUiTextRole::Body, ECozyUiColor::Point, true))->SetPadding(FMargin(0.f, 10.f, 0.f, 0.f));
+		DebugContent->AddChildToVerticalBox(Text(Help, ECozyUiTextRole::Small, ECozyUiColor::InkMuted, true))->SetPadding(FMargin(0.f, 0.f, 0.f, 4.f));
+	};
+	auto Row = [this, &CurrentRow]()
+	{
+		CurrentRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+		DebugContent->AddChildToVerticalBox(CurrentRow)->SetPadding(FMargin(0.f, 2.f));
+	};
+	auto EndRow = [&CurrentRow]() { CurrentRow = nullptr; };
+	// 버튼 하나 (툴팁 = 초보자용 설명) · 줄을 시작했으면 그 줄에, 아니면 한 줄 전체
+	auto Btn = [this, &CurrentRow, ButtonStyle, Theme](const FText& Label, const FText& Tip, TFunction<void()> OnClick, bool bEnabled = true) -> UButton*
+	{
+		UButton* Button = MakeButton(Label, MoveTemp(OnClick), bEnabled, 13);
+		Button->SetToolTipText(Tip);
+		if (ButtonStyle)
+		{
+			Button->SetStyle(*ButtonStyle);
+		}
+		if (UTextBlock* LabelText = Theme ? Cast<UTextBlock>(Button->GetContent()) : nullptr)
+		{
+			LabelText->SetFont(HudScreen->GetFont(ECozyUiTextRole::Small));
+			LabelText->SetColorAndOpacity(FSlateColor(HudScreen->GetColor(ECozyUiColor::Ink)));
+		}
+		if (CurrentRow)
+		{
+			CurrentRow->AddChildToHorizontalBox(Button)->SetPadding(FMargin(0.f, 0.f, 4.f, 0.f));
+		}
+		else
+		{
+			DebugContent->AddChildToVerticalBox(Button)->SetPadding(FMargin(0.f, 2.f));
+		}
+		return Button;
+	};
+
+	DebugContent->AddChildToVerticalBox(Text(LOCTEXT("DebugTitle2", "디버그 · 시험 도구 (F1)"), ECozyUiTextRole::Title, ECozyUiColor::Point, false));
+	DebugContent->AddChildToVerticalBox(Text(LOCTEXT("DebugIntro", "개발과 검증에 쓰는 도구입니다. 제목에 '저장 데이터가 바뀜'이 붙은 버튼은 결과가 실제 저장 파일에 남으니, 시험 전에 저장 파일(Saved/SaveGames)을 복사해 두세요. 버튼에 마우스를 올리면 설명이 나옵니다."),
+		ECozyUiTextRole::Small, ECozyUiColor::InkMuted, true))->SetPadding(FMargin(0.f, 2.f, 0.f, 0.f));
+
+	// ① 게임 속도
+	Section(FText::Format(LOCTEXT("DbgSpeed", "① 게임 속도 — 지금 {0}"), CozyHud::TimeScaleText(Estate->GetTimeScale())),
+		LOCTEXT("DbgSpeedHelp", "게임 시간이 흐르는 빠르기를 바꿉니다. 생산·가공·업그레이드가 모두 그만큼 빨라집니다. 시험이 끝나면 ×1로 돌려 두세요."));
+	Row();
 	for (const float Scale : { 1.f, 10.f, 100.f })
 	{
-		SpeedRow->AddChildToHorizontalBox(MakeButton(CozyHud::TimeScaleText(Scale), [this, Scale]()
+		Btn(CozyHud::TimeScaleText(Scale), FText::Format(LOCTEXT("DbgSpeedTip", "게임 시간을 {0} 빠르기로"), CozyHud::TimeScaleText(Scale)), [this, Scale]()
 		{
 			if (UCozyEstateSubsystem* EstateNow = GetEstate())
 			{
 				EstateNow->SetTimeScale(Scale);
+				RefreshDebugPanel();
 			}
-		}, true, 13))->SetPadding(FMargin(2.f, 0.f));
+		}, !FMath::IsNearlyEqual(Estate->GetTimeScale(), Scale));
 	}
-	DebugContent->AddChildToVerticalBox(SpeedRow)->SetPadding(FMargin(0.f, 3.f));
+	EndRow();
 
-	// 재료·재화 추가 (아이디는 Items.csv 행 이름)
-	auto AddResourceButton = [this](const FText& Label, FName ItemId, int32 Amount)
+	// ② 재료 넣기 · 바꾸기
+	Section(LOCTEXT("DbgRes", "② 재료 넣기 · 바꾸기 (저장 데이터가 바뀜)"),
+		LOCTEXT("DbgResHelp", "창고 수량을 늘리거나 정해진 값으로 바꿉니다. 수령·판매·가공 '최대' 계산이나 창고가 가득 찼을 때를 시험할 때 씁니다."));
+	auto AddRes = [this, &Btn](const FText& Label, FName ItemId, int32 Amount)
 	{
-		DebugContent->AddChildToVerticalBox(MakeButton(Label, [this, ItemId, Amount]()
+		Btn(Label, FText::Format(LOCTEXT("DbgAddTip", "창고에 {0} {1}개를 더합니다 (한도를 넘지 않음)"), FText::FromName(ItemId), FText::AsNumber(Amount)), [this, ItemId, Amount]()
 		{
 			if (UCozyEstateSubsystem* EstateNow = GetEstate())
 			{
 				EstateNow->DebugAddResource(ItemId, Amount);
 			}
-		}, true, 13))->SetPadding(FMargin(0.f, 3.f));
+		});
 	};
-	AddResourceButton(LOCTEXT("AddGold", "골드 +100"), TEXT("Gold"), 100);
-	AddResourceButton(LOCTEXT("AddWheat", "밀 +10"), TEXT("Wheat"), 10);
-	AddResourceButton(LOCTEXT("AddFlour", "밀가루 +10"), TEXT("Flour"), 10);
-	AddResourceButton(LOCTEXT("AddTalisman", "시간 부적 +5"), TEXT("TimeTalisman"), 5);
-	// 튜토리얼 일회성 보상 구조 검증용 (지급 시점은 튜토리얼 기능에서 연결 · ❓)
-	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("GrantTutorial", "튜토리얼 보상 받기 (한 번만)"), [this]()
+	auto SetRes = [this, &Btn](const FText& Label, FName ItemId, int32 Amount)
 	{
-		if (UCozyEstateSubsystem* EstateNow = GetEstate())
-		{
-			FText Message;
-			EstateNow->GrantOneTimeReward(TEXT("Tutorial_FirstSpeedup"), Message);
-			SetFeedback(Message);
-		}
-	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
-
-	// 수령 검증용: 창고 거의 참 / 가득 참 · 같은 재료 시설 하나 더
-	auto SetResourceButton = [this](const FText& Label, FName ItemId, int32 Amount)
-	{
-		DebugContent->AddChildToVerticalBox(MakeButton(Label, [this, ItemId, Amount]()
+		Btn(Label, FText::Format(LOCTEXT("DbgSetTip", "창고의 {0}을(를) 정확히 {1}개로 맞춥니다"), FText::FromName(ItemId), FText::AsNumber(Amount)), [this, ItemId, Amount]()
 		{
 			if (UCozyEstateSubsystem* EstateNow = GetEstate())
 			{
 				EstateNow->DebugSetResource(ItemId, Amount);
 			}
-		}, true, 13))->SetPadding(FMargin(0.f, 3.f));
+		});
 	};
-	AddResourceButton(LOCTEXT("AddRice", "쌀 +10 (테스트 레시피용)"), TEXT("Rice"), 10);
-	DebugContent->AddChildToVerticalBox(MakeButton(Estate->GetShowTestRecipes() ? LOCTEXT("TestRecipesOn", "테스트 레시피: 보임") : LOCTEXT("TestRecipesOff", "테스트 레시피: 숨김"), [this]()
+	Row();
+	AddRes(LOCTEXT("AddGold", "골드 +100"), TEXT("Gold"), 100);
+	AddRes(LOCTEXT("AddWheat", "밀 +10"), TEXT("Wheat"), 10);
+	AddRes(LOCTEXT("AddFlour", "밀가루 +10"), TEXT("Flour"), 10);
+	EndRow();
+	Row();
+	AddRes(LOCTEXT("AddTalisman", "시간 부적 +5"), TEXT("TimeTalisman"), 5);
+	AddRes(LOCTEXT("AddRice", "쌀 +10 (테스트 레시피용)"), TEXT("Rice"), 10);
+	EndRow();
+	Row();
+	SetRes(LOCTEXT("SetWheat10", "창고 밀 10개로"), TEXT("Wheat"), 10);
+	SetRes(LOCTEXT("SetWheat90", "밀 90"), TEXT("Wheat"), 90);
+	EndRow();
+	Row();
+	SetRes(LOCTEXT("SetWheat97", "밀 97"), TEXT("Wheat"), 97);
+	SetRes(LOCTEXT("SetWheat98", "밀 98"), TEXT("Wheat"), 98);
+	SetRes(LOCTEXT("SetWheat100", "밀 100 (가득)"), TEXT("Wheat"), 100);
+	EndRow();
+	Row();
+	SetRes(LOCTEXT("SetFlour98", "창고 밀가루 98개로"), TEXT("Flour"), 98);
+	SetRes(LOCTEXT("SetFlour100", "밀가루 100 (가득)"), TEXT("Flour"), 100);
+	EndRow();
+
+	// ③ 시험용 시설 · 레시피 · 보상
+	Section(LOCTEXT("DbgTest", "③ 시험용 시설 · 레시피 · 보상 (저장 데이터가 바뀜)"),
+		LOCTEXT("DbgTestHelp", "기획이 아직 정해지지 않은 시설이나 레시피를 검증할 때만 꺼냅니다. 추가한 시설은 배치 모드에서 보관함에 넣어 치울 수 있습니다."));
+	Btn(Estate->GetShowTestRecipes() ? LOCTEXT("TestRecipesOn", "테스트 레시피: 보임") : LOCTEXT("TestRecipesOff", "테스트 레시피: 숨김"),
+		LOCTEXT("DbgTestRecipeTip", "가공 창에 '(테스트)' 레시피를 보이거나 숨깁니다"), [this]()
 	{
 		if (UCozyEstateSubsystem* EstateNow = GetEstate())
 		{
@@ -2652,20 +2750,47 @@ void UCozyHudWidget::RefreshDebugPanel()
 			{
 				RefreshWindow();
 			}
+			RefreshDebugPanel();
 		}
-	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
-	// 가공 창을 연 채 재료가 줄 때 선택 횟수가 새 최대로 내려가는지 검증용
-	SetResourceButton(LOCTEXT("SetWheat10", "창고 밀 10개로"), TEXT("Wheat"), 10);
-	SetResourceButton(LOCTEXT("SetWheat90", "창고 밀 90개로"), TEXT("Wheat"), 90);
-	// 업그레이드 반환 공간 경계값 검증용 (D38: 비용을 뺀 뒤의 최종 재고 기준)
-	SetResourceButton(LOCTEXT("SetWheat97", "창고 밀 97개로"), TEXT("Wheat"), 97);
-	SetResourceButton(LOCTEXT("SetWheat98", "창고 밀 98개로"), TEXT("Wheat"), 98);
-	SetResourceButton(LOCTEXT("SetFlour98", "창고 밀가루 98개로"), TEXT("Flour"), 98);
-	SetResourceButton(LOCTEXT("SetFlour100", "창고 밀가루 100개로 (가득)"), TEXT("Flour"), 100);
-	SetResourceButton(LOCTEXT("SetWheat100", "창고 밀 100개로 (가득)"), TEXT("Wheat"), 100);
-	// 시작 직전 재검사 검증용: 화면에서 버튼이 켜진 뒤 조건이 바뀐 상황을 한 번에 만든다
-	// (창고 밀을 가득 채운 직후 제분소 업그레이드 시작을 시도 · 실패하면 비용·가공·예약 공간이 그대로여야 함)
-	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("RecheckTest", "재검사 시험: 밀 100으로 바꾼 직후 제분소 업그레이드 시작"), [this]()
+	});
+	Row();
+	Btn(LOCTEXT("AddTestField", "테스트용 밭 추가"), LOCTEXT("DbgAddFieldTip", "빈 자리에 밭을 하나 더 놓습니다 (같은 재료 시설이 둘일 때 시험)"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			EstateNow->DebugAddFacility(TEXT("Field"));
+		}
+	});
+	Btn(LOCTEXT("AddFieldOffice", "테스트용 밭 관리 시설 추가"), LOCTEXT("DbgAddOfficeTip", "밭 관리 시설을 하나 놓습니다 (시작 배치가 아직 미정이라 시험용)"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			EstateNow->DebugAddFacility(TEXT("FieldOffice"));
+		}
+	});
+	EndRow();
+	Btn(LOCTEXT("GrantTutorial", "튜토리얼 보상 받기 (한 번만)"), LOCTEXT("DbgTutorialTip", "한 번만 받는 보상이 두 번 들어오지 않는지 시험합니다"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			FText Message;
+			EstateNow->GrantOneTimeReward(TEXT("Tutorial_FirstSpeedup"), Message);
+			ShowToast(Message);
+		}
+	});
+
+	// ④ 규칙 검사
+	Section(LOCTEXT("DbgCheck", "④ 규칙 검사"),
+		LOCTEXT("DbgCheckHelp", "'자체 검사'는 지금 상태를 복사해 규칙을 시험한 뒤 원래대로 되돌립니다 (저장 안 바뀜). '재검사 시험'은 실제 상태를 바꿉니다. '데이터 검사'는 출력 로그에만 결과를 씁니다."));
+	Btn(LOCTEXT("SelfCheckAppend", "자체 검사: 가공 제작 추가 (상태 되돌림)"), LOCTEXT("DbgSelfCheckTip", "제작 추가·업그레이드 반환 규칙 30개 항목 · 결과는 알림과 출력 로그 [자체 검사]"), [this]()
+	{
+		if (UCozyEstateSubsystem* EstateNow = GetEstate())
+		{
+			ShowToast(FText::FromString(EstateNow->DebugRunProcessingAppendCheck()));
+		}
+	});
+	Btn(LOCTEXT("RecheckTest", "재검사 시험: 밀 100 직후 제분소 업그레이드"),
+		LOCTEXT("DbgRecheckTip", "(저장 데이터가 바뀜) 버튼이 켜진 뒤 조건이 바뀌었을 때 시작 순간 다시 확인하는지 시험합니다 · 실패하면 비용·가공·예약 공간이 그대로여야 합니다"), [this]()
 	{
 		if (UCozyEstateSubsystem* EstateNow = GetEstate())
 		{
@@ -2677,34 +2802,27 @@ void UCozyHudWidget::RefreshDebugPanel()
 					EstateNow->DebugSetResource(TEXT("Wheat"), 100);
 					FText Message;
 					EstateNow->StartUpgrade(FacilityId, Message);
-					SetFeedback(Message);
+					ShowToast(Message);
 					break;
 				}
 			}
 		}
-	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
-	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("AddTestField", "테스트용 밭 추가"), [this]()
+	});
+	Btn(LOCTEXT("Validate", "데이터 검사 다시 실행 (로그)"), LOCTEXT("DbgValidateTip", "데이터 표(시설·재료·레시피 등)에 빠진 값이 없는지 검사해 출력 로그에 씁니다"), [this]()
 	{
 		if (UCozyEstateSubsystem* EstateNow = GetEstate())
 		{
-			EstateNow->DebugAddFacility(TEXT("Field"));
+			EstateNow->ValidateData();
 		}
-	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
-	// 밭 관리 시설은 시작 배치가 미정(❓)이라 검증할 때만 디버그로 놓음
-	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("AddFieldOffice", "테스트용 밭 관리 시설 추가"), [this]()
-	{
-		if (UCozyEstateSubsystem* EstateNow = GetEstate())
-		{
-			EstateNow->DebugAddFacility(TEXT("FieldOffice"));
-		}
-	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
+	});
 
-	// 낮/밤 전환
+	// ⑤ 낮 · 밤
 	const ECozyNightOverride Current = Estate->GetNightOverride();
 	const FText NightLabel = Current == ECozyNightOverride::Auto ? LOCTEXT("NightAuto", "낮/밤: 자동 (PC 시각)")
 		: Current == ECozyNightOverride::ForceDay ? LOCTEXT("NightDay", "낮/밤: 낮 고정")
 		: LOCTEXT("NightNight", "낮/밤: 밤 고정");
-	DebugContent->AddChildToVerticalBox(MakeButton(NightLabel, [this, Current]()
+	Section(LOCTEXT("DbgNight", "⑤ 낮 · 밤"), LOCTEXT("DbgNightHelp", "화면 밝기(낮/밤)를 PC 시각과 상관없이 고정해 봅니다. 누를 때마다 자동 → 낮 → 밤 순서로 바뀝니다."));
+	Btn(NightLabel, LOCTEXT("DbgNightTip", "자동 → 낮 고정 → 밤 고정 → 자동"), [this, Current]()
 	{
 		if (UCozyEstateSubsystem* EstateNow = GetEstate())
 		{
@@ -2712,27 +2830,22 @@ void UCozyHudWidget::RefreshDebugPanel()
 				: Current == ECozyNightOverride::ForceDay ? ECozyNightOverride::ForceNight
 				: ECozyNightOverride::Auto;
 			EstateNow->SetNightOverride(Next);
+			RefreshDebugPanel();
 		}
-	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
+	});
 
-	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("Validate", "데이터 검사 다시 실행 (로그)"), [this]()
-	{
-		if (UCozyEstateSubsystem* EstateNow = GetEstate())
-		{
-			EstateNow->ValidateData();
-		}
-	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
-
-	// 저장 · 불러오기 (2주차 기능 3) · 저장 시각 당기기는 방치 보상 검증용
-	UHorizontalBox* SaveRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
-	SaveRow->AddChildToHorizontalBox(MakeButton(LOCTEXT("SaveNow", "저장"), [this]()
+	// ⑥ 저장 · 불러오기 · 방치 시간
+	Section(LOCTEXT("DbgSave", "⑥ 저장 · 불러오기 · 방치 시간 (저장 데이터가 바뀜)"),
+		LOCTEXT("DbgSaveHelp", "'저장 시각 당기기'는 다음에 게임을 켤 때 그만큼 자리를 비운 것으로 방치 보상을 계산하게 합니다. '건너뛰기'는 지금 바로 그 시간이 지난 것으로 정산하고 방치 보상 창을 띄웁니다."));
+	Row();
+	Btn(LOCTEXT("SaveNow", "저장"), LOCTEXT("DbgSaveTip", "지금 상태를 저장 파일에 씁니다"), [this]()
 	{
 		if (UCozyEstateSubsystem* EstateNow = GetEstate())
 		{
 			EstateNow->SaveEstate(TEXT("디버그"));
 		}
-	}, true, 13))->SetPadding(FMargin(0.f, 0.f, 3.f, 0.f));
-	SaveRow->AddChildToHorizontalBox(MakeButton(LOCTEXT("ReloadSave", "불러오기"), [this]()
+	});
+	Btn(LOCTEXT("ReloadSave", "불러오기"), LOCTEXT("DbgLoadTip", "저장 파일에서 다시 읽어 옵니다 (마지막 저장 이후 바뀐 것은 사라짐)"), [this]()
 	{
 		HideFacilityIcons();
 		CloseWindow();
@@ -2740,62 +2853,60 @@ void UCozyHudWidget::RefreshDebugPanel()
 		{
 			EstateNow->DebugReloadFromSave();
 		}
-	}, true, 13))->SetPadding(FMargin(0.f, 0.f, 3.f, 0.f));
-	SaveRow->AddChildToHorizontalBox(MakeButton(LOCTEXT("ShiftSave1h", "저장 시각 -1시간"), [this]()
+	});
+	EndRow();
+	Row();
+	Btn(LOCTEXT("ShiftSave1h", "저장 시각 -1시간"), LOCTEXT("DbgShift1Tip", "저장된 시각을 1시간 앞으로 당깁니다"), [this]()
 	{
 		if (UCozyEstateSubsystem* EstateNow = GetEstate())
 		{
 			EstateNow->DebugShiftSaveTime(3600.0);
 		}
-	}, true, 13))->SetPadding(FMargin(0.f, 0.f, 3.f, 0.f));
-	SaveRow->AddChildToHorizontalBox(MakeButton(LOCTEXT("ShiftSave13h", "-13시간"), [this]()
+	});
+	Btn(LOCTEXT("ShiftSave13h", "-13시간"), LOCTEXT("DbgShift13Tip", "저장된 시각을 13시간 앞으로 당깁니다 (방치 보상 최대 12시간 시험)"), [this]()
 	{
 		if (UCozyEstateSubsystem* EstateNow = GetEstate())
 		{
 			EstateNow->DebugShiftSaveTime(13.0 * 3600.0);
 		}
-	}, true, 13));
-	DebugContent->AddChildToVerticalBox(SaveRow)->SetPadding(FMargin(0.f, 3.f));
-	// 방치 시간 건너뛰기 (기획서 제작자 도구 ② · 같은 정산 처리)
-	UHorizontalBox* SkipRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+	});
+	EndRow();
+	Row();
 	for (const float Hours : { 1.f, 12.f })
 	{
-		SkipRow->AddChildToHorizontalBox(MakeButton(FText::Format(LOCTEXT("SkipOffline", "방치 {0}시간 건너뛰기"), FText::AsNumber(Hours)), [this, Hours]()
+		Btn(FText::Format(LOCTEXT("SkipOffline", "방치 {0}시간 건너뛰기"), FText::AsNumber(Hours)),
+			FText::Format(LOCTEXT("DbgSkipTip", "지금 {0}시간이 지난 것으로 정산합니다 (게임을 꺼 둔 것과 같은 계산)"), FText::AsNumber(Hours)), [this, Hours]()
 		{
 			if (UCozyEstateSubsystem* EstateNow = GetEstate())
 			{
 				EstateNow->DebugSkipOffline(Hours * 3600.0);
 			}
-		}, true, 13))->SetPadding(FMargin(0.f, 0.f, 3.f, 0.f));
+		});
 	}
-	DebugContent->AddChildToVerticalBox(SkipRow)->SetPadding(FMargin(0.f, 3.f));
-	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("SelfCheckAppend", "자체 검사: 가공 제작 추가 (상태 되돌림)"), [this]()
-	{
-		if (UCozyEstateSubsystem* EstateNow = GetEstate())
-		{
-			ShowToast(FText::FromString(EstateNow->DebugRunProcessingAppendCheck()));
-		}
-	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
+	EndRow();
 
-	// UI 미리보기 (편집 가능한 화면 전부 · 실제 재료를 쓰지 않음 · 상태를 바꿔 가며 확인)
-	DebugContent->AddChildToVerticalBox(MakeButton(bUiPreview ? LOCTEXT("UiPreviewOff", "UI 미리보기 끄기") : LOCTEXT("UiPreviewOn", "UI 미리보기 켜기 (재료 안 씀)"), [this]()
+	// ⑦ UI 미리보기
+	Section(bUiPreview ? FText::Format(LOCTEXT("DbgPreviewOn", "⑦ UI 미리보기 — 켜짐 · 상태 {0}"), UCozyUiScreen::GetPreviewStateName(UiPreviewState)) : LOCTEXT("DbgPreview", "⑦ UI 미리보기 (재료·저장 안 바뀜)"),
+		LOCTEXT("DbgPreviewHelp", "모든 편집 가능한 화면을 가짜 값으로 바꿔 글자·버튼 배치를 확인합니다. 버튼은 실제로 동작하지 않고 알림만 띄우며, 미리보기 중에는 자동 저장도 멈춥니다. 상태 버튼: 잠김 = 버튼이 꺼진 모습 · 비어 있음 = 목록이 0줄인 모습."));
+	Btn(bUiPreview ? LOCTEXT("UiPreviewOff", "UI 미리보기 끄기") : LOCTEXT("UiPreviewOn", "UI 미리보기 켜기 (재료 안 씀)"),
+		LOCTEXT("DbgPreviewTip", "HUD · 창 9개 · 배치 패널 · 시설 메뉴 · 배치 버튼을 한꺼번에 미리보기로"), [this]()
 	{
 		SetUiPreview(!bUiPreview);
 		ShowToast(bUiPreview ? LOCTEXT("UiPreviewOnToast", "UI 미리보기 켜짐 · 버튼은 알림만 띄웁니다") : LOCTEXT("UiPreviewOffToast", "UI 미리보기 꺼짐 · 실제 값으로 돌아갑니다"));
-	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
+	});
 	if (bUiPreview)
 	{
-		UHorizontalBox* StateRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+		Row();
 		for (const ECozyUiPreviewState State : { ECozyUiPreviewState::Progress, ECozyUiPreviewState::Paused, ECozyUiPreviewState::Full, ECozyUiPreviewState::Locked, ECozyUiPreviewState::Claimable, ECozyUiPreviewState::Empty })
 		{
-			StateRow->AddChildToHorizontalBox(MakeButton(UCozyUiScreen::GetPreviewStateName(State), [this, State]()
+			Btn(UCozyUiScreen::GetPreviewStateName(State), FText::Format(LOCTEXT("DbgStateTip", "모든 화면을 '{0}' 상태로"), UCozyUiScreen::GetPreviewStateName(State)), [this, State]()
 			{
 				SetUiPreviewState(State);
 				ShowToast(FText::Format(LOCTEXT("UiPreviewState", "미리보기 상태: {0}"), UCozyUiScreen::GetPreviewStateName(State)));
-			}, UiPreviewState != State, 12))->SetPadding(FMargin(0.f, 0.f, 2.f, 0.f));
+			}, UiPreviewState != State);
 		}
-		DebugContent->AddChildToVerticalBox(StateRow)->SetPadding(FMargin(0.f, 3.f));
-		// 창 열어 보기 (그 기능이 있는 첫 시설로 · 미리보기 중이라 버튼은 실제로 동작하지 않음)
+		EndRow();
+		DebugContent->AddChildToVerticalBox(Text(LOCTEXT("DbgOpenWindows", "창 열어 보기 (그 기능이 있는 첫 시설로)"), ECozyUiTextRole::Small, ECozyUiColor::InkMuted, false))->SetPadding(FMargin(0.f, 4.f, 0.f, 0.f));
 		struct FPreviewWindow { ECozyWindowKind Kind; FText Label; };
 		const FPreviewWindow Windows[] = {
 			{ ECozyWindowKind::Storage, LOCTEXT("PvWinStorage", "창고") },
@@ -2807,26 +2918,29 @@ void UCozyHudWidget::RefreshDebugPanel()
 			{ ECozyWindowKind::Nagaya, LOCTEXT("PvWinNagaya", "나가야") },
 			{ ECozyWindowKind::OfflineReport, LOCTEXT("PvWinOffline", "방치 보상") },
 		};
-		UHorizontalBox* WindowRow = nullptr;
 		int32 Count = 0;
 		for (const FPreviewWindow& Each : Windows)
 		{
 			if (Count++ % 4 == 0)
 			{
-				WindowRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
-				DebugContent->AddChildToVerticalBox(WindowRow)->SetPadding(FMargin(0.f, 2.f));
+				Row();
 			}
 			const ECozyWindowKind Kind = Each.Kind;
-			WindowRow->AddChildToHorizontalBox(MakeButton(Each.Label, [this, Kind]() { OpenPreviewWindow(Kind); }, true, 12))->SetPadding(FMargin(0.f, 0.f, 2.f, 0.f));
+			Btn(Each.Label, FText::Format(LOCTEXT("DbgOpenTip", "'{0}' 창을 미리보기로 엽니다 (닫기는 창의 닫기 버튼)"), Each.Label), [this, Kind]() { OpenPreviewWindow(Kind); });
 		}
-		DebugContent->AddChildToVerticalBox(MakeButton(bPlacementPreview ? LOCTEXT("PvPlaceOff", "배치 패널·버튼 상자 미리보기 끄기") : LOCTEXT("PvPlaceOn", "배치 패널·버튼 상자 미리보기 (시설을 옮기지 않음)"), [this]()
+		EndRow();
+		Btn(bPlacementPreview ? LOCTEXT("PvPlaceOff", "배치 패널·버튼 상자 미리보기 끄기") : LOCTEXT("PvPlaceOn", "배치 패널·버튼 상자 미리보기 (시설을 옮기지 않음)"),
+			LOCTEXT("DbgPlaceTip", "왼쪽 위 배치 패널과 화면 가운데 배치 버튼 상자를 보여 줍니다 · 시설 메뉴는 미리보기 중에 시설을 누르면 모든 버튼이 보입니다"), [this]()
 		{
 			TogglePlacementPreview();
 			RefreshDebugPanel();
-		}, true, 12))->SetPadding(FMargin(0.f, 3.f));
+		});
 	}
 
-	DebugContent->AddChildToVerticalBox(MakeButton(LOCTEXT("Restart", "새 게임 다시 시작"), [this]()
+	// ⑧ 위험
+	Section(LOCTEXT("DbgDanger", "⑧ 처음부터 다시 (저장 데이터가 바뀜 · 되돌릴 수 없음)"),
+		LOCTEXT("DbgDangerHelp", "지금 진행을 버리고 새 게임 상태로 시작합니다. 되돌리려면 미리 복사해 둔 저장 파일이 필요합니다."));
+	Btn(LOCTEXT("Restart", "새 게임 다시 시작"), LOCTEXT("DbgRestartTip", "지금 진행을 버리고 처음 상태로 (되돌릴 수 없음)"), [this]()
 	{
 		HideFacilityIcons();
 		CloseWindow();
@@ -2834,7 +2948,7 @@ void UCozyHudWidget::RefreshDebugPanel()
 		{
 			EstateNow->DebugRestartNewGame();
 		}
-	}, true, 13))->SetPadding(FMargin(0.f, 3.f));
+	});
 
 	ActionSink = nullptr;
 }

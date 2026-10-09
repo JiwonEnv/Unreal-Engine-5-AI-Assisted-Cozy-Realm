@@ -397,6 +397,9 @@ private:
 	TObjectPtr<UBorder> DebugPanel;
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> DebugContent;
+	/** 디버그 창 높이 상한 (화면 높이에 맞춤 · 넘치면 스크롤) */
+	UPROPERTY(Transient)
+	TObjectPtr<class USizeBox> DebugSize;
 
 	/** 버튼 연결 객체 (가비지 컬렉션 방지) · 창을 다시 그릴 때 비움 */
 	UPROPERTY(Transient)
