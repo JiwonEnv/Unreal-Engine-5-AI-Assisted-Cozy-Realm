@@ -304,7 +304,13 @@ enum class ECozyUiAction : uint8
 	/** 지금 자리에 확정 (놓을 수 없으면 꺼짐) */
 	ConfirmPlacing UMETA(DisplayName = "Confirm Placing (배치 확정)"),
 	/** 배치 취소 (원래 자리로) */
-	CancelPlacing UMETA(DisplayName = "Cancel Placing (배치 취소)")
+	CancelPlacing UMETA(DisplayName = "Cancel Placing (배치 취소)"),
+	/** 시설 목록에서 상세 페이지 열기 · 게임 상태를 바꾸지 않음 */
+	SelectUpgradeFacility UMETA(DisplayName = "Select Upgrade Facility (업그레이드 상세 보기)"),
+	/** 상세 페이지에서 시설 목록으로 돌아가기 */
+	BackUpgradeList UMETA(DisplayName = "Back Upgrade List (시설 목록으로)"),
+	/** 후신소 업그레이드 창을 열어 이 창 시설의 상세를 바로 보여 줌 (예: 신사 창) · 업그레이드 시작은 그 창에서 */
+	OpenUpgradeForWindow UMETA(DisplayName = "Open Upgrade For Window (이 시설 업그레이드 보기)")
 };
 
 /** 미리보기 상태 · 실제 값 대신 보여 줄 가짜 상태 */

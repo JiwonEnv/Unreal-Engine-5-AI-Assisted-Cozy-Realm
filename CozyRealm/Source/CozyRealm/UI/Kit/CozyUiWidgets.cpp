@@ -1,4 +1,4 @@
-#include "UI/Kit/CozyUiWidgets.h"
+﻿#include "UI/Kit/CozyUiWidgets.h"
 #include "UI/Kit/CozyUiScreen.h"
 #include "UI/Kit/CozyUiTheme.h"
 #include "Components/Button.h"
@@ -312,7 +312,7 @@ void UCozyUiElementWidget::ApplyCozyTheme(const UCozyUiScreen& Screen)
 	}
 
 	// 이미지: 칸 크기는 고정, 이미지는 칸 안에 맞춤 방법대로 (비율이 다른 이미지로 바꿔도 줄이 흐트러지지 않음)
-	const FSlateBrush* ImageBrush = Theme->FindImage(Entry.Image);
+	const FSlateBrush* ImageBrush = Screen.FindImage(Entry.Image);
 	const FVector2D Box = Entry.ImageBox.IsNearlyZero() ? Theme->Metrics.IconSize : Entry.ImageBox;
 	if (Icon)
 	{
@@ -414,7 +414,14 @@ void UCozyUiElementWidget::ApplyCozyTheme(const UCozyUiScreen& Screen)
 		FVector2D Want = Entry.SizeMode == ECozyUiSizeMode::Fixed ? Entry.Size : FVector2D::ZeroVector;
 		if (Entry.SizeMode == ECozyUiSizeMode::Content && Entry.Kind == ECozyUiElementKind::Button)
 		{
-			Want = Theme->Metrics.ButtonSize;
+			// 내용 맞춤 버튼은 최소 크기만 유지하고 긴 글자·아이콘에 따라 늘어난다.
+			SizeBox->SetMinDesiredWidth(Theme->Metrics.ButtonSize.X);
+			SizeBox->SetMinDesiredHeight(Theme->Metrics.ButtonSize.Y);
+		}
+		else
+		{
+			SizeBox->ClearMinDesiredWidth();
+			SizeBox->ClearMinDesiredHeight();
 		}
 		if (Want.X > 0.f) { SizeBox->SetWidthOverride(Want.X); } else { SizeBox->ClearWidthOverride(); }
 		if (Want.Y > 0.f) { SizeBox->SetHeightOverride(Want.Y); } else { SizeBox->ClearHeightOverride(); }
