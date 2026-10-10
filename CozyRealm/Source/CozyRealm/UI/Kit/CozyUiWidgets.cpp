@@ -363,6 +363,15 @@ void UCozyUiElementWidget::ApplyCozyTheme(const UCozyUiScreen& Screen)
 			Label->SetColorAndOpacity(FSlateColor(bEnabled ? Screen.GetColor(Entry.TextColor) : Theme->DisabledTextColor));
 		}
 		Label->SetAutoWrapText(Entry.bWrapText);
+		// 줄바꿈 글이 가로 상자(칩·버튼 안) 안에 있으면 남은 폭을 다 받게 한다
+		// (내용 맞춤이면 직전 폭에 갇혀, 글이 길어질 때 그 좁은 폭에서 접힘 · 예: 미리보기 후 가공 창 '필요 재료' 칩)
+		if (Entry.bWrapText)
+		{
+			if (UHorizontalBoxSlot* LabelSlot = Cast<UHorizontalBoxSlot>(Label->Slot))
+			{
+				LabelSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+			}
+		}
 		if (Entry.Value == ECozyUiValue::None)
 		{
 			Label->SetText(Entry.Label);
