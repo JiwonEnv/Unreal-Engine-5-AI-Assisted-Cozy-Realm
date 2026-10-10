@@ -628,7 +628,7 @@ struct FCozyUiElementEntry
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "2 글자", meta = (DisplayName = "Wrap Text (줄바꿈)"))
 	bool bWrapText = false;
 
-	/** 아이콘·이미지 (테마 이미지 이름 · 비우면 없음) */
+	/** 아이콘·이미지 (테마 이미지 이름 · 비우면 없음) · 반복 목록 안에서는 'Menu.@Row'처럼 고르면 줄마다 '이름표 앞부분.줄 ID' 그림 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "3 이미지", meta = (DisplayName = "Image (이미지 이름표)", GetOptions = "CozyUiTheme.GetImageNameOptions"))
 	FName Image;
 
