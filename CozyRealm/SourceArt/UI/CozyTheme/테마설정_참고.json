@@ -1,0 +1,3605 @@
+{
+  "Fonts": {
+    "title": {
+      "fontObject": {
+        "refPath": "/Game/CozyRealm/UI/Fonts/F_Cozy_JuaFamily.F_Cozy_JuaFamily"
+      },
+      "fontMaterial": "None",
+      "outlineSettings": {
+        "outlineSize": 0,
+        "bMiteredCorners": false,
+        "bSeparateFillAlpha": false,
+        "bApplyOutlineToDropShadows": false,
+        "outlineMaterial": "None",
+        "outlineColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 1
+        }
+      },
+      "typefaceFontName": "Regular",
+      "size": 30,
+      "letterSpacing": 0,
+      "skewAmount": 0,
+      "bForceMonospaced": false,
+      "bMaterialIsStencil": false,
+      "monospacedWidth": 1
+    },
+    "body": {
+      "fontObject": {
+        "refPath": "/Game/CozyRealm/UI/Fonts/F_Cozy_JuaFamily.F_Cozy_JuaFamily"
+      },
+      "fontMaterial": "None",
+      "outlineSettings": {
+        "outlineSize": 0,
+        "bMiteredCorners": false,
+        "bSeparateFillAlpha": false,
+        "bApplyOutlineToDropShadows": false,
+        "outlineMaterial": "None",
+        "outlineColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 1
+        }
+      },
+      "typefaceFontName": "Regular",
+      "size": 22,
+      "letterSpacing": 0,
+      "skewAmount": 0,
+      "bForceMonospaced": false,
+      "bMaterialIsStencil": false,
+      "monospacedWidth": 1
+    },
+    "number": {
+      "fontObject": {
+        "refPath": "/Game/CozyRealm/UI/Fonts/F_Cozy_JuaFamily.F_Cozy_JuaFamily"
+      },
+      "fontMaterial": "None",
+      "outlineSettings": {
+        "outlineSize": 0,
+        "bMiteredCorners": false,
+        "bSeparateFillAlpha": false,
+        "bApplyOutlineToDropShadows": false,
+        "outlineMaterial": "None",
+        "outlineColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 1
+        }
+      },
+      "typefaceFontName": "Regular",
+      "size": 28,
+      "letterSpacing": 0,
+      "skewAmount": 0,
+      "bForceMonospaced": false,
+      "bMaterialIsStencil": false,
+      "monospacedWidth": 1
+    },
+    "small": {
+      "fontObject": {
+        "refPath": "/Game/CozyRealm/UI/Fonts/F_Cozy_JuaFamily.F_Cozy_JuaFamily"
+      },
+      "fontMaterial": "None",
+      "outlineSettings": {
+        "outlineSize": 0,
+        "bMiteredCorners": false,
+        "bSeparateFillAlpha": false,
+        "bApplyOutlineToDropShadows": false,
+        "outlineMaterial": "None",
+        "outlineColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 1
+        }
+      },
+      "typefaceFontName": "Regular",
+      "size": 18,
+      "letterSpacing": 0,
+      "skewAmount": 0,
+      "bForceMonospaced": false,
+      "bMaterialIsStencil": false,
+      "monospacedWidth": 1
+    },
+    "button": {
+      "fontObject": {
+        "refPath": "/Game/CozyRealm/UI/Fonts/F_Cozy_JuaFamily.F_Cozy_JuaFamily"
+      },
+      "fontMaterial": "None",
+      "outlineSettings": {
+        "outlineSize": 0,
+        "bMiteredCorners": false,
+        "bSeparateFillAlpha": false,
+        "bApplyOutlineToDropShadows": false,
+        "outlineMaterial": "None",
+        "outlineColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 1
+        }
+      },
+      "typefaceFontName": "Regular",
+      "size": 23,
+      "letterSpacing": 0,
+      "skewAmount": 0,
+      "bForceMonospaced": false,
+      "bMaterialIsStencil": false,
+      "monospacedWidth": 1
+    }
+  },
+  "Colors": {
+    "paper": {
+      "r": 1,
+      "g": 0.9559733271598816,
+      "b": 0.8549926280975342,
+      "a": 1
+    },
+    "paperDark": {
+      "r": 0.8879231214523315,
+      "g": 0.7991027235984802,
+      "b": 0.672443151473999,
+      "a": 1
+    },
+    "ink": {
+      "r": 0.0666259378194809,
+      "g": 0.03433980792760849,
+      "b": 0.019382361322641373,
+      "a": 1
+    },
+    "inkMuted": {
+      "r": 0.2158605009317398,
+      "g": 0.14126329123973846,
+      "b": 0.07818742096424103,
+      "a": 1
+    },
+    "border": {
+      "r": 0.43965718150138855,
+      "g": 0.22696587443351746,
+      "b": 0.08865558356046677,
+      "a": 1
+    },
+    "point": {
+      "r": 0.021219009533524513,
+      "g": 0.10702310502529144,
+      "b": 0.31854677200317383,
+      "a": 1
+    },
+    "onPoint": {
+      "r": 1,
+      "g": 1,
+      "b": 1,
+      "a": 1
+    },
+    "progress": {
+      "r": 0.07036009430885315,
+      "g": 0.34191441535949707,
+      "b": 0.25015828013420105,
+      "a": 1
+    },
+    "paused": {
+      "r": 0.6444796919822693,
+      "g": 0.31854677200317383,
+      "b": 0.03560131415724754,
+      "a": 1
+    },
+    "ok": {
+      "r": 0.06480326503515244,
+      "g": 0.2746773064136505,
+      "b": 0.16513219475746155,
+      "a": 1
+    },
+    "locked": {
+      "r": 0.366252601146698,
+      "g": 0.32314321398735046,
+      "b": 0.26635560393333435,
+      "a": 1
+    },
+    "warning": {
+      "r": 0.4677838087081909,
+      "g": 0.0666259378194809,
+      "b": 0.045186202973127365,
+      "a": 1
+    },
+    "claimable": {
+      "r": 0.7912979125976562,
+      "g": 0.41788506507873535,
+      "b": 0.03560131415724754,
+      "a": 1
+    }
+  },
+  "Metrics": {
+    "windowPadding": {
+      "left": 18,
+      "top": 14,
+      "right": 18,
+      "bottom": 16
+    },
+    "panelPadding": {
+      "left": 12,
+      "top": 8,
+      "right": 12,
+      "bottom": 8
+    },
+    "buttonPadding": {
+      "left": 14,
+      "top": 6,
+      "right": 14,
+      "bottom": 10
+    },
+    "gap": 8,
+    "buttonSize": {
+      "x": 0,
+      "y": 0
+    },
+    "iconSize": {
+      "x": 34,
+      "y": 34
+    },
+    "gaugeHeight": 22
+  },
+  "Images": {
+    "window": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Box",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 384,
+        "y": 192
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Window.T_Cozy_Window"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "panel": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Box",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 384,
+        "y": 192
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Panel.T_Cozy_Panel"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "chip": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Box",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 384,
+        "y": 192
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Button.T_Cozy_Button"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "badge": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Shrine_v2.T_Cozy_Shrine_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "icon.gold": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Gold_v2.T_Cozy_Gold_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "icon.wheat": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Wheat_v2.T_Cozy_Wheat_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "icon.flour": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Flour_v2.T_Cozy_Flour_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "icon.talisman": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Talisman_v2.T_Cozy_Talisman_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "icon.shard": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Shard_v2.T_Cozy_Shard_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "icon.storage": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Storage_v2.T_Cozy_Storage_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "icon.residents": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Onibi_v2.T_Cozy_Onibi_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "icon.placement": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Field_v2.T_Cozy_Field_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "icon.menu": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Sakura_v2.T_Cozy_Sakura_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "icon.collect": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Wheat_v2.T_Cozy_Wheat_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "icon.upgrade": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Workshop_v2.T_Cozy_Workshop_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "icon.Preview": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 64,
+        "y": 64
+      },
+      "margin": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/Temp/T_UI_Icon_Preview.T_UI_Icon_Preview"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 0
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "HalfHeightRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "icon.sun": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Clock_v2.T_Cozy_Clock_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "icon.Lock": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 64,
+        "y": 64
+      },
+      "margin": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/Temp/T_UI_Icon_Lock.T_UI_Icon_Lock"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 0
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "HalfHeightRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "icon.timetalisman": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Talisman_v2.T_Cozy_Talisman_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "icon.mindshard": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Shard_v2.T_Cozy_Shard_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "header": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Box",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 384,
+        "y": 192
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Header.T_Cozy_Header"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "highlight": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Box",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 384,
+        "y": 192
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_GoldButton.T_Cozy_GoldButton"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "facility.shrine": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Shrine_v2.T_Cozy_Shrine_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "facility.mill": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Mill_v2.T_Cozy_Mill_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "facility.nagaya": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Nagaya_v2.T_Cozy_Nagaya_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "facility.hushinso": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Workshop_v2.T_Cozy_Workshop_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "facility.shop": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Shop_v2.T_Cozy_Shop_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "facility.fieldoffice": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_FieldManager_v2.T_Cozy_FieldManager_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "facility.field": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Field_v2.T_Cozy_Field_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "menu.info": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Sakura_v2.T_Cozy_Sakura_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "menu.processing": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Flour_v2.T_Cozy_Flour_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "menu.sales": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Shop_v2.T_Cozy_Shop_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "menu.upgrade": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Workshop_v2.T_Cozy_Workshop_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "menu.resident": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Onibi_v2.T_Cozy_Onibi_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "menu.nagaya": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Nagaya_v2.T_Cozy_Nagaya_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "menu.fieldmanagement": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_FieldManager_v2.T_Cozy_FieldManager_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    },
+    "menu.shrine": {
+      "tintColor": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Specified"
+      },
+      "drawAs": "Image",
+      "tiling": "NoTile",
+      "mirroring": "NoMirror",
+      "imageType": "NoImage",
+      "imageSize": {
+        "x": 320,
+        "y": 320
+      },
+      "margin": {
+        "left": 0.14000000059604645,
+        "top": 0.14000000059604645,
+        "right": 0.14000000059604645,
+        "bottom": 0.14000000059604645
+      },
+      "resourceObject": {
+        "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Shrine_v2.T_Cozy_Shrine_v2"
+      },
+      "outlineSettings": {
+        "cornerRadii": {
+          "x": 12,
+          "y": 12,
+          "z": 12,
+          "w": 12
+        },
+        "color": {
+          "specifiedColor": {
+            "r": 0.5906188488006592,
+            "g": 0.6514056324958801,
+            "b": 0.6239603757858276,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "width": 0,
+        "roundingType": "FixedRadius",
+        "bUseBrushTransparency": false
+      },
+      "uVRegion": {
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 0
+        },
+        "bIsValid": false
+      },
+      "bIsDynamicallyLoaded": false,
+      "resourceName": "None"
+    }
+  },
+  "ButtonStyles": {
+    "default": {
+      "normal": {
+        "tintColor": {
+          "specifiedColor": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "drawAs": "Box",
+        "tiling": "NoTile",
+        "mirroring": "NoMirror",
+        "imageType": "NoImage",
+        "imageSize": {
+          "x": 384,
+          "y": 192
+        },
+        "margin": {
+          "left": 0.14000000059604645,
+          "top": 0.14000000059604645,
+          "right": 0.14000000059604645,
+          "bottom": 0.14000000059604645
+        },
+        "resourceObject": {
+          "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Button.T_Cozy_Button"
+        },
+        "outlineSettings": {
+          "cornerRadii": {
+            "x": 8,
+            "y": 8,
+            "z": 8,
+            "w": 8
+          },
+          "color": {
+            "specifiedColor": {
+              "r": 0.4507857859134674,
+              "g": 0.5394794940948486,
+              "b": 0.4793201684951782,
+              "a": 1
+            },
+            "colorUseRule": "UseColor_Specified"
+          },
+          "width": 0,
+          "roundingType": "FixedRadius",
+          "bUseBrushTransparency": false
+        },
+        "uVRegion": {
+          "min": {
+            "x": 0,
+            "y": 0
+          },
+          "max": {
+            "x": 0,
+            "y": 0
+          },
+          "bIsValid": false
+        },
+        "bIsDynamicallyLoaded": false,
+        "resourceName": "None"
+      },
+      "hovered": {
+        "tintColor": {
+          "specifiedColor": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "drawAs": "Box",
+        "tiling": "NoTile",
+        "mirroring": "NoMirror",
+        "imageType": "NoImage",
+        "imageSize": {
+          "x": 384,
+          "y": 192
+        },
+        "margin": {
+          "left": 0.14000000059604645,
+          "top": 0.14000000059604645,
+          "right": 0.14000000059604645,
+          "bottom": 0.14000000059604645
+        },
+        "resourceObject": {
+          "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_ButtonHover.T_Cozy_ButtonHover"
+        },
+        "outlineSettings": {
+          "cornerRadii": {
+            "x": 8,
+            "y": 8,
+            "z": 8,
+            "w": 8
+          },
+          "color": {
+            "specifiedColor": {
+              "r": 0.4507857859134674,
+              "g": 0.5394794940948486,
+              "b": 0.4793201684951782,
+              "a": 1
+            },
+            "colorUseRule": "UseColor_Specified"
+          },
+          "width": 0,
+          "roundingType": "FixedRadius",
+          "bUseBrushTransparency": false
+        },
+        "uVRegion": {
+          "min": {
+            "x": 0,
+            "y": 0
+          },
+          "max": {
+            "x": 0,
+            "y": 0
+          },
+          "bIsValid": false
+        },
+        "bIsDynamicallyLoaded": false,
+        "resourceName": "None"
+      },
+      "pressed": {
+        "tintColor": {
+          "specifiedColor": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "drawAs": "Box",
+        "tiling": "NoTile",
+        "mirroring": "NoMirror",
+        "imageType": "NoImage",
+        "imageSize": {
+          "x": 384,
+          "y": 192
+        },
+        "margin": {
+          "left": 0.14000000059604645,
+          "top": 0.14000000059604645,
+          "right": 0.14000000059604645,
+          "bottom": 0.14000000059604645
+        },
+        "resourceObject": {
+          "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_ButtonPressed.T_Cozy_ButtonPressed"
+        },
+        "outlineSettings": {
+          "cornerRadii": {
+            "x": 8,
+            "y": 8,
+            "z": 8,
+            "w": 8
+          },
+          "color": {
+            "specifiedColor": {
+              "r": 0.4507857859134674,
+              "g": 0.5394794940948486,
+              "b": 0.4793201684951782,
+              "a": 1
+            },
+            "colorUseRule": "UseColor_Specified"
+          },
+          "width": 0,
+          "roundingType": "FixedRadius",
+          "bUseBrushTransparency": false
+        },
+        "uVRegion": {
+          "min": {
+            "x": 0,
+            "y": 0
+          },
+          "max": {
+            "x": 0,
+            "y": 0
+          },
+          "bIsValid": false
+        },
+        "bIsDynamicallyLoaded": false,
+        "resourceName": "None"
+      },
+      "disabled": {
+        "tintColor": {
+          "specifiedColor": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "drawAs": "Box",
+        "tiling": "NoTile",
+        "mirroring": "NoMirror",
+        "imageType": "NoImage",
+        "imageSize": {
+          "x": 384,
+          "y": 192
+        },
+        "margin": {
+          "left": 0.14000000059604645,
+          "top": 0.14000000059604645,
+          "right": 0.14000000059604645,
+          "bottom": 0.14000000059604645
+        },
+        "resourceObject": {
+          "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_ButtonDisabled.T_Cozy_ButtonDisabled"
+        },
+        "outlineSettings": {
+          "cornerRadii": {
+            "x": 8,
+            "y": 8,
+            "z": 8,
+            "w": 8
+          },
+          "color": {
+            "specifiedColor": {
+              "r": 0.4507857859134674,
+              "g": 0.5394794940948486,
+              "b": 0.4793201684951782,
+              "a": 1
+            },
+            "colorUseRule": "UseColor_Specified"
+          },
+          "width": 0,
+          "roundingType": "FixedRadius",
+          "bUseBrushTransparency": false
+        },
+        "uVRegion": {
+          "min": {
+            "x": 0,
+            "y": 0
+          },
+          "max": {
+            "x": 0,
+            "y": 0
+          },
+          "bIsValid": false
+        },
+        "bIsDynamicallyLoaded": false,
+        "resourceName": "None"
+      },
+      "normalForeground": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 0,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Foreground"
+      },
+      "hoveredForeground": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 0,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Foreground"
+      },
+      "pressedForeground": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 0,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Foreground"
+      },
+      "disabledForeground": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 0,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Foreground"
+      },
+      "normalPadding": {
+        "left": 16,
+        "top": 8,
+        "right": 16,
+        "bottom": 8
+      },
+      "pressedPadding": {
+        "left": 16,
+        "top": 9,
+        "right": 16,
+        "bottom": 7
+      },
+      "pressedSlateSound": {
+        "resourceObject": "None"
+      },
+      "clickedSlateSound": {
+        "resourceObject": "None"
+      },
+      "hoveredSlateSound": {
+        "resourceObject": "None"
+      }
+    },
+    "main": {
+      "normal": {
+        "tintColor": {
+          "specifiedColor": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "drawAs": "Box",
+        "tiling": "NoTile",
+        "mirroring": "NoMirror",
+        "imageType": "NoImage",
+        "imageSize": {
+          "x": 384,
+          "y": 192
+        },
+        "margin": {
+          "left": 0.14000000059604645,
+          "top": 0.14000000059604645,
+          "right": 0.14000000059604645,
+          "bottom": 0.14000000059604645
+        },
+        "resourceObject": {
+          "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_GoldButton.T_Cozy_GoldButton"
+        },
+        "outlineSettings": {
+          "cornerRadii": {
+            "x": 8,
+            "y": 8,
+            "z": 8,
+            "w": 8
+          },
+          "color": {
+            "specifiedColor": {
+              "r": 0.4507857859134674,
+              "g": 0.5394794940948486,
+              "b": 0.4793201684951782,
+              "a": 1
+            },
+            "colorUseRule": "UseColor_Specified"
+          },
+          "width": 0,
+          "roundingType": "FixedRadius",
+          "bUseBrushTransparency": false
+        },
+        "uVRegion": {
+          "min": {
+            "x": 0,
+            "y": 0
+          },
+          "max": {
+            "x": 0,
+            "y": 0
+          },
+          "bIsValid": false
+        },
+        "bIsDynamicallyLoaded": false,
+        "resourceName": "None"
+      },
+      "hovered": {
+        "tintColor": {
+          "specifiedColor": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "drawAs": "Box",
+        "tiling": "NoTile",
+        "mirroring": "NoMirror",
+        "imageType": "NoImage",
+        "imageSize": {
+          "x": 384,
+          "y": 192
+        },
+        "margin": {
+          "left": 0.14000000059604645,
+          "top": 0.14000000059604645,
+          "right": 0.14000000059604645,
+          "bottom": 0.14000000059604645
+        },
+        "resourceObject": {
+          "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_GoldHover.T_Cozy_GoldHover"
+        },
+        "outlineSettings": {
+          "cornerRadii": {
+            "x": 8,
+            "y": 8,
+            "z": 8,
+            "w": 8
+          },
+          "color": {
+            "specifiedColor": {
+              "r": 0.4507857859134674,
+              "g": 0.5394794940948486,
+              "b": 0.4793201684951782,
+              "a": 1
+            },
+            "colorUseRule": "UseColor_Specified"
+          },
+          "width": 0,
+          "roundingType": "FixedRadius",
+          "bUseBrushTransparency": false
+        },
+        "uVRegion": {
+          "min": {
+            "x": 0,
+            "y": 0
+          },
+          "max": {
+            "x": 0,
+            "y": 0
+          },
+          "bIsValid": false
+        },
+        "bIsDynamicallyLoaded": false,
+        "resourceName": "None"
+      },
+      "pressed": {
+        "tintColor": {
+          "specifiedColor": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "drawAs": "Box",
+        "tiling": "NoTile",
+        "mirroring": "NoMirror",
+        "imageType": "NoImage",
+        "imageSize": {
+          "x": 384,
+          "y": 192
+        },
+        "margin": {
+          "left": 0.14000000059604645,
+          "top": 0.14000000059604645,
+          "right": 0.14000000059604645,
+          "bottom": 0.14000000059604645
+        },
+        "resourceObject": {
+          "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_GoldPressed.T_Cozy_GoldPressed"
+        },
+        "outlineSettings": {
+          "cornerRadii": {
+            "x": 8,
+            "y": 8,
+            "z": 8,
+            "w": 8
+          },
+          "color": {
+            "specifiedColor": {
+              "r": 0.4507857859134674,
+              "g": 0.5394794940948486,
+              "b": 0.4793201684951782,
+              "a": 1
+            },
+            "colorUseRule": "UseColor_Specified"
+          },
+          "width": 0,
+          "roundingType": "FixedRadius",
+          "bUseBrushTransparency": false
+        },
+        "uVRegion": {
+          "min": {
+            "x": 0,
+            "y": 0
+          },
+          "max": {
+            "x": 0,
+            "y": 0
+          },
+          "bIsValid": false
+        },
+        "bIsDynamicallyLoaded": false,
+        "resourceName": "None"
+      },
+      "disabled": {
+        "tintColor": {
+          "specifiedColor": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "drawAs": "Box",
+        "tiling": "NoTile",
+        "mirroring": "NoMirror",
+        "imageType": "NoImage",
+        "imageSize": {
+          "x": 384,
+          "y": 192
+        },
+        "margin": {
+          "left": 0.14000000059604645,
+          "top": 0.14000000059604645,
+          "right": 0.14000000059604645,
+          "bottom": 0.14000000059604645
+        },
+        "resourceObject": {
+          "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_ButtonDisabled.T_Cozy_ButtonDisabled"
+        },
+        "outlineSettings": {
+          "cornerRadii": {
+            "x": 8,
+            "y": 8,
+            "z": 8,
+            "w": 8
+          },
+          "color": {
+            "specifiedColor": {
+              "r": 0.4507857859134674,
+              "g": 0.5394794940948486,
+              "b": 0.4793201684951782,
+              "a": 1
+            },
+            "colorUseRule": "UseColor_Specified"
+          },
+          "width": 0,
+          "roundingType": "FixedRadius",
+          "bUseBrushTransparency": false
+        },
+        "uVRegion": {
+          "min": {
+            "x": 0,
+            "y": 0
+          },
+          "max": {
+            "x": 0,
+            "y": 0
+          },
+          "bIsValid": false
+        },
+        "bIsDynamicallyLoaded": false,
+        "resourceName": "None"
+      },
+      "normalForeground": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 0,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Foreground"
+      },
+      "hoveredForeground": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 0,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Foreground"
+      },
+      "pressedForeground": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 0,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Foreground"
+      },
+      "disabledForeground": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 0,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Foreground"
+      },
+      "normalPadding": {
+        "left": 16,
+        "top": 8,
+        "right": 16,
+        "bottom": 8
+      },
+      "pressedPadding": {
+        "left": 16,
+        "top": 9,
+        "right": 16,
+        "bottom": 7
+      },
+      "pressedSlateSound": {
+        "resourceObject": "None"
+      },
+      "clickedSlateSound": {
+        "resourceObject": "None"
+      },
+      "hoveredSlateSound": {
+        "resourceObject": "None"
+      }
+    },
+    "round": {
+      "normal": {
+        "tintColor": {
+          "specifiedColor": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "drawAs": "Box",
+        "tiling": "NoTile",
+        "mirroring": "NoMirror",
+        "imageType": "NoImage",
+        "imageSize": {
+          "x": 384,
+          "y": 192
+        },
+        "margin": {
+          "left": 0.14000000059604645,
+          "top": 0.14000000059604645,
+          "right": 0.14000000059604645,
+          "bottom": 0.14000000059604645
+        },
+        "resourceObject": {
+          "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Button.T_Cozy_Button"
+        },
+        "outlineSettings": {
+          "cornerRadii": {
+            "x": 8,
+            "y": 8,
+            "z": 8,
+            "w": 8
+          },
+          "color": {
+            "specifiedColor": {
+              "r": 0.4507857859134674,
+              "g": 0.5394794940948486,
+              "b": 0.4793201684951782,
+              "a": 1
+            },
+            "colorUseRule": "UseColor_Specified"
+          },
+          "width": 0,
+          "roundingType": "FixedRadius",
+          "bUseBrushTransparency": false
+        },
+        "uVRegion": {
+          "min": {
+            "x": 0,
+            "y": 0
+          },
+          "max": {
+            "x": 0,
+            "y": 0
+          },
+          "bIsValid": false
+        },
+        "bIsDynamicallyLoaded": false,
+        "resourceName": "None"
+      },
+      "hovered": {
+        "tintColor": {
+          "specifiedColor": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "drawAs": "Box",
+        "tiling": "NoTile",
+        "mirroring": "NoMirror",
+        "imageType": "NoImage",
+        "imageSize": {
+          "x": 384,
+          "y": 192
+        },
+        "margin": {
+          "left": 0.14000000059604645,
+          "top": 0.14000000059604645,
+          "right": 0.14000000059604645,
+          "bottom": 0.14000000059604645
+        },
+        "resourceObject": {
+          "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_ButtonHover.T_Cozy_ButtonHover"
+        },
+        "outlineSettings": {
+          "cornerRadii": {
+            "x": 8,
+            "y": 8,
+            "z": 8,
+            "w": 8
+          },
+          "color": {
+            "specifiedColor": {
+              "r": 0.4507857859134674,
+              "g": 0.5394794940948486,
+              "b": 0.4793201684951782,
+              "a": 1
+            },
+            "colorUseRule": "UseColor_Specified"
+          },
+          "width": 0,
+          "roundingType": "FixedRadius",
+          "bUseBrushTransparency": false
+        },
+        "uVRegion": {
+          "min": {
+            "x": 0,
+            "y": 0
+          },
+          "max": {
+            "x": 0,
+            "y": 0
+          },
+          "bIsValid": false
+        },
+        "bIsDynamicallyLoaded": false,
+        "resourceName": "None"
+      },
+      "pressed": {
+        "tintColor": {
+          "specifiedColor": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "drawAs": "Box",
+        "tiling": "NoTile",
+        "mirroring": "NoMirror",
+        "imageType": "NoImage",
+        "imageSize": {
+          "x": 384,
+          "y": 192
+        },
+        "margin": {
+          "left": 0.14000000059604645,
+          "top": 0.14000000059604645,
+          "right": 0.14000000059604645,
+          "bottom": 0.14000000059604645
+        },
+        "resourceObject": {
+          "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_ButtonPressed.T_Cozy_ButtonPressed"
+        },
+        "outlineSettings": {
+          "cornerRadii": {
+            "x": 8,
+            "y": 8,
+            "z": 8,
+            "w": 8
+          },
+          "color": {
+            "specifiedColor": {
+              "r": 0.4507857859134674,
+              "g": 0.5394794940948486,
+              "b": 0.4793201684951782,
+              "a": 1
+            },
+            "colorUseRule": "UseColor_Specified"
+          },
+          "width": 0,
+          "roundingType": "FixedRadius",
+          "bUseBrushTransparency": false
+        },
+        "uVRegion": {
+          "min": {
+            "x": 0,
+            "y": 0
+          },
+          "max": {
+            "x": 0,
+            "y": 0
+          },
+          "bIsValid": false
+        },
+        "bIsDynamicallyLoaded": false,
+        "resourceName": "None"
+      },
+      "disabled": {
+        "tintColor": {
+          "specifiedColor": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "colorUseRule": "UseColor_Specified"
+        },
+        "drawAs": "Box",
+        "tiling": "NoTile",
+        "mirroring": "NoMirror",
+        "imageType": "NoImage",
+        "imageSize": {
+          "x": 384,
+          "y": 192
+        },
+        "margin": {
+          "left": 0.14000000059604645,
+          "top": 0.14000000059604645,
+          "right": 0.14000000059604645,
+          "bottom": 0.14000000059604645
+        },
+        "resourceObject": {
+          "refPath": "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_ButtonDisabled.T_Cozy_ButtonDisabled"
+        },
+        "outlineSettings": {
+          "cornerRadii": {
+            "x": 8,
+            "y": 8,
+            "z": 8,
+            "w": 8
+          },
+          "color": {
+            "specifiedColor": {
+              "r": 0.4507857859134674,
+              "g": 0.5394794940948486,
+              "b": 0.4793201684951782,
+              "a": 1
+            },
+            "colorUseRule": "UseColor_Specified"
+          },
+          "width": 0,
+          "roundingType": "FixedRadius",
+          "bUseBrushTransparency": false
+        },
+        "uVRegion": {
+          "min": {
+            "x": 0,
+            "y": 0
+          },
+          "max": {
+            "x": 0,
+            "y": 0
+          },
+          "bIsValid": false
+        },
+        "bIsDynamicallyLoaded": false,
+        "resourceName": "None"
+      },
+      "normalForeground": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 0,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Foreground"
+      },
+      "hoveredForeground": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 0,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Foreground"
+      },
+      "pressedForeground": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 0,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Foreground"
+      },
+      "disabledForeground": {
+        "specifiedColor": {
+          "r": 1,
+          "g": 0,
+          "b": 1,
+          "a": 1
+        },
+        "colorUseRule": "UseColor_Foreground"
+      },
+      "normalPadding": {
+        "left": 16,
+        "top": 8,
+        "right": 16,
+        "bottom": 8
+      },
+      "pressedPadding": {
+        "left": 16,
+        "top": 9,
+        "right": 16,
+        "bottom": 7
+      },
+      "pressedSlateSound": {
+        "resourceObject": "None"
+      },
+      "clickedSlateSound": {
+        "resourceObject": "None"
+      },
+      "hoveredSlateSound": {
+        "resourceObject": "None"
+      }
+    }
+  },
+  "GaugeStyles": {
+    "default": {
+      "style": {
+        "backgroundImage": {
+          "tintColor": {
+            "specifiedColor": {
+              "r": 0.7529422044754028,
+              "g": 0.8069522380828857,
+              "b": 0.7454041838645935,
+              "a": 1
+            },
+            "colorUseRule": "UseColor_Specified"
+          },
+          "drawAs": "RoundedBox",
+          "tiling": "NoTile",
+          "mirroring": "NoMirror",
+          "imageType": "NoImage",
+          "imageSize": {
+            "x": 64,
+            "y": 20
+          },
+          "margin": {
+            "left": 0.44999998807907104,
+            "top": 0.44999998807907104,
+            "right": 0.44999998807907104,
+            "bottom": 0.44999998807907104
+          },
+          "resourceObject": "None",
+          "outlineSettings": {
+            "cornerRadii": {
+              "x": 4,
+              "y": 4,
+              "z": 4,
+              "w": 4
+            },
+            "color": {
+              "specifiedColor": {
+                "r": 0.4677838087081909,
+                "g": 0.5520114302635193,
+                "b": 0.4969329833984375,
+                "a": 1
+              },
+              "colorUseRule": "UseColor_Specified"
+            },
+            "width": 1,
+            "roundingType": "FixedRadius",
+            "bUseBrushTransparency": false
+          },
+          "uVRegion": {
+            "min": {
+              "x": 0,
+              "y": 0
+            },
+            "max": {
+              "x": 0,
+              "y": 0
+            },
+            "bIsValid": false
+          },
+          "bIsDynamicallyLoaded": false,
+          "resourceName": "None"
+        },
+        "fillImage": {
+          "tintColor": {
+            "specifiedColor": {
+              "r": 1,
+              "g": 1,
+              "b": 1,
+              "a": 1
+            },
+            "colorUseRule": "UseColor_Specified"
+          },
+          "drawAs": "RoundedBox",
+          "tiling": "NoTile",
+          "mirroring": "NoMirror",
+          "imageType": "NoImage",
+          "imageSize": {
+            "x": 64,
+            "y": 20
+          },
+          "margin": {
+            "left": 0.44999998807907104,
+            "top": 0.44999998807907104,
+            "right": 0.44999998807907104,
+            "bottom": 0.44999998807907104
+          },
+          "resourceObject": "None",
+          "outlineSettings": {
+            "cornerRadii": {
+              "x": 4,
+              "y": 4,
+              "z": 4,
+              "w": 4
+            },
+            "color": {
+              "specifiedColor": {
+                "r": 1,
+                "g": 1,
+                "b": 1,
+                "a": 1
+              },
+              "colorUseRule": "UseColor_Specified"
+            },
+            "width": 0,
+            "roundingType": "FixedRadius",
+            "bUseBrushTransparency": false
+          },
+          "uVRegion": {
+            "min": {
+              "x": 0,
+              "y": 0
+            },
+            "max": {
+              "x": 0,
+              "y": 0
+            },
+            "bIsValid": false
+          },
+          "bIsDynamicallyLoaded": false,
+          "resourceName": "None"
+        },
+        "marqueeImage": {
+          "tintColor": {
+            "specifiedColor": {
+              "r": 1,
+              "g": 1,
+              "b": 1,
+              "a": 1
+            },
+            "colorUseRule": "UseColor_Specified"
+          },
+          "drawAs": "RoundedBox",
+          "tiling": "NoTile",
+          "mirroring": "NoMirror",
+          "imageType": "NoImage",
+          "imageSize": {
+            "x": 64,
+            "y": 20
+          },
+          "margin": {
+            "left": 0.44999998807907104,
+            "top": 0.44999998807907104,
+            "right": 0.44999998807907104,
+            "bottom": 0.44999998807907104
+          },
+          "resourceObject": "None",
+          "outlineSettings": {
+            "cornerRadii": {
+              "x": 4,
+              "y": 4,
+              "z": 4,
+              "w": 4
+            },
+            "color": {
+              "specifiedColor": {
+                "r": 1,
+                "g": 1,
+                "b": 1,
+                "a": 1
+              },
+              "colorUseRule": "UseColor_Specified"
+            },
+            "width": 0,
+            "roundingType": "FixedRadius",
+            "bUseBrushTransparency": false
+          },
+          "uVRegion": {
+            "min": {
+              "x": 0,
+              "y": 0
+            },
+            "max": {
+              "x": 0,
+              "y": 0
+            },
+            "bIsValid": false
+          },
+          "bIsDynamicallyLoaded": false,
+          "resourceName": "None"
+        },
+        "enableFillAnimation": false
+      },
+      "bTintByState": true
+    }
+  },
+  "DisabledTextColor": {
+    "r": 0.34191441535949707,
+    "g": 0.30946892499923706,
+    "b": 0.27049779891967773,
+    "a": 1
+  }
+}

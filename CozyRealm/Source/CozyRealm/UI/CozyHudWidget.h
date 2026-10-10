@@ -56,7 +56,9 @@ enum class ECozyWindowKind : uint8
 	/** 밭 관리 시설: 관리 단계 · 모든 밭 효과 · 해금 작물 (D37·D39) */
 	FieldManagement,
 	/** 방치 보상: 꺼 둔 동안 정산한 결과 (D44) */
-	OfflineReport
+	OfflineReport,
+	/** 신사: 영지 레벨 · 시설 레벨 상한 · 다음 성장 조건 (Window Screens에 Shrine 화면이 있을 때 · 없으면 예전 틀) */
+	Shrine
 };
 
 /**
@@ -126,6 +128,8 @@ public:
 	static TArray<TPair<FName, FText>> GetFacilityMenu(const struct FCozyFacilityRow& Def);
 	/** 시설 메뉴 버튼 하나 실행 (줄 ID: GetFacilityMenu 참고) */
 	void OpenFacilityFunction(FName Function, const FGuid& FacilityId);
+	/** 후신소 업그레이드 창을 열고 그 시설의 상세를 바로 보여 줌 (예: 신사 창의 '후신소에서 업그레이드') */
+	void OpenUpgradeFor(const FGuid& TargetFacility);
 	/** 창 화면을 최신 상태로 다시 그림 (게임 상태가 바뀌지 않은 버튼 결과 안내 등) */
 	void RefreshWindowScreen() { RefreshWindow(); }
 	void SetUpgradeSpeedCount(int32 SlotIndex, int32 Count)
