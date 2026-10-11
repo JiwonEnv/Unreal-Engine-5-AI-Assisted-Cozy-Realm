@@ -1,0 +1,422 @@
+{
+  "badge": {
+    "icon": "Shrine",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "icon.gold": {
+    "icon": "Gold",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "icon.wheat": {
+    "icon": "Wheat",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "icon.flour": {
+    "icon": "Flour",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "icon.talisman": {
+    "icon": "Talisman",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "icon.shard": {
+    "icon": "Shard",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "icon.storage": {
+    "icon": "Storage",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "icon.residents": {
+    "icon": "Onibi",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "icon.placement": {
+    "icon": "Field",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "icon.menu": {
+    "icon": "Sakura",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "icon.collect": {
+    "icon": "Wheat",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "icon.upgrade": {
+    "icon": "Workshop",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "icon.Preview": {
+    "icon": "Preview",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "icon.sun": {
+    "icon": "Clock",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "icon.Lock": {
+    "icon": "Lock",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "icon.timetalisman": {
+    "icon": "Talisman",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "icon.mindshard": {
+    "icon": "Shard",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "facility.shrine": {
+    "icon": "Shrine",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "facility.mill": {
+    "icon": "Mill",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "facility.nagaya": {
+    "icon": "Nagaya",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "facility.hushinso": {
+    "icon": "Workshop",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "facility.shop": {
+    "icon": "Shop",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "facility.fieldoffice": {
+    "icon": "FieldManager",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "facility.field": {
+    "icon": "Field",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "menu.info": {
+    "icon": "Sakura",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "menu.processing": {
+    "icon": "Flour",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "menu.sales": {
+    "icon": "Shop",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "menu.upgrade": {
+    "icon": "Workshop",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "menu.resident": {
+    "icon": "Onibi",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "menu.nagaya": {
+    "icon": "Nagaya",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "menu.fieldmanagement": {
+    "icon": "FieldManager",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "menu.shrine": {
+    "icon": "Shrine",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "icon.RedBean": {
+    "icon": "RedBean",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "icon.Rice": {
+    "icon": "Rice",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  },
+  "icon.RiceFlour": {
+    "icon": "RiceFlour",
+    "tint": {
+      "specifiedColor": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "colorUseRule": "UseColor_Specified"
+    }
+  }
+}

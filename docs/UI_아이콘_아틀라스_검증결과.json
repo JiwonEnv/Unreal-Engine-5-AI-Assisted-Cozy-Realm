@@ -1,0 +1,161 @@
+{
+  "iconNames": 35,
+  "uniqueIcons": 21,
+  "sharedTextures": 3,
+  "standaloneBackgroundNames": 5,
+  "oldDimensions": {
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Clock_v2.T_Cozy_Clock_v2": {
+      "x": 320,
+      "y": 320
+    },
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_FieldManager_v2.T_Cozy_FieldManager_v2": {
+      "x": 320,
+      "y": 320
+    },
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Field_v2.T_Cozy_Field_v2": {
+      "x": 320,
+      "y": 320
+    },
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Flour_v2.T_Cozy_Flour_v2": {
+      "x": 320,
+      "y": 320
+    },
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Gold_v2.T_Cozy_Gold_v2": {
+      "x": 320,
+      "y": 320
+    },
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Lock.T_Cozy_Lock": {
+      "x": 512,
+      "y": 512
+    },
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Mill_v2.T_Cozy_Mill_v2": {
+      "x": 320,
+      "y": 320
+    },
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Nagaya_v2.T_Cozy_Nagaya_v2": {
+      "x": 320,
+      "y": 320
+    },
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Onibi_v2.T_Cozy_Onibi_v2": {
+      "x": 320,
+      "y": 320
+    },
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Preview.T_Cozy_Preview": {
+      "x": 512,
+      "y": 512
+    },
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_RedBean.T_Cozy_RedBean": {
+      "x": 512,
+      "y": 512
+    },
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Rice.T_Cozy_Rice": {
+      "x": 512,
+      "y": 512
+    },
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_RiceFlour.T_Cozy_RiceFlour": {
+      "x": 512,
+      "y": 512
+    },
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Sakura_v2.T_Cozy_Sakura_v2": {
+      "x": 320,
+      "y": 320
+    },
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Shard_v2.T_Cozy_Shard_v2": {
+      "x": 320,
+      "y": 320
+    },
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Shop_v2.T_Cozy_Shop_v2": {
+      "x": 320,
+      "y": 320
+    },
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Shrine_v2.T_Cozy_Shrine_v2": {
+      "x": 320,
+      "y": 320
+    },
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Storage_v2.T_Cozy_Storage_v2": {
+      "x": 320,
+      "y": 320
+    },
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Talisman_v2.T_Cozy_Talisman_v2": {
+      "x": 320,
+      "y": 320
+    },
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Wheat_v2.T_Cozy_Wheat_v2": {
+      "x": 320,
+      "y": 320
+    },
+    "/Game/CozyRealm/UI/Textures/CozyTheme/T_Cozy_Workshop_v2.T_Cozy_Workshop_v2": {
+      "x": 320,
+      "y": 320
+    }
+  },
+  "estimatedRgbaBytesBefore": 11796480,
+  "estimatedRgbaBytesAfter": 1376256,
+  "note": "동일한 RGBA8·밉맵 없음 조건의 픽셀 용량 비교. 실제 GPU 메모리나 그리기 횟수를 측정한 결과는 아닙니다.",
+  "sizeMeasurement": "텍스처 준비 후 편집기 내부 blueprint_get_size_x/y로 확인",
+  "atlasGroups": {
+    "Resources": {
+      "texture": "T_CozyAtlas_Resources",
+      "width": 384,
+      "height": 384
+    },
+    "Facilities": {
+      "texture": "T_CozyAtlas_Facilities",
+      "width": 512,
+      "height": 256
+    },
+    "Common": {
+      "texture": "T_CozyAtlas_Common",
+      "width": 256,
+      "height": 256
+    }
+  },
+  "reviewedPreviewScreens": [
+    "창고",
+    "시설 정보",
+    "가공",
+    "판매",
+    "업그레이드",
+    "밭 관리",
+    "나가야",
+    "방치 보상"
+  ],
+  "reviewedActualScreens": [
+    "HUD",
+    "창고",
+    "제분소 메뉴"
+  ],
+  "geometryAuditUsed": false,
+  "geometryAuditNote": "유효한 위젯 기하 검사 대상이 잡히지 않아 0건 판정을 사용하지 않음. 실제 캡처를 검사함.",
+  "windowsVideoRecorded": false,
+  "committed": false,
+  "saveRestoration": {
+    "CozyRealm_Slot1.sav": true
+  },
+  "nativeAutomationAfterEditorRestart": {
+    "tests": [
+      {
+        "name": "CozyRealm.UI.Atlas.ActiveTheme",
+        "state": "Success",
+        "duration": 0.1518722027540207,
+        "errors": [],
+        "warnings": []
+      },
+      {
+        "name": "CozyRealm.UI.Atlas.SharedRegions",
+        "state": "Success",
+        "duration": 0.0070211999118328094,
+        "errors": [],
+        "warnings": []
+      }
+    ],
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "total": 2,
+    "duration": 0.1588934063911438
+  },
+  "editorBuild": "Succeeded",
+  "sourceTextureSizePersisted": true,
+  "coldLaunchVerified": true
+}

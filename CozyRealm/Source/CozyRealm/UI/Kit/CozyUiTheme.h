@@ -9,6 +9,34 @@
 class UCozyUiTheme;
 class UCozyUiScreenConfig;
 class UCozyUiScreen;
+class UTexture2D;
+
+/** 한 장의 공유 텍스처 안에서 사용할 아이콘 영역. 좌표와 크기는 픽셀 단위다. */
+USTRUCT(BlueprintType)
+struct FCozyUiAtlasImage
+{
+	GENERATED_BODY()
+
+	/** 여러 아이콘이 함께 들어 있는 게임용 텍스처 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (DisplayName = "Texture (공유 아이콘 시트)"))
+	TObjectPtr<UTexture2D> Texture = nullptr;
+
+	/** 시트 원본의 전체 크기. 처음 로드할 때의 임시 크기나 플랫폼별 축소 크기와 무관하게 같은 칸을 표시한다. 0이면 텍스처 크기를 사용한다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (DisplayName = "Texture Size (시트 원본 크기)"))
+	FVector2D TextureSize = FVector2D::ZeroVector;
+
+	/** 아이콘 영역의 왼쪽 위 좌표 (픽셀). 시트 제작 도구가 자동으로 기록한다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (DisplayName = "Origin (칸 시작 좌표)"))
+	FVector2D Origin = FVector2D::ZeroVector;
+
+	/** 표시할 영역 크기 (픽셀). 아이콘 사이의 안전 여백을 포함한다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (DisplayName = "Size (칸 크기)"))
+	FVector2D Size = FVector2D(128.f, 128.f);
+
+	/** 기존 이미지의 색상 설정을 유지한다. 기본값은 원본 색상이다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (DisplayName = "Tint (아이콘 색상)"))
+	FSlateColor Tint = FLinearColor::White;
+};
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnCozyUiAssetChanged, const UObject*);
 
@@ -40,6 +68,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "3 이미지", meta = (DisplayName = "Images (이미지 이름표)"))
 	TMap<FName, FSlateBrush> Images;
 
+	/** 이름 → 공유 시트의 아이콘 칸. 같은 이름의 Images 항목보다 우선한다. 화면에서는 기존 이미지 이름을 그대로 선택한다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "3 이미지", meta = (DisplayName = "Atlas Images (공유 시트 아이콘 이름표)"))
+	TMap<FName, FCozyUiAtlasImage> AtlasImages;
+
 	/** 버튼 모양 (이름 → 기본 · 마우스 올림 · 누름 · 비활성 이미지와 여백) · 권장 이름: Default · Main · Danger · Round */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "4 버튼", meta = (DisplayName = "Button Styles (버튼 모양)"))
 	TMap<FName, FButtonStyle> ButtonStyles;
@@ -63,7 +95,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "6 크기·여백", meta = (DisplayName = "Metrics (크기·여백·간격)"))
 	FCozyUiMetrics Metrics;
 
-	const FSlateBrush* FindImage(FName Name) const { return Name.IsNone() ? nullptr : Images.Find(Name); }
+	const FSlateBrush* FindImage(FName Name) const;
 	const FButtonStyle* FindButtonStyle(FName Name) const;
 	const FCozyUiGaugeStyle* FindGaugeStyle(FName Name) const;
 
@@ -76,6 +108,12 @@ public:
 	static TArray<FName> GetGaugeStyleOptions();
 
 	FOnCozyUiAssetChanged OnChanged;
+
+private:
+	// 화면에 건네는 브러시를 보관한다. 에셋에는 저장하지 않으며, 조회 시 최신 설정으로 갱신한다.
+	mutable TMap<FName, FSlateBrush> AtlasBrushCache;
+
+public:
 
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
