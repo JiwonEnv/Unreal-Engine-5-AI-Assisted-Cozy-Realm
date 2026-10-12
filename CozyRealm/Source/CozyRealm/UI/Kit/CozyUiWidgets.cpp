@@ -141,7 +141,11 @@ FVector2D CozyUiFit::Resolve(const FSlateBrush& Brush, const FVector2D& Box, ECo
 	{
 		if (Texture->GetSizeX() > 0 && Texture->GetSizeY() > 0)
 		{
-			Native = FVector2D(Texture->GetSizeX(), Texture->GetSizeY());
+			// 공유 시트에서는 전체 시트가 아니라 해당 아이콘 칸의 비율과 원래 크기를 사용한다.
+			const FBox2f UVRegion = Brush.GetUVRegion();
+			Native = UVRegion.bIsValid
+				? FVector2D(Brush.ImageSize)
+				: FVector2D(Texture->GetSizeX(), Texture->GetSizeY());
 		}
 	}
 	if (Fit == ECozyUiImageFit::Original || Box.X <= 0.f || Box.Y <= 0.f || Native.X <= 0.f || Native.Y <= 0.f)
