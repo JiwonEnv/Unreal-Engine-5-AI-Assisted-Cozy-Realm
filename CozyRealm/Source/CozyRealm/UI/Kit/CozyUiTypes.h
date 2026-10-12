@@ -304,7 +304,13 @@ enum class ECozyUiAction : uint8
 	/** 지금 자리에 확정 (놓을 수 없으면 꺼짐) */
 	ConfirmPlacing UMETA(DisplayName = "Confirm Placing (배치 확정)"),
 	/** 배치 취소 (원래 자리로) */
-	CancelPlacing UMETA(DisplayName = "Cancel Placing (배치 취소)")
+	CancelPlacing UMETA(DisplayName = "Cancel Placing (배치 취소)"),
+	/** 시설 목록에서 상세 페이지 열기 · 게임 상태를 바꾸지 않음 */
+	SelectUpgradeFacility UMETA(DisplayName = "Select Upgrade Facility (업그레이드 상세 보기)"),
+	/** 상세 페이지에서 시설 목록으로 돌아가기 */
+	BackUpgradeList UMETA(DisplayName = "Back Upgrade List (시설 목록으로)"),
+	/** 후신소 업그레이드 창을 열어 이 창 시설의 상세를 바로 보여 줌 (예: 신사 창) · 업그레이드 시작은 그 창에서 */
+	OpenUpgradeForWindow UMETA(DisplayName = "Open Upgrade For Window (이 시설 업그레이드 보기)")
 };
 
 /** 미리보기 상태 · 실제 값 대신 보여 줄 가짜 상태 */
@@ -622,7 +628,7 @@ struct FCozyUiElementEntry
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "2 글자", meta = (DisplayName = "Wrap Text (줄바꿈)"))
 	bool bWrapText = false;
 
-	/** 아이콘·이미지 (테마 이미지 이름 · 비우면 없음) */
+	/** 아이콘·이미지 (테마 이미지 이름 · 비우면 없음) · 반복 목록 안에서는 'Menu.@Row'처럼 고르면 줄마다 '이름표 앞부분.줄 ID' 그림 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "3 이미지", meta = (DisplayName = "Image (이미지 이름표)", GetOptions = "CozyUiTheme.GetImageNameOptions"))
 	FName Image;
 

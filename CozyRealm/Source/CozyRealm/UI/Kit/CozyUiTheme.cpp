@@ -74,7 +74,23 @@ namespace CozyUiThemeOptions
 
 TArray<FName> UCozyUiTheme::GetImageNameOptions()
 {
-	return CozyUiThemeOptions::Collect([](const UCozyUiTheme& Theme, TSet<FName>& Out) { for (const auto& Pair : Theme.Images) { Out.Add(Pair.Key); } });
+	return CozyUiThemeOptions::Collect([](const UCozyUiTheme& Theme, TSet<FName>& Out)
+	{
+		for (const auto& Pair : Theme.Images)
+		{
+			Out.Add(Pair.Key);
+			// 'Menu.Info'처럼 점이 있는 이름표가 있으면 'Menu.@Row'도 고를 수 있게 한다
+			// (반복 목록 안 요소에서 @Row가 줄 ID로 바뀌어 줄마다 다른 그림 · 예: Menu.@Row → Menu.Processing)
+			FString Key = Pair.Key.ToString();
+			int32 Dot = INDEX_NONE;
+			if (Key.FindChar(TEXT('.'), Dot) && Dot > 0)
+			{
+				FString Prefix = Key.Left(Dot);
+				Prefix[0] = FChar::ToUpper(Prefix[0]);
+				Out.Add(FName(*(Prefix + TEXT(".@Row"))));
+			}
+		}
+	});
 }
 
 TArray<FName> UCozyUiTheme::GetButtonStyleOptions()

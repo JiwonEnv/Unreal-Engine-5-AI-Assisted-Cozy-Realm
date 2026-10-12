@@ -1,4 +1,4 @@
-#include "UI/CozyHudWidget.h"
+﻿#include "UI/CozyHudWidget.h"
 #include "Estate/CozyEstateSubsystem.h"
 #include "UI/Kit/CozyUiScreen.h"
 #include "UI/Kit/CozyUiTheme.h"
@@ -951,9 +951,32 @@ void UCozyHudWidget::OpenFacilityFunction(FName Function, const FGuid& FacilityI
 	else if (Function == TEXT("Processing")) { OpenWindow(ECozyWindowKind::Processing, FacilityId); }
 	else if (Function == TEXT("Sales")) { OpenWindow(ECozyWindowKind::Sales, FacilityId); }
 	else if (Function == TEXT("Upgrade")) { OpenWindow(ECozyWindowKind::Upgrade, FacilityId); }
-	else if (Function == TEXT("Shrine")) { PlaceholderLabel = LOCTEXT("PhShrine2", "신사"); OpenWindow(ECozyWindowKind::Placeholder, FacilityId); }
+	else if (Function == TEXT("Shrine"))
+	{
+		// 편집 가능한 신사 화면이 지정돼 있으면 그 화면, 없으면 예전 빈 틀
+		PlaceholderLabel = LOCTEXT("PhShrine2", "신사");
+		OpenWindow(GetScreenByName(TEXT("Shrine")) ? ECozyWindowKind::Shrine : ECozyWindowKind::Placeholder, FacilityId);
+	}
 	else if (Function == TEXT("FieldManagement")) { OpenWindow(ECozyWindowKind::FieldManagement, FacilityId); }
 	else if (Function == TEXT("Resident")) { OpenWindow(ECozyWindowKind::Nagaya, FGuid(), FacilityId); }
+}
+
+void UCozyHudWidget::OpenUpgradeFor(const FGuid& TargetFacility)
+{
+	UCozyEstateSubsystem* Estate = GetEstate();
+	if (!Estate)
+	{
+		return;
+	}
+	for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
+	{
+		const FCozyFacilityRow* Def = Estate->GetFacilityDef(Facility.DefinitionId);
+		if (Def && Def->Functions.Contains(ECozyFacilityFunction::UpgradeQueue) && !Facility.bStored)
+		{
+			OpenWindow(ECozyWindowKind::Upgrade, Facility.InstanceId, TargetFacility);
+			return;
+		}
+	}
 }
 
 void UCozyHudWidget::ShowFacilityIcons(ACozyFacilityActor* FacilityActor)
@@ -1076,6 +1099,14 @@ void UCozyHudWidget::OpenWindow(ECozyWindowKind Kind, const FGuid& FacilityId, c
 		ProcSelectedRecipe = Recipes.Num() > 0 ? Recipes[0] : NAME_None;
 		ProcSelectedRuns = 1;
 		ProcPendingCancelJob.Invalidate();
+	}
+	if (Kind == ECozyWindowKind::Upgrade)
+	{
+		// 업그레이드 창은 열 때마다 시설 목록부터 · 대상 시설을 주면 그 시설 상세 (고른 시설은 화면 상태 · 저장 안 함)
+		if (UCozyUiScreen* UpgradeScreen = GetScreenByName(TEXT("Upgrade")))
+		{
+			UpgradeScreen->SelectedUpgradeFacility = TargetFacility;
+		}
 	}
 	if (Kind == ECozyWindowKind::Sales)
 	{
@@ -1242,6 +1273,7 @@ void UCozyHudWidget::RefreshWindow()
 		BuildNagayaContent();
 		break;
 	case ECozyWindowKind::Placeholder:
+	case ECozyWindowKind::Shrine:
 		BuildPlaceholderContent();
 		break;
 	case ECozyWindowKind::Storage:
@@ -1286,6 +1318,7 @@ FName UCozyHudWidget::GetWindowName(ECozyWindowKind Kind)
 	case ECozyWindowKind::Upgrade: return TEXT("Upgrade");
 	case ECozyWindowKind::FieldManagement: return TEXT("FieldManagement");
 	case ECozyWindowKind::OfflineReport: return TEXT("OfflineReport");
+	case ECozyWindowKind::Shrine: return TEXT("Shrine");
 	default: return NAME_None;
 	}
 }
@@ -2896,9 +2929,10 @@ void UCozyHudWidget::RefreshDebugPanel()
 	});
 	if (bUiPreview)
 	{
-		Row();
+		int32 StateButtonIndex = 0;
 		for (const ECozyUiPreviewState State : { ECozyUiPreviewState::Progress, ECozyUiPreviewState::Paused, ECozyUiPreviewState::Full, ECozyUiPreviewState::Locked, ECozyUiPreviewState::Claimable, ECozyUiPreviewState::Empty })
 		{
+			if (StateButtonIndex++ % 3 == 0) { Row(); }
 			Btn(UCozyUiScreen::GetPreviewStateName(State), FText::Format(LOCTEXT("DbgStateTip", "모든 화면을 '{0}' 상태로"), UCozyUiScreen::GetPreviewStateName(State)), [this, State]()
 			{
 				SetUiPreviewState(State);

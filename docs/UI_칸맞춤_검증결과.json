@@ -1,0 +1,242 @@
+[
+  {
+    "state": "진행 중",
+    "screen": "창고",
+    "problems": []
+  },
+  {
+    "state": "진행 중",
+    "screen": "시설 정보",
+    "problems": []
+  },
+  {
+    "state": "진행 중",
+    "screen": "가공",
+    "problems": []
+  },
+  {
+    "state": "진행 중",
+    "screen": "판매",
+    "problems": []
+  },
+  {
+    "state": "진행 중",
+    "screen": "업그레이드",
+    "problems": []
+  },
+  {
+    "state": "진행 중",
+    "screen": "밭 관리",
+    "problems": []
+  },
+  {
+    "state": "진행 중",
+    "screen": "나가야",
+    "problems": []
+  },
+  {
+    "state": "진행 중",
+    "screen": "방치 보상",
+    "problems": []
+  },
+  {
+    "state": "일시 정지",
+    "screen": "창고",
+    "problems": []
+  },
+  {
+    "state": "일시 정지",
+    "screen": "시설 정보",
+    "problems": []
+  },
+  {
+    "state": "일시 정지",
+    "screen": "가공",
+    "problems": []
+  },
+  {
+    "state": "일시 정지",
+    "screen": "판매",
+    "problems": []
+  },
+  {
+    "state": "일시 정지",
+    "screen": "업그레이드",
+    "problems": []
+  },
+  {
+    "state": "일시 정지",
+    "screen": "밭 관리",
+    "problems": []
+  },
+  {
+    "state": "일시 정지",
+    "screen": "나가야",
+    "problems": []
+  },
+  {
+    "state": "일시 정지",
+    "screen": "방치 보상",
+    "problems": []
+  },
+  {
+    "state": "가득 참",
+    "screen": "창고",
+    "problems": []
+  },
+  {
+    "state": "가득 참",
+    "screen": "시설 정보",
+    "problems": []
+  },
+  {
+    "state": "가득 참",
+    "screen": "가공",
+    "problems": []
+  },
+  {
+    "state": "가득 참",
+    "screen": "판매",
+    "problems": []
+  },
+  {
+    "state": "가득 참",
+    "screen": "업그레이드",
+    "problems": []
+  },
+  {
+    "state": "가득 참",
+    "screen": "밭 관리",
+    "problems": []
+  },
+  {
+    "state": "가득 참",
+    "screen": "나가야",
+    "problems": []
+  },
+  {
+    "state": "가득 참",
+    "screen": "방치 보상",
+    "problems": []
+  },
+  {
+    "state": "잠김",
+    "screen": "창고",
+    "problems": []
+  },
+  {
+    "state": "잠김",
+    "screen": "시설 정보",
+    "problems": []
+  },
+  {
+    "state": "잠김",
+    "screen": "가공",
+    "problems": []
+  },
+  {
+    "state": "잠김",
+    "screen": "판매",
+    "problems": []
+  },
+  {
+    "state": "잠김",
+    "screen": "업그레이드",
+    "problems": []
+  },
+  {
+    "state": "잠김",
+    "screen": "밭 관리",
+    "problems": []
+  },
+  {
+    "state": "잠김",
+    "screen": "나가야",
+    "problems": []
+  },
+  {
+    "state": "잠김",
+    "screen": "방치 보상",
+    "problems": []
+  },
+  {
+    "state": "수령 가능",
+    "screen": "창고",
+    "problems": []
+  },
+  {
+    "state": "수령 가능",
+    "screen": "시설 정보",
+    "problems": []
+  },
+  {
+    "state": "수령 가능",
+    "screen": "가공",
+    "problems": []
+  },
+  {
+    "state": "수령 가능",
+    "screen": "판매",
+    "problems": []
+  },
+  {
+    "state": "수령 가능",
+    "screen": "업그레이드",
+    "problems": []
+  },
+  {
+    "state": "수령 가능",
+    "screen": "밭 관리",
+    "problems": []
+  },
+  {
+    "state": "수령 가능",
+    "screen": "나가야",
+    "problems": []
+  },
+  {
+    "state": "수령 가능",
+    "screen": "방치 보상",
+    "problems": []
+  },
+  {
+    "state": "비어 있음",
+    "screen": "창고",
+    "problems": []
+  },
+  {
+    "state": "비어 있음",
+    "screen": "시설 정보",
+    "problems": []
+  },
+  {
+    "state": "비어 있음",
+    "screen": "가공",
+    "problems": []
+  },
+  {
+    "state": "비어 있음",
+    "screen": "판매",
+    "problems": []
+  },
+  {
+    "state": "비어 있음",
+    "screen": "업그레이드",
+    "problems": []
+  },
+  {
+    "state": "비어 있음",
+    "screen": "밭 관리",
+    "problems": []
+  },
+  {
+    "state": "비어 있음",
+    "screen": "나가야",
+    "problems": []
+  },
+  {
+    "state": "비어 있음",
+    "screen": "방치 보상",
+    "problems": []
+  }
+]

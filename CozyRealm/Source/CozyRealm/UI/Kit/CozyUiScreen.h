@@ -56,6 +56,8 @@ public:
 	FLinearColor GetColor(ECozyUiColor Role) const;
 	FSlateFontInfo GetFont(ECozyUiTextRole Role) const;
 	const FCozyUiElementEntry* FindElement(FName ElementId) const;
+	/** 시설 반복 목록의 고유 ID를 그림 키로 해석 · 경로를 코드에 고정하지 않음 */
+	const FSlateBrush* FindImage(FName ImageKey) const;
 	const FCozyUiAreaLayout* FindArea(FName AreaId) const;
 	TArray<FCozyUiElementEntry> GetElementsForArea(FName AreaId) const;
 	/** 반복 목록의 줄 (디자이너에서는 예시 3줄) */
@@ -67,6 +69,8 @@ public:
 	FGuid ContextFacility;
 	/** 나가야 창을 시설 바로가기로 열었을 때 그 시설 */
 	FGuid ContextTarget;
+	/** 업그레이드 상세 페이지에서 고른 시설 · 저장 데이터와 분리된 화면 상태 */
+	FGuid SelectedUpgradeFacility;
 	FCozyUiValueResult GetValue(ECozyUiValue Value, FName Param) const;
 
 	/** 버튼 클릭 → 기존 기능 (미리보기면 알림만) */

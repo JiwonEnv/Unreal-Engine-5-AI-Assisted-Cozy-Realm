@@ -189,6 +189,27 @@ FSlateFontInfo UCozyUiScreen::GetFont(ECozyUiTextRole Role) const
 	return Theme ? Theme->Fonts.Get(Role) : FSlateFontInfo();
 }
 
+const FSlateBrush* UCozyUiScreen::FindImage(FName ImageKey) const
+{
+	const UCozyUiTheme* Theme = GetTheme();
+	if (!Theme) { return nullptr; }
+	const FString Key = ImageKey.ToString();
+	if (Key.StartsWith(TEXT("Facility.")))
+	{
+		FGuid FacilityId;
+		const UWorld* World = GetWorld();
+		const UCozyEstateSubsystem* Estate = World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
+		if (Estate && FGuid::Parse(Key.Mid(9), FacilityId))
+		{
+			if (const FCozyFacilityState* Facility = Estate->FindFacility(FacilityId))
+			{
+				ImageKey = FName(*(TEXT("Facility.") + Facility->DefinitionId.ToString()));
+			}
+		}
+	}
+	return Theme->FindImage(ImageKey);
+}
+
 const FCozyUiElementEntry* UCozyUiScreen::FindElement(FName ElementId) const
 {
 	return Config ? Config->FindElement(ElementId) : nullptr;
@@ -208,6 +229,14 @@ TArray<FCozyUiElementEntry> UCozyUiScreen::GetElementsForArea(FName AreaId) cons
 		{
 			if (Each.Area == AreaId)
 			{
+				// 목록과 상세 영역은 동시에 보여 주지 않는다. 편집 에셋의 배치는 그대로 유지한다.
+				const bool bDetail = SelectedUpgradeFacility.IsValid();
+				if ((Each.ListSource == ECozyUiListSource::UpgradeFacilities && Each.ValueParam == TEXT("Overview") && bDetail)
+					|| (Each.ListSource == ECozyUiListSource::UpgradeFacilities && Each.ValueParam == TEXT("Detail") && !bDetail)
+					|| (Each.Action == ECozyUiAction::BackUpgradeList && !bDetail))
+				{
+					continue;
+				}
 				Result.Add(Each);
 			}
 		}
@@ -743,10 +772,10 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 				: FText::Format(LOCTEXT("ProcRuns2", "{0}회  →  {1} {2}개"), FText::AsNumber(Runs), Quote.OutputName, FText::AsNumber(Quote.TotalOutput));
 			break;
 		case ECozyUiValue::ProcMaxInfo:
-			R.Current = Quote.MaxRuns;
+			R.Current = Param == TEXT("Materials") ? Quote.MaxByMaterials : Param == TEXT("Space") ? Quote.MaxBySpace : Quote.MaxRuns;
 			R.Text = FText::Format(Quote.bAppend
-					? LOCTEXT("ProcMaxAppend2", "지금 최대 추가 {0}회  (재료로 {1}회분 · 진행 중·대기 작업이 확보한 공간을 뺀 남은 미수령 공간으로 {2}회분)")
-					: LOCTEXT("ProcMax2", "지금 최대 {0}회  (재료로 {1}회분 · 남은 미수령 공간으로 {2}회분)"),
+					? LOCTEXT("ProcMaxAppend2", "추가 가능 {0}회 · 재료 {1}회 / 공간 {2}회")
+					: LOCTEXT("ProcMax2", "최대 {0}회 · 재료 {1}회 / 공간 {2}회"),
 				FText::AsNumber(Quote.MaxRuns), FText::AsNumber(Quote.MaxByMaterials), FText::AsNumber(Quote.MaxBySpace));
 			R.StateColor = ECozyUiColor::InkMuted;
 			break;
@@ -758,7 +787,7 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 				const FCozyItemRow* Item = Estate->GetItemDef(Input.ItemId);
 				InputsNeed += FString::Printf(TEXT("%s%s %d개 (보유 %d개)"), InputsNeed.IsEmpty() ? TEXT("") : TEXT(", "), *(Item ? Item->DisplayName : FText::FromName(Input.ItemId)).ToString(), Input.Need, Input.Have);
 			}
-			R.Text = Recipe ? FText::Format(LOCTEXT("ProcSummary2", "필요 재료: {0}\n완료품: {1} {2}개 (1회마다 {3}개씩 시설에 쌓임)\n예상 시간: {4} (주민 부족으로 멈춘 시간은 제외)"),
+			R.Text = Recipe ? FText::Format(LOCTEXT("ProcSummary2", "필요 재료  {0}\n완료품  {1} {2}개\n예상 시간  {4}"),
 				FText::FromString(InputsNeed), Quote.OutputName, FText::AsNumber(Quote.TotalOutput), FText::AsNumber(Quote.OutputPerRun), CozyUiFormat::Duration(Quote.TotalSeconds)) : FText::GetEmpty();
 			break;
 		}
@@ -774,6 +803,7 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 			R.StateColor = ECozyUiColor::Point;
 			break;
 		default:
+			R.Current = Runs;
 			R.Text = Quote.bAppend ? LOCTEXT("ProcAppendLabel", "제작 추가") : LOCTEXT("ProcStartLabel", "제작 시작");
 			break;
 		}
@@ -1033,6 +1063,16 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 
 TArray<FCozyUiListRow> UCozyUiScreen::GetListRows(ECozyUiListSource Source, FName ParentRowId) const
 {
+	if (Source == ECozyUiListSource::UpgradeFacilities && SelectedUpgradeFacility.IsValid())
+	{
+		const UWorld* World = GetWorld();
+		const UCozyEstateSubsystem* Estate = World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
+		if (Estate && Estate->FindFacility(SelectedUpgradeFacility))
+		{
+			return {{ FName(*SelectedUpgradeFacility.ToString()), Estate->GetFacilityDisplayName(SelectedUpgradeFacility) }};
+		}
+		return {};
+	}
 	if (!bPreview || Source == ECozyUiListSource::None || IsDesignTime())
 	{
 		return GetRealListRows(Source, ParentRowId);
@@ -1163,8 +1203,10 @@ TArray<FCozyUiListRow> UCozyUiScreen::GetRealListRows(ECozyUiListSource Source, 
 		break;
 	case ECozyUiListSource::UpgradeConditionTargets:
 	{
-		FGuid FacilityId;
-		if (FGuid::Parse(ParentRowId.ToString(), FacilityId))
+		// 시설 줄 안이면 그 줄의 시설 · 창에 바로 놓였으면 창 시설 (예: 신사 창)
+		FGuid Parsed;
+		const FGuid FacilityId = FGuid::Parse(ParentRowId.ToString(), Parsed) ? Parsed : ContextFacility;
+		if (FacilityId.IsValid())
 		{
 			for (const FCozyUpgradeQuote::FCondition& Condition : Estate->GetUpgradeQuote(FacilityId).Conditions)
 			{
@@ -1289,6 +1331,9 @@ FText UCozyUiScreen::GetActionName(ECozyUiAction Action)
 	case ECozyUiAction::SpeedMore: return LOCTEXT("ActSpeedMore", "부적 늘리기");
 	case ECozyUiAction::SpeedFit: return LOCTEXT("ActSpeedFit", "딱 맞게");
 	case ECozyUiAction::ApplySpeedup: return LOCTEXT("ActSpeedApply", "단축 확정");
+	case ECozyUiAction::SelectUpgradeFacility: return LOCTEXT("UpgradeSelect", "시설의 업그레이드 상세 정보 보기");
+	case ECozyUiAction::BackUpgradeList: return LOCTEXT("UpgradeBack", "시설 목록으로 돌아가기");
+	case ECozyUiAction::OpenUpgradeForWindow: return LOCTEXT("UpgradeForWindow", "후신소에서 이 시설 업그레이드 보기");
 	case ECozyUiAction::StartUpgrade: return LOCTEXT("ActUpStart", "업그레이드 시작");
 	case ECozyUiAction::GoToFacility: return LOCTEXT("ActGoTo", "그 시설로 이동");
 	case ECozyUiAction::TakeOutStored: return LOCTEXT("ActTakeOut", "보관함에서 꺼내기");
@@ -1332,7 +1377,8 @@ bool UCozyUiScreen::CanRunAction(const FCozyUiElementEntry& Entry, FText& OutRea
 	if (bPreview)
 	{
 		const bool bAlwaysOn = Entry.Action == ECozyUiAction::CloseWindow || Entry.Action == ECozyUiAction::TogglePreview
-			|| Entry.Action == ECozyUiAction::ToggleDebug || Entry.Action == ECozyUiAction::None;
+			|| Entry.Action == ECozyUiAction::ToggleDebug || Entry.Action == ECozyUiAction::None
+			|| Entry.Action == ECozyUiAction::SelectUpgradeFacility || Entry.Action == ECozyUiAction::BackUpgradeList;
 		if (!bAlwaysOn && PreviewState == ECozyUiPreviewState::Locked)
 		{
 			OutReason = LOCTEXT("PvLockedButton", "미리보기: '잠김' 상태에서 버튼이 꺼진 모습입니다");
@@ -1520,6 +1566,21 @@ bool UCozyUiScreen::CanRunAction(const FCozyUiElementEntry& Entry, FText& OutRea
 
 void UCozyUiScreen::RunAction(const FCozyUiElementEntry& Entry)
 {
+	// 페이지 전환은 실제 데이터에 손대지 않으며 미리보기에서도 사용할 수 있다.
+	if (Entry.Action == ECozyUiAction::SelectUpgradeFacility || Entry.Action == ECozyUiAction::BackUpgradeList)
+	{
+		if (Entry.Action == ECozyUiAction::BackUpgradeList)
+		{
+			SelectedUpgradeFacility.Invalidate();
+		}
+		else if (!FGuid::Parse(Entry.ActionParam.ToString(), SelectedUpgradeFacility))
+		{
+			return;
+		}
+		// 클릭 중인 요소를 그 자리에서 지우지 않고 다음 프레임에 페이지를 바꾼다.
+		bRefreshPending = true;
+		return;
+	}
 	if (Entry.Action == ECozyUiAction::TogglePreview)
 	{
 		SetPreview(!bPreview);
@@ -1726,6 +1787,7 @@ void UCozyUiScreen::RunAction(const FCozyUiElementEntry& Entry)
 		Hud->CloseWindow();
 		Controller->SelectFacilityByDefinition(Entry.ActionParam);
 		break;
+	case ECozyUiAction::OpenUpgradeForWindow: Hud->OpenUpgradeFor(ContextFacility); break;
 	case ECozyUiAction::OpenUpgrade:
 		for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
 		{
