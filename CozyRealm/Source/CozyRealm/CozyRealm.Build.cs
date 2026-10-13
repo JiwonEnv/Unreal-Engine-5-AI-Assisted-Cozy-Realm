@@ -24,7 +24,7 @@ public class CozyRealm : ModuleRules
 			"DeveloperSettings"
 		});
 
-		PrivateDependencyModuleNames.AddRange(new string[] { "SlateCore" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "SlateCore", "Landscape", "AssetRegistry" });
 
 		PublicIncludePaths.AddRange(new string[] {
 			"CozyRealm"

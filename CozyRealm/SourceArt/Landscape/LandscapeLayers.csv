@@ -1,0 +1,7 @@
+Name,Label,Spring,Summer,Autumn,Winter,Roughness,Note
+GrassA,풀A (기본 풀),9CC27F,91B57F,C2A35E,EEF2F4,0.9,영지 바닥 기본 · 지형을 새로 만들면 처음에 전부 이 칸
+GrassB,풀B (짙은 풀 · 숲 바닥),76A86A,6E9F6B,9C7A4C,D8E0E4,0.9,영지 바깥 숲 띠
+DirtA,흙A (맨흙),C9B48A,D9C49A,C9A877,E6E8EA,0.95,빈 땅 · 군데군데
+DirtB,흙B (밭 · 젖은 흙),9C7B58,A8865F,8E6B4A,D2D6DA,0.95,밭 둘레 · 물가
+Rock,돌 (바위 땅 · 산비탈),A8A49A,B8B2A4,A69C8C,C8CCD0,0.8,가파른 비탈 · 산등성이
+Path,길 (다져진 흙길),D2BE92,D9C49A,CBB08A,DCD8D0,0.95,사람이 다니는 길 (직접 칠하기)
