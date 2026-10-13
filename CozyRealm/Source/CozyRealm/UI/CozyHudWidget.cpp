@@ -4,6 +4,8 @@
 #include "UI/Kit/CozyUiTheme.h"
 #include "Core/CozyRealmEstatePlayerController.h"
 #include "Facilities/CozyFacilityActor.h"
+#include "Environment/CozyEstateTerrain.h"
+#include "Environment/CozySeasonPreset.h"
 #include "Blueprint/WidgetTree.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Components/Border.h"
@@ -2855,7 +2857,7 @@ void UCozyHudWidget::RefreshDebugPanel()
 	const FText NightLabel = Current == ECozyNightOverride::Auto ? LOCTEXT("NightAuto", "낮/밤: 자동 (게임 시계)")
 		: Current == ECozyNightOverride::ForceDay ? LOCTEXT("NightDay", "낮/밤: 낮 고정")
 		: LOCTEXT("NightNight", "낮/밤: 밤 고정");
-	Section(LOCTEXT("DbgNight", "⑤ 낮 · 밤"), LOCTEXT("DbgNightHelp", "화면 밝기(낮/밤)를 게임 시계(하루 30분)와 상관없이 고정해 봅니다. 누를 때마다 자동 → 낮 → 밤 순서로 바뀝니다."));
+	Section(LOCTEXT("DbgNight", "⑤ 낮 · 밤 · 계절"), LOCTEXT("DbgNightHelp", "화면 밝기(낮/밤)를 게임 시계(하루 30분)와 상관없이 고정해 봅니다. 누를 때마다 자동 → 낮 → 밤 순서로 바뀝니다."));
 	Btn(NightLabel, LOCTEXT("DbgNightTip", "자동 → 낮 고정 → 밤 고정 → 자동"), [this, Current]()
 	{
 		if (UCozyEstateSubsystem* EstateNow = GetEstate())
@@ -2867,6 +2869,29 @@ void UCozyHudWidget::RefreshDebugPanel()
 			RefreshDebugPanel();
 		}
 	});
+	// 계절: 레벨의 '영지 지형' 액터에 있는 계절 목록을 차례로 (지형 모습만 바뀜 · 저장 안 됨)
+	ACozyEstateTerrain* Terrain = nullptr;
+	if (UWorld* World = GetWorld())
+	{
+		TActorIterator<ACozyEstateTerrain> It(World);
+		Terrain = It ? *It : nullptr;
+	}
+	if (Terrain && Terrain->Seasons.Num() > 0)
+	{
+		const FText SeasonName = Terrain->CurrentSeason ? Terrain->CurrentSeason->DisplayName : LOCTEXT("SeasonNone", "없음");
+		Btn(FText::Format(LOCTEXT("DbgSeason", "계절: {0} (누르면 다음 계절)"), SeasonName), LOCTEXT("DbgSeasonTip", "영지 지형의 계절 목록 순서대로 바꿉니다 · 지형 모습만 바뀌고 저장되지 않습니다"), [this]()
+		{
+			if (UWorld* WorldNow = GetWorld())
+			{
+				TActorIterator<ACozyEstateTerrain> TerrainIt(WorldNow);
+				if (TerrainIt)
+				{
+					TerrainIt->CycleSeason();
+				}
+			}
+			RefreshDebugPanel();
+		});
+	}
 
 	// ⑥ 저장 · 불러오기 · 방치 시간
 	Section(LOCTEXT("DbgSave", "⑥ 저장 · 불러오기 · 방치 시간 (저장 데이터가 바뀜)"),

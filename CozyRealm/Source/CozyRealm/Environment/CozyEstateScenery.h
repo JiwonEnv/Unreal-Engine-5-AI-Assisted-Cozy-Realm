@@ -5,15 +5,17 @@
 #include "CozyEstateScenery.generated.h"
 
 class UInstancedStaticMeshComponent;
+class ULocalFogVolumeComponent;
 class UMaterialInterface;
 
 /**
- *  영지 둘레 풍경 (임시 모형 · 실제 에셋이 생기기 전 단계).
- *  영지 칸 바깥에 흙길 둘레 · 생울타리(입구 하나) · 입구 길 · 바깥 숲 · 개울을 엔진 기본 도형으로 깐다.
- *  값을 바꾸면 에디터에서 바로 다시 깔린다 (OnConstruction). 충돌은 모두 꺼서 시설 클릭·배치에 영향이 없다.
- *  영지 칸 안쪽(시설 배치 칸)에는 아무것도 놓지 않는다.
+ *  영지 둘레 자연 경계 (임시 모형 · 실제 에셋이 생기기 전 단계).
+ *  울타리 같은 인공물 없이, 지금 열린 영지 바깥을 나무 · 덤불 · 바위 · 안개로 채워 '아직 갈 수 없는 곳'으로 보이게 한다.
+ *  영지가 넓어지면 Unlocked Half Size를 키우고 '자연 경계 다시 깔기'를 누르면 그 안쪽 나무·덤불·바위가 빠진다.
+ *  나무 위치는 지형 높이에 맞춰 저장된다 → 지형을 다시 만들거나 손질한 뒤에는 '자연 경계 다시 깔기'를 한 번 누른다.
+ *  충돌은 모두 꺼서 시설 클릭·배치에 영향이 없다.
  */
-UCLASS(meta = (DisplayName = "Cozy Estate Scenery (영지 둘레 풍경)"))
+UCLASS(meta = (DisplayName = "Cozy Estate Scenery (영지 둘레 자연 경계)"))
 class ACozyEstateScenery : public AActor
 {
 	GENERATED_BODY()
@@ -22,117 +24,88 @@ public:
 
 	ACozyEstateScenery();
 
-	virtual void OnConstruction(const FTransform& Transform) override;
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 
-	/** 영지 칸 영역 절반 크기 (cm) · 영지 설정의 칸 수 × 칸 크기 ÷ 2 (지금 12칸 × 200cm → 1200) */
-	UPROPERTY(EditAnywhere, Category = "1 영지", meta = (DisplayName = "Estate Half Size (영지 절반 크기)", ClampMin = "100"))
-	float EstateHalfSize = 1200.f;
+	/** 지금 값으로 나무 · 덤불 · 바위 · 안개를 다시 깐다 (지형 높이에 맞춤) */
+	UFUNCTION(CallInEditor, Category = "6 도구", meta = (DisplayName = "자연 경계 다시 깔기"))
+	void Rebuild();
+#endif
 
-	/** 영지 바닥 윗면 높이 (cm) · 흙길·개울을 이 높이에 맞춰 깐다 */
-	UPROPERTY(EditAnywhere, Category = "1 영지", meta = (DisplayName = "Ground Top Z (바닥 윗면 높이)"))
-	float GroundTopZ = 20.f;
+	/** 지금 열린 영지 절반 크기 (cm) · 영지 칸 수 × 칸 크기 ÷ 2 (지금 12칸 × 200cm → 1200) · 이 안에는 아무것도 두지 않음 */
+	UPROPERTY(EditAnywhere, Category = "1 영지", meta = (DisplayName = "Unlocked Half Size (열린 영지 절반 크기)", ClampMin = "100"))
+	float UnlockedHalfSize = 1200.f;
 
-	/** 바깥 바닥 윗면 높이 (cm) · 숲·개울·입구 길이 놓이는 높이 */
-	UPROPERTY(EditAnywhere, Category = "1 영지", meta = (DisplayName = "Outer Ground Z (바깥 바닥 높이)"))
-	float OuterGroundZ = -0.5f;
+	/** 열린 영지 가장자리에서 나무까지 띄우는 거리 (cm) */
+	UPROPERTY(EditAnywhere, Category = "1 영지", meta = (DisplayName = "Border Gap (가장자리 여유)", ClampMin = "0"))
+	float BorderGap = 120.f;
 
-	/** 영지 둘레 흙길 폭 (cm) · 0이면 둘레 길 없음 */
-	UPROPERTY(EditAnywhere, Category = "2 흙길", meta = (DisplayName = "Ring Path Width (둘레 길 폭)", ClampMin = "0"))
-	float RingPathWidth = 140.f;
+	/** 지형을 찾지 못할 때 쓰는 바닥 높이 (cm) */
+	UPROPERTY(EditAnywhere, Category = "1 영지", meta = (DisplayName = "Fallback Ground Z (기본 바닥 높이)"))
+	float FallbackGroundZ = 20.f;
 
-	/** 입구 방향 (0 = +X · 90 = +Y · 180 = -X · 270 = -Y) · 기본은 카메라 쪽 (-X) */
-	UPROPERTY(EditAnywhere, Category = "2 흙길", meta = (DisplayName = "Entrance Side (입구 방향, 도)"))
-	int32 EntranceSideDegrees = 180;
+	/** 가장자리 빽빽한 띠 폭 (cm) · 이 안에 나무·덤불의 절반 이상이 모여 막힌 느낌을 줌 */
+	UPROPERTY(EditAnywhere, Category = "2 나무", meta = (DisplayName = "Dense Band Width (빽빽한 띠 폭)", ClampMin = "200"))
+	float DenseBandWidth = 1500.f;
 
-	/** 입구 폭 (cm) · 생울타리가 끊기는 폭이자 입구 길 폭 */
-	UPROPERTY(EditAnywhere, Category = "2 흙길", meta = (DisplayName = "Entrance Width (입구 폭)", ClampMin = "50"))
-	float EntranceWidth = 300.f;
-
-	/** 입구에서 바깥으로 이어지는 길 길이 (cm) */
-	UPROPERTY(EditAnywhere, Category = "2 흙길", meta = (DisplayName = "Entrance Road Length (입구 길 길이)", ClampMin = "0"))
-	float EntranceRoadLength = 2600.f;
-
-	/** 생울타리 두께 (cm) */
-	UPROPERTY(EditAnywhere, Category = "3 생울타리", meta = (DisplayName = "Hedge Thickness (두께)", ClampMin = "10"))
-	float HedgeThickness = 70.f;
-
-	/** 생울타리 높이 (cm) */
-	UPROPERTY(EditAnywhere, Category = "3 생울타리", meta = (DisplayName = "Hedge Height (높이)", ClampMin = "10"))
-	float HedgeHeight = 80.f;
-
-	/** 생울타리 한 덩어리 길이 (cm) · 덩어리마다 높이가 조금씩 달라 손질한 울타리처럼 보임 */
-	UPROPERTY(EditAnywhere, Category = "3 생울타리", meta = (DisplayName = "Hedge Segment Length (덩어리 길이)", ClampMin = "50"))
-	float HedgeSegmentLength = 200.f;
+	/** 숲이 끝나는 거리 (영지 중심에서 · cm) · 지형 크기보다 작게 */
+	UPROPERTY(EditAnywhere, Category = "2 나무", meta = (DisplayName = "Forest Outer Extent (숲 끝 거리)", ClampMin = "500"))
+	float ForestOuterExtent = 7400.f;
 
 	/** 나무 개수 */
-	UPROPERTY(EditAnywhere, Category = "4 숲", meta = (DisplayName = "Tree Count (나무 개수)", ClampMin = "0", ClampMax = "400"))
-	int32 TreeCount = 90;
+	UPROPERTY(EditAnywhere, Category = "2 나무", meta = (DisplayName = "Tree Count (나무 개수)", ClampMin = "0", ClampMax = "800"))
+	int32 TreeCount = 190;
 
-	/** 생울타리 바깥에서 숲이 시작하는 거리 (cm) */
-	UPROPERTY(EditAnywhere, Category = "4 숲", meta = (DisplayName = "Forest Inner Gap (숲 시작 거리)", ClampMin = "0"))
-	float ForestInnerGap = 350.f;
+	/** 덤불 개수 */
+	UPROPERTY(EditAnywhere, Category = "2 나무", meta = (DisplayName = "Bush Count (덤불 개수)", ClampMin = "0", ClampMax = "800"))
+	int32 BushCount = 170;
 
-	/** 숲이 끝나는 거리 (영지 중심에서 · cm) · 바깥 바닥보다 작게 */
-	UPROPERTY(EditAnywhere, Category = "4 숲", meta = (DisplayName = "Forest Outer Extent (숲 끝 거리)", ClampMin = "500"))
-	float ForestOuterExtent = 3800.f;
+	/** 바위 개수 */
+	UPROPERTY(EditAnywhere, Category = "2 나무", meta = (DisplayName = "Rock Count (바위 개수)", ClampMin = "0", ClampMax = "400"))
+	int32 RockCount = 70;
 
 	/** 나무 크기 범위 (기본 크기 대비 배율) */
-	UPROPERTY(EditAnywhere, Category = "4 숲", meta = (DisplayName = "Tree Scale Range (나무 크기 범위)"))
-	FVector2D TreeScaleRange = FVector2D(0.8f, 1.35f);
+	UPROPERTY(EditAnywhere, Category = "2 나무", meta = (DisplayName = "Tree Scale Range (나무 크기 범위)"))
+	FVector2D TreeScaleRange = FVector2D(0.85f, 1.45f);
 
-	/** 배치 무작위 씨앗 · 바꾸면 나무 배치가 바뀜 (같은 값이면 항상 같은 배치) */
-	UPROPERTY(EditAnywhere, Category = "4 숲", meta = (DisplayName = "Random Seed (배치 씨앗)"))
+	/** 배치 무작위 씨앗 · 같은 값이면 항상 같은 배치 */
+	UPROPERTY(EditAnywhere, Category = "2 나무", meta = (DisplayName = "Random Seed (배치 씨앗)"))
 	int32 RandomSeed = 7;
 
-	/** 개울을 놓을지 */
-	UPROPERTY(EditAnywhere, Category = "5 개울", meta = (DisplayName = "Stream Enabled (개울 사용)"))
-	bool bStreamEnabled = true;
+	/** 영지 둘레에 안개를 깔지 */
+	UPROPERTY(EditAnywhere, Category = "3 안개", meta = (DisplayName = "Fog Enabled (안개 사용)"))
+	bool bFogEnabled = true;
 
-	/** 개울 방향 (0 = +X · 90 = +Y · 180 = -X · 270 = -Y) · 영지의 그 쪽 바깥을 가로지름 */
-	UPROPERTY(EditAnywhere, Category = "5 개울", meta = (DisplayName = "Stream Side (개울 방향, 도)"))
-	int32 StreamSideDegrees = 90;
+	/** 열린 영지 가장자리에서 안개 중심까지 거리 (cm) */
+	UPROPERTY(EditAnywhere, Category = "3 안개", meta = (DisplayName = "Fog Distance (안개 거리)", ClampMin = "0"))
+	float FogDistance = 900.f;
 
-	/** 생울타리 바깥에서 개울 중심까지 거리 (cm) */
-	UPROPERTY(EditAnywhere, Category = "5 개울", meta = (DisplayName = "Stream Distance (개울 거리)", ClampMin = "100"))
-	float StreamDistance = 900.f;
+	/** 안개 덩어리 하나의 반지름 (cm) */
+	UPROPERTY(EditAnywhere, Category = "3 안개", meta = (DisplayName = "Fog Radius (안개 크기)", ClampMin = "100"))
+	float FogRadius = 1100.f;
 
-	/** 개울 폭 (cm) */
-	UPROPERTY(EditAnywhere, Category = "5 개울", meta = (DisplayName = "Stream Width (개울 폭)", ClampMin = "50"))
-	float StreamWidth = 240.f;
+	/** 안개 짙기 */
+	UPROPERTY(EditAnywhere, Category = "3 안개", meta = (DisplayName = "Fog Density (안개 짙기)", ClampMin = "0", ClampMax = "4"))
+	float FogDensity = 0.55f;
 
-	/** 개울이 굽이치는 폭 (cm) */
-	UPROPERTY(EditAnywhere, Category = "5 개울", meta = (DisplayName = "Stream Meander (굽이 폭)", ClampMin = "0"))
-	float StreamMeander = 180.f;
+	/** 안개 색 */
+	UPROPERTY(EditAnywhere, Category = "3 안개", meta = (DisplayName = "Fog Color (안개 색)"))
+	FLinearColor FogColor = FLinearColor(0.93f, 0.95f, 1.f);
 
 	/** 색 (엔진 기본 도형 머티리얼에 Color만 바꾼 인스턴스 · Content/CozyRealm/Environment/Materials) */
-	UPROPERTY(EditAnywhere, Category = "6 색", meta = (DisplayName = "Path Material (흙길)"))
-	TObjectPtr<UMaterialInterface> PathMaterial;
-
-	UPROPERTY(EditAnywhere, Category = "6 색", meta = (DisplayName = "Hedge Material (생울타리)"))
-	TObjectPtr<UMaterialInterface> HedgeMaterial;
-
-	UPROPERTY(EditAnywhere, Category = "6 색", meta = (DisplayName = "Leaf Material (나뭇잎)"))
+	UPROPERTY(EditAnywhere, Category = "4 색", meta = (DisplayName = "Leaf Material (나뭇잎)"))
 	TObjectPtr<UMaterialInterface> LeafMaterial;
 
-	UPROPERTY(EditAnywhere, Category = "6 색", meta = (DisplayName = "Leaf Light Material (밝은 나뭇잎)"))
+	UPROPERTY(EditAnywhere, Category = "4 색", meta = (DisplayName = "Leaf Light Material (밝은 나뭇잎 · 덤불)"))
 	TObjectPtr<UMaterialInterface> LeafLightMaterial;
 
-	UPROPERTY(EditAnywhere, Category = "6 색", meta = (DisplayName = "Trunk Material (나무 줄기)"))
+	UPROPERTY(EditAnywhere, Category = "4 색", meta = (DisplayName = "Trunk Material (나무 줄기)"))
 	TObjectPtr<UMaterialInterface> TrunkMaterial;
 
-	UPROPERTY(EditAnywhere, Category = "6 색", meta = (DisplayName = "Water Material (개울 물)"))
-	TObjectPtr<UMaterialInterface> WaterMaterial;
-
-	UPROPERTY(EditAnywhere, Category = "6 색", meta = (DisplayName = "Stone Material (개울 돌)"))
+	UPROPERTY(EditAnywhere, Category = "4 색", meta = (DisplayName = "Stone Material (바위)"))
 	TObjectPtr<UMaterialInterface> StoneMaterial;
 
 protected:
-
-	UPROPERTY(VisibleAnywhere, Category = "Components")
-	TObjectPtr<UInstancedStaticMeshComponent> PathInstances;
-
-	UPROPERTY(VisibleAnywhere, Category = "Components")
-	TObjectPtr<UInstancedStaticMeshComponent> HedgeInstances;
 
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	TObjectPtr<UInstancedStaticMeshComponent> TrunkInstances;
@@ -144,22 +117,20 @@ protected:
 	TObjectPtr<UInstancedStaticMeshComponent> LeafLightInstances;
 
 	UPROPERTY(VisibleAnywhere, Category = "Components")
-	TObjectPtr<UInstancedStaticMeshComponent> WaterInstances;
+	TObjectPtr<UInstancedStaticMeshComponent> BushInstances;
 
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	TObjectPtr<UInstancedStaticMeshComponent> StoneInstances;
 
+	/** 영지 둘레 안개 (고정 개수 · 위치는 다시 깔 때 정함) */
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	TArray<TObjectPtr<ULocalFogVolumeComponent>> FogVolumes;
+
 private:
 
-	void Rebuild();
-	void BuildPaths();
-	void BuildHedge();
-	void BuildStream(TArray<FBox2D>& OutBlocked);
-	void BuildForest(const TArray<FBox2D>& Blocked);
+	/** 그 위치의 지형 높이 (지형이 없으면 기본 바닥 높이) */
+	float GroundZAt(float X, float Y) const;
 
-	/** 방향(도) → 바깥쪽 단위 벡터 (가장 가까운 축) */
-	static FVector2D SideAxis(int32 Degrees);
-
-	/** 영지 중심 기준 x·y·z(윗면) · 크기(cm)로 상자 하나 추가 */
-	static void AddBox(UInstancedStaticMeshComponent* Target, const FVector& Center, const FVector& Size, float YawDegrees = 0.f);
+	/** 열린 영지 바깥에서 무작위 위치 하나 (가장자리 가까이에 더 많이) */
+	FVector2D RandomOutside(FRandomStream& Random, float ExtraGap) const;
 };
