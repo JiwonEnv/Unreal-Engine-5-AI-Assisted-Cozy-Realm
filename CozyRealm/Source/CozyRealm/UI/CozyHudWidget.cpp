@@ -903,10 +903,11 @@ void UCozyHudWidget::RefreshTopBar()
 		TopBarBox->AddChildToHorizontalBox(MakeText(Line, 18))->SetPadding(FMargin(0.f, 0.f, 28.f, 0.f));
 	}
 
-	// 게임 시간 · 낮/밤 (PC 현지 시각 기준)
+	// 게임 시계 · 낮/밤 (하루 30분 게임 시계) · 진행 시간
 	const int32 Total = FMath::FloorToInt32(Estate->GetGameSeconds());
-	const FText Clock = FText::Format(LOCTEXT("Clock", "PC {0} · {1} · 게임 시간 {2}:{3} {4}"),
-		FText::FromString(FDateTime::Now().ToString(TEXT("%H:%M"))),
+	const int32 DayMinutes = FMath::FloorToInt32(Estate->GetDayHour() * 60.0);
+	const FText Clock = FText::Format(LOCTEXT("Clock", "게임 시각 {0} · {1} · 진행 {2}:{3} {4}"),
+		FText::FromString(FString::Printf(TEXT("%02d:%02d"), DayMinutes / 60, DayMinutes % 60)),
 		Estate->IsNight() ? LOCTEXT("Night", "밤") : LOCTEXT("Day", "낮"),
 		FText::AsNumber(Total / 60),
 		FText::FromString(FString::Printf(TEXT("%02d"), Total % 60)),
@@ -2851,10 +2852,10 @@ void UCozyHudWidget::RefreshDebugPanel()
 
 	// ⑤ 낮 · 밤
 	const ECozyNightOverride Current = Estate->GetNightOverride();
-	const FText NightLabel = Current == ECozyNightOverride::Auto ? LOCTEXT("NightAuto", "낮/밤: 자동 (PC 시각)")
+	const FText NightLabel = Current == ECozyNightOverride::Auto ? LOCTEXT("NightAuto", "낮/밤: 자동 (게임 시계)")
 		: Current == ECozyNightOverride::ForceDay ? LOCTEXT("NightDay", "낮/밤: 낮 고정")
 		: LOCTEXT("NightNight", "낮/밤: 밤 고정");
-	Section(LOCTEXT("DbgNight", "⑤ 낮 · 밤"), LOCTEXT("DbgNightHelp", "화면 밝기(낮/밤)를 PC 시각과 상관없이 고정해 봅니다. 누를 때마다 자동 → 낮 → 밤 순서로 바뀝니다."));
+	Section(LOCTEXT("DbgNight", "⑤ 낮 · 밤"), LOCTEXT("DbgNightHelp", "화면 밝기(낮/밤)를 게임 시계(하루 30분)와 상관없이 고정해 봅니다. 누를 때마다 자동 → 낮 → 밤 순서로 바뀝니다."));
 	Btn(NightLabel, LOCTEXT("DbgNightTip", "자동 → 낮 고정 → 밤 고정 → 자동"), [this, Current]()
 	{
 		if (UCozyEstateSubsystem* EstateNow = GetEstate())
