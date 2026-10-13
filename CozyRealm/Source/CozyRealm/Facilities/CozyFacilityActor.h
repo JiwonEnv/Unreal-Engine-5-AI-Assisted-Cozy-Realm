@@ -6,6 +6,7 @@
 
 class UStaticMeshComponent;
 class UMaterialInstanceDynamic;
+class UPointLightComponent;
 struct FCozyFacilityRow;
 
 /**
@@ -75,6 +76,14 @@ protected:
 	/** 테두리 외곽선 두께 (cm) */
 	UPROPERTY(EditAnywhere, Category = "Selection")
 	float OutlineThickness = 7.f;
+
+	/** 밤에 켜지는 초롱 빛 (따뜻한 색 · 낮/밤 조명이 'CozyNightLight' 이름표로 켜고 끔) */
+	UPROPERTY(VisibleAnywhere, Category = "Night")
+	TObjectPtr<UPointLightComponent> LanternLight;
+
+	/** 밤에 이 시설에 주민(오니비)이 있을 때만 켜지는 푸른 빛 ('CozyOnibiLight' 이름표) */
+	UPROPERTY(VisibleAnywhere, Category = "Night")
+	TObjectPtr<UPointLightComponent> OnibiLight;
 
 private:
 

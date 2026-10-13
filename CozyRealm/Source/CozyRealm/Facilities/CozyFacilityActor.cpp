@@ -1,5 +1,6 @@
 #include "Facilities/CozyFacilityActor.h"
 #include "Data/CozyRealmDataTypes.h"
+#include "Components/PointLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
@@ -14,6 +15,23 @@ namespace CozyFacility
 	const FName ColorParam(TEXT("Color"));
 	/** 상자 모서리 개수 (테두리 외곽선) */
 	constexpr int32 EdgeCount = 12;
+	/** 낮/밤 조명이 밤에 켜는 빛의 이름표 */
+	const FName NightLightTag(TEXT("CozyNightLight"));
+	const FName OnibiLightTag(TEXT("CozyOnibiLight"));
+
+	UPointLightComponent* MakeNightLight(AActor* Owner, const TCHAR* Name, const FColor& Color, float Candela, float Radius)
+	{
+		UPointLightComponent* Light = Owner->CreateDefaultSubobject<UPointLightComponent>(Name);
+		Light->SetupAttachment(Owner->GetRootComponent());
+		Light->SetIntensityUnits(ELightUnits::Candelas);
+		Light->SetIntensity(Candela);
+		Light->SetLightColor(FLinearColor(Color));
+		Light->SetAttenuationRadius(Radius);
+		Light->SetCastShadows(false);
+		Light->SetVisibility(false);
+		Light->ComponentTags.Add(NightLightTag);
+		return Light;
+	}
 }
 
 ACozyFacilityActor::ACozyFacilityActor()
@@ -51,6 +69,11 @@ ACozyFacilityActor::ACozyFacilityActor()
 		Edge->SetVisibility(false);
 		OutlineEdges.Add(Edge);
 	}
+
+	// 밤 빛 (낮에는 꺼져 있고 낮/밤 조명이 밤 정도만큼 켬)
+	LanternLight = CozyFacility::MakeNightLight(this, TEXT("LanternLight"), FColor(255, 176, 97), 10.f, 520.f);
+	OnibiLight = CozyFacility::MakeNightLight(this, TEXT("OnibiLight"), FColor(127, 176, 255), 6.f, 380.f);
+	OnibiLight->ComponentTags.Add(CozyFacility::OnibiLightTag);
 }
 
 void ACozyFacilityActor::InitFacility(const FGuid& InFacilityId, const FCozyFacilityRow& Def, float CellSize)
@@ -87,6 +110,10 @@ void ACozyFacilityActor::InitFacility(const FGuid& InFacilityId, const FCozyFaci
 	const float T = OutlineThickness;
 	const float HalfX = BoxX * 0.5f;
 	const float HalfY = BoxY * 0.5f;
+
+	// 밤 빛 위치: 초롱은 카메라 쪽(-X) 모서리 처마 높이 · 오니비는 반대쪽 모서리에 낮게 떠 있음
+	LanternLight->SetRelativeLocation(FVector(-HalfX - 30.f, -HalfY * 0.6f, BoxLift + FMath::Min(BoxHeight, 160.f)));
+	OnibiLight->SetRelativeLocation(FVector(-HalfX - 25.f, HalfY * 0.6f, BoxLift + 70.f));
 	const float Bottom = BoxLift;
 	const float Top = BoxLift + BoxHeight;
 	TArray<TPair<FVector, FVector>> Edges; // 위치, 크기(cm)
