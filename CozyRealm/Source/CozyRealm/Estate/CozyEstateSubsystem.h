@@ -16,7 +16,7 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FOnCozyEstateChanged, bool /*bStructural*/);
 UENUM(BlueprintType)
 enum class ECozyNightOverride : uint8
 {
-	/** PC 현지 시각으로 판정 */
+	/** 게임 시계(현실 시간에서 계산 · 하루 GameDaySeconds)로 판정 */
 	Auto,
 	ForceDay,
 	ForceNight
@@ -407,6 +407,11 @@ public:
 	float GetTimeScale() const { return TimeScale; }
 	void SetTimeScale(float NewScale);
 	bool IsNight() const;
+	/** 게임 시계의 지금 시각 (0~24시 · 소수 = 분) · 현실 시각에서 계산하므로 게임을 꺼 둔 동안에도 흐름 · 디버그 배속만큼 빨라짐 */
+	double GetDayHour() const;
+	/** 밤이 시작·끝나는 게임 시각 (시) */
+	int32 GetNightStartHour() const { return Config.NightStartHour; }
+	int32 GetNightEndHour() const { return Config.NightEndHour; }
 	ECozyNightOverride GetNightOverride() const { return NightOverride; }
 	void SetNightOverride(ECozyNightOverride NewOverride);
 
@@ -577,6 +582,8 @@ private:
 	float TimeScale = 1.f;
 	double StepAccumulator = 0.0;
 	ECozyNightOverride NightOverride = ECozyNightOverride::Auto;
+	/** 디버그 배속으로 앞당긴 게임 시계 (현실 초 · 저장하지 않음) */
+	double DayClockBoostSeconds = 0.0;
 	bool bShowTestRecipes = false;
 	/** 이번 Tick에 업그레이드가 끝나 구조가 바뀌었는가 (UI가 해금·레벨 표시를 갱신) */
 	bool bStructuralPending = false;

@@ -388,13 +388,17 @@ struct FCozyEstateConfigRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Storage")
 	int32 StorageCapPerItem = 100;
 
-	/** 밤이 시작되는 PC 현지 시각 (시) */
+	/** 밤이 시작되는 게임 시각 (시 · 게임 시계 기준) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Time")
 	int32 NightStartHour = 18;
 
-	/** 밤이 끝나는 PC 현지 시각 (시) */
+	/** 밤이 끝나는 게임 시각 (시 · 게임 시계 기준) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Time")
 	int32 NightEndHour = 6;
+
+	/** 게임 하루 길이 (현실 초) · 1800 = 30분에 게임 시계 24시간 (18~6시가 밤이면 낮 15분 · 밤 15분) · 현실 시각에서 계산하므로 게임을 꺼 둔 동안에도 흐름 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Time")
+	float GameDaySeconds = 1800.f;
 
 	/** 판매 대금으로 받는 재화 ID (Items.csv 행 이름) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Sales")

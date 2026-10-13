@@ -439,9 +439,10 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 		break;
 	case ECozyUiValue::GameClock:
 	{
-		const FDateTime Now = FDateTime::Now();
+		// 게임 시계 (하루 30분 · 현실 시간에서 계산)
+		const int32 DayMinutes = FMath::FloorToInt32(Estate->GetDayHour() * 60.0);
 		R.Text = FText::Format(LOCTEXT("Clock", "{0} · {1}:{2}"), Estate->IsNight() ? LOCTEXT("Night", "밤") : LOCTEXT("Day", "낮"),
-			FText::FromString(FString::Printf(TEXT("%02d"), Now.GetHour())), FText::FromString(FString::Printf(TEXT("%02d"), Now.GetMinute())));
+			FText::FromString(FString::Printf(TEXT("%02d"), DayMinutes / 60)), FText::FromString(FString::Printf(TEXT("%02d"), DayMinutes % 60)));
 		break;
 	}
 	case ECozyUiValue::ProductionProgress:

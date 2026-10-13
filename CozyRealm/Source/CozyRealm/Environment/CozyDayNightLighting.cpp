@@ -37,7 +37,7 @@ void ACozyDayNightLighting::BeginPlay()
 	Super::BeginPlay();
 	FindLights();
 	// 시작할 때는 전환 없이 지금 상태로
-	NightAlpha = IsNightNow() ? 1.f : 0.f;
+	NightAlpha = TargetNightAlpha();
 	RefreshNightLights();
 	Apply(NightAlpha);
 }
@@ -46,9 +46,10 @@ void ACozyDayNightLighting::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	const float Target = IsNightNow() ? 1.f : 0.f;
-	if (NightAlpha != Target)
+	const float Target = TargetNightAlpha();
+	if (!FMath::IsNearlyEqual(NightAlpha, Target, 0.0005f))
 	{
+		// 게임 시각에 따른 서서히 바뀌는 변화는 그대로 따르고, 디버그 고정처럼 갑자기 바뀔 때만 전환 시간에 걸쳐 바꿈
 		NightAlpha = TransitionSeconds <= 0.f ? Target : FMath::FInterpConstantTo(NightAlpha, Target, DeltaSeconds, 1.f / TransitionSeconds);
 		Apply(NightAlpha);
 	}
@@ -61,11 +62,39 @@ void ACozyDayNightLighting::Tick(float DeltaSeconds)
 	}
 }
 
-bool ACozyDayNightLighting::IsNightNow() const
+float ACozyDayNightLighting::TargetNightAlpha() const
 {
 	const UWorld* World = GetWorld();
 	const UCozyEstateSubsystem* Estate = World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
-	return Estate && Estate->IsNight();
+	if (!Estate)
+	{
+		return 0.f;
+	}
+	switch (Estate->GetNightOverride())
+	{
+	case ECozyNightOverride::ForceDay: return 0.f;
+	case ECozyNightOverride::ForceNight: return 1.f;
+	default: break;
+	}
+	if (TwilightGameHours <= 0.f)
+	{
+		return Estate->IsNight() ? 1.f : 0.f;
+	}
+	// 밤 시작·끝 시각의 앞뒤 TwilightGameHours/2 안에서만 서서히 바뀌고, 그 밖은 낮 0 · 밤 1
+	const float Hour = static_cast<float>(Estate->GetDayHour());
+	auto Signed = [](float Delta) { return FMath::Fmod(Delta + 36.f, 24.f) - 12.f; }; // -12~12시로 접음
+	const float Half = TwilightGameHours * 0.5f;
+	const float ToDusk = Signed(Hour - Estate->GetNightStartHour());
+	const float ToDawn = Signed(Hour - Estate->GetNightEndHour());
+	if (FMath::Abs(ToDusk) < Half)
+	{
+		return FMath::SmoothStep(-Half, Half, ToDusk);
+	}
+	if (FMath::Abs(ToDawn) < Half)
+	{
+		return 1.f - FMath::SmoothStep(-Half, Half, ToDawn);
+	}
+	return Estate->IsNight() ? 1.f : 0.f;
 }
 
 void ACozyDayNightLighting::FindLights()

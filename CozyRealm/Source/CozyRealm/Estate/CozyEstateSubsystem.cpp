@@ -1776,11 +1776,20 @@ bool UCozyEstateSubsystem::IsNight() const
 	default:
 		break;
 	}
-	// 밤 판정은 PC 현지 시각 (기획서 11 기반 시스템)
-	const int32 Hour = FDateTime::Now().GetHour();
+	// 밤 판정은 게임 시계 (하루 GameDaySeconds · 2026-10-13 PC 현지 시각에서 변경)
+	const double Hour = GetDayHour();
 	return Config.NightStartHour > Config.NightEndHour
 		? (Hour >= Config.NightStartHour || Hour < Config.NightEndHour)
 		: (Hour >= Config.NightStartHour && Hour < Config.NightEndHour);
+}
+
+double UCozyEstateSubsystem::GetDayHour() const
+{
+	// 현실 시각(UTC)을 하루 길이로 나눈 나머지 → 0~24시 · 주기 시작을 아침 6시로 맞춤
+	const double DaySeconds = FMath::Max(60.0, static_cast<double>(Config.GameDaySeconds));
+	const double RealSeconds = static_cast<double>((FDateTime::UtcNow() - FDateTime(1970, 1, 1)).GetTicks()) / ETimespan::TicksPerSecond;
+	const double Cycle = FMath::Fmod(RealSeconds + DayClockBoostSeconds, DaySeconds) / DaySeconds;
+	return FMath::Fmod(Cycle * 24.0 + 6.0, 24.0);
 }
 
 void UCozyEstateSubsystem::SetNightOverride(ECozyNightOverride NewOverride)
@@ -1802,6 +1811,9 @@ void UCozyEstateSubsystem::Tick(float DeltaTime)
 	{
 		SaveEstate(TEXT("자동"));
 	}
+
+	// 게임 시계는 현실 시각을 따르고, 디버그 배속을 올린 만큼만 앞당긴다
+	DayClockBoostSeconds += static_cast<double>(DeltaTime) * FMath::Max(0.f, TimeScale - 1.f);
 
 	StepAccumulator += static_cast<double>(DeltaTime) * TimeScale;
 	int32 Steps = 0;

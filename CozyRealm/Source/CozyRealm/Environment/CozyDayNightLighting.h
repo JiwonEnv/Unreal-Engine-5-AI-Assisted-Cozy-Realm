@@ -10,9 +10,10 @@ class ULightComponent;
 class UPostProcessComponent;
 
 /**
- *  낮/밤 조명 (영지 서비스의 낮/밤을 따라 조명을 천천히 바꾼다).
+ *  낮/밤 조명 (영지 서비스의 게임 시계를 따라 조명을 바꾼다 · 하루 30분 = 낮 15분 · 밤 15분).
  *  낮: 따뜻한 오후 햇빛 + 남보라 기운의 하늘빛(그림자 색).
- *  밤(기본 18~6시 · 디버그 '낮/밤'으로 고정 가능): 해·하늘빛·노출을 낮춰 명도만 내리고,
+ *  밤(게임 시각 18~6시 · 디버그 '낮/밤'으로 고정 가능): 해·하늘빛·노출을 낮춰 명도만 내리고,
+ *  해 질 녘·해 뜰 녘은 게임 시각 기준으로 서서히 바뀐다 (Twilight Game Hours).
  *  이름표 'CozyNightLight'가 붙은 빛(시설 초롱 · 오니비 빛)을 켠다.
  *  해와 하늘빛을 비워 두면 레벨에서 처음 찾은 것을 쓴다.
  */
@@ -87,7 +88,11 @@ public:
 	UPROPERTY(EditAnywhere, Category = "3 밤", meta = (DisplayName = "Night Light Tag (밤 빛 이름표)"))
 	FName NightLightTag = TEXT("CozyNightLight");
 
-	/** 낮↔밤이 바뀌는 데 걸리는 시간 (초) · 밤 모습 확인은 플레이 중 디버그 창(F1) '낮/밤' 버튼으로 */
+	/** 해 질 녘·해 뜰 녘 길이 (게임 시간 · 시) · 1이면 17:30~18:30처럼 밤 시작 앞뒤 30분씩 서서히 바뀜 (하루 30분이면 현실 약 75초) */
+	UPROPERTY(EditAnywhere, Category = "4 전환", meta = (DisplayName = "Twilight Game Hours (해 질 녘 길이, 게임 시)", ClampMin = "0", ClampMax = "6"))
+	float TwilightGameHours = 1.f;
+
+	/** 디버그로 낮/밤을 고정하거나 풀 때 바뀌는 데 걸리는 시간 (현실 초) · 밤 모습 확인은 플레이 중 디버그 창(F1) '낮/밤' 버튼으로 */
 	UPROPERTY(EditAnywhere, Category = "4 전환", meta = (DisplayName = "Transition Seconds (전환 시간)", ClampMin = "0"))
 	float TransitionSeconds = 2.5f;
 
@@ -101,7 +106,8 @@ private:
 	void FindLights();
 	void Apply(float Alpha);
 	void RefreshNightLights();
-	bool IsNightNow() const;
+	/** 지금 게임 시각(또는 디버그 고정)에 맞는 밤 정도 (0~1) */
+	float TargetNightAlpha() const;
 
 	float NightAlpha = 0.f;
 	float RescanTimer = 0.f;
