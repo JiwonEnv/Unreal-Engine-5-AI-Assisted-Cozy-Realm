@@ -20,7 +20,8 @@ if (-not $latest) { Write-Output "실패: 최근 $WithinMinutes 분 안에 만�
 
 $prev = -1
 for ($i = 0; $i -lt 30; $i++) {
-    $size = (Get-Item $latest.FullName).Length
+    # 게임 창(PIE) 녹화는 파일 이름에 [NetMode_ …] 대괄호가 들어가므로 -LiteralPath (와일드카드로 읽지 않게)
+    $size = (Get-Item -LiteralPath $latest.FullName).Length
     if ($size -eq $prev -and $size -gt 0) { break }
     $prev = $size; Start-Sleep -Seconds 1
 }
@@ -30,7 +31,8 @@ if (-not (Test-Path $Dest)) {
     $Dest = $Source
 }
 $target = Join-Path $Dest $Name
-if (Test-Path $target) { Write-Output "실패: 같은 이름의 파일이 이미 있습니다 · $target"; exit 4 }
-Move-Item $latest.FullName $target
-Write-Output "saved: $target ($([int]((Get-Item $target).Length / 1MB)) MB · 원래 이름 $($latest.Name))"
+if (Test-Path -LiteralPath $target) { Write-Output "실패: 같은 이름의 파일이 이미 있습니다 · $target"; exit 4 }
+try { Move-Item -LiteralPath $latest.FullName -Destination $target -ErrorAction Stop }
+catch { Write-Output "실패: 옮기지 못했습니다 · $($_.Exception.Message)"; exit 5 }
+Write-Output "saved: $target ($([int]((Get-Item -LiteralPath $target).Length / 1MB)) MB · 원래 이름 $($latest.Name))"
 Write-Output '다음 단계: video_frame.ps1 로 장면을 뽑아 게임 화면이 담겼는지 확인한 뒤에만 완료로 기록하세요'
