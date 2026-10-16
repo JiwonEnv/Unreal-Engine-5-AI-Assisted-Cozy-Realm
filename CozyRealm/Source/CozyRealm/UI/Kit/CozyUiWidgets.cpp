@@ -3,6 +3,7 @@
 #include "UI/Kit/CozyUiTheme.h"
 #include "Components/Button.h"
 #include "Components/ProgressBar.h"
+#include "Components/Slider.h"
 #include "Components/PanelWidget.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
@@ -503,6 +504,90 @@ void UCozyUiElementWidget::UpdateCozyValue(const UCozyUiScreen& Screen)
 		}
 		ValueText->SetText(FText::FromString(FString::Join(Parts, TEXT(" · "))));
 		ValueText->SetVisibility(Parts.Num() > 0 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 슬라이더
+
+TSharedRef<SWidget> UCozyUiSlider::RebuildWidget()
+{
+	// 모양 틀(WBP) 없이 코드로: 크기 상자 → 슬라이더
+	if (WidgetTree && !WidgetTree->RootWidget)
+	{
+		SizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("SizeBox"));
+		SliderWidget = WidgetTree->ConstructWidget<USlider>(USlider::StaticClass(), TEXT("Slider"));
+		SliderWidget->SetMinValue(0.f);
+		SliderWidget->SetMaxValue(1.f);
+		SliderWidget->SetStepSize(0.01f);
+		SliderWidget->SetIndentHandle(true);
+		SliderWidget->OnValueChanged.AddUniqueDynamic(this, &UCozyUiSlider::HandleValueChanged);
+		SliderWidget->OnMouseCaptureBegin.AddUniqueDynamic(this, &UCozyUiSlider::HandleCaptureBegin);
+		SliderWidget->OnMouseCaptureEnd.AddUniqueDynamic(this, &UCozyUiSlider::HandleCaptureEnd);
+		SizeBox->SetContent(SliderWidget);
+		WidgetTree->RootWidget = SizeBox;
+	}
+	return Super::RebuildWidget();
+}
+
+void UCozyUiSlider::ApplyCozyTheme(const UCozyUiScreen& Screen)
+{
+	Super::ApplyCozyTheme(Screen);
+	const FCozyUiElementEntry& Data = GetEntry();
+	// 크기를 비우면 기본 크기 · 남은 공간 채우기면 높이만 (폭은 줄의 남은 공간)
+	if (SizeBox && Data.SizeMode == ECozyUiSizeMode::Content)
+	{
+		SizeBox->SetWidthOverride(320.f);
+		SizeBox->SetHeightOverride(36.f);
+	}
+	else if (SizeBox && Data.SizeMode == ECozyUiSizeMode::Fill)
+	{
+		SizeBox->ClearWidthOverride();
+		SizeBox->SetHeightOverride(36.f);
+	}
+	if (SliderWidget)
+	{
+		SliderWidget->SetSliderBarColor(Screen.GetColor(ECozyUiColor::Border));
+		SliderWidget->SetSliderHandleColor(Screen.GetColor(ECozyUiColor::Point));
+		FText Why;
+		const bool bCan = Screen.CanRunAction(Data, Why);
+		SliderWidget->SetIsEnabled(bCan);
+		SliderWidget->SetToolTipText(!bCan && !Why.IsEmpty() ? Why : UCozyUiScreen::GetActionName(Data.Action));
+	}
+}
+
+void UCozyUiSlider::UpdateCozyValue(const UCozyUiScreen& Screen)
+{
+	if (!SliderWidget || GetEntry().Value == ECozyUiValue::None)
+	{
+		return;
+	}
+	const FCozyUiValueResult R = Screen.GetValue(GetEntry().Value, GetEntry().ValueParam);
+	if (R.bValid && !bDragging)
+	{
+		SliderWidget->SetValue(R.Ratio());
+	}
+}
+
+void UCozyUiSlider::HandleValueChanged(float Value)
+{
+	if (UCozyUiScreen* Screen = GetTypedOuter<UCozyUiScreen>())
+	{
+		Screen->RunSliderAction(GetEntry(), Value);
+	}
+}
+
+void UCozyUiSlider::HandleCaptureBegin()
+{
+	bDragging = true;
+}
+
+void UCozyUiSlider::HandleCaptureEnd()
+{
+	bDragging = false;
+	if (FSlateApplication::IsInitialized())
+	{
+		FSlateApplication::Get().SetAllUserFocusToGameViewport();
 	}
 }
 

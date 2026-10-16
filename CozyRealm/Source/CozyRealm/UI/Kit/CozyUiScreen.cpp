@@ -5,6 +5,7 @@
 #include "UI/CozyHudWidget.h"
 #include "Core/CozyRealmEstatePlayerController.h"
 #include "Estate/CozyEstateSubsystem.h"
+#include "Settings/CozySettingsSubsystem.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
 #include "Components/CheckBox.h"
@@ -75,6 +76,15 @@ void UCozyUiScreen::NativeDestruct()
 void UCozyUiScreen::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	// 설정 창의 탭 · 확인 창이 바뀌면 줄 구성을 다시 만든다 (버튼 밖에서 바뀐 경우 · 예: 15초가 지나 이전 화면 설정으로)
+	if (const UCozySettingsSubsystem* Settings = IsDesignTime() ? nullptr : UCozySettingsSubsystem::Get(this))
+	{
+		if (Settings->GetRevision() != SeenSettingsRevision)
+		{
+			SeenSettingsRevision = Settings->GetRevision();
+			bRefreshPending = true;
+		}
+	}
 	if (bRefreshPending)
 	{
 		bRefreshPending = false;
@@ -391,6 +401,21 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 	if (Value == ECozyUiValue::None)
 	{
 		return FCozyUiValueResult();
+	}
+	// 설정 값은 영지 상태와 상관없이 설정 서브시스템이 답한다 (미리보기 중에도 실제 설정 · 디자이너에서는 예시)
+	if (UCozySettingsSubsystem::IsSettingsValue(Value))
+	{
+		if (const UCozySettingsSubsystem* Settings = IsDesignTime() ? nullptr : UCozySettingsSubsystem::Get(this))
+		{
+			return Settings->GetUiValue(Value, Param);
+		}
+		FCozyUiValueResult Sample;
+		Sample.bValid = true;
+		Sample.Current = 80.f;
+		Sample.Max = 100.f;
+		Sample.Text = LOCTEXT("PvSettings", "설정 (미리보기)");
+		Sample.StateColor = ECozyUiColor::Ink;
+		return Sample;
 	}
 	const UWorld* World = GetWorld();
 	const UCozyEstateSubsystem* Estate = World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
@@ -1064,6 +1089,20 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 
 TArray<FCozyUiListRow> UCozyUiScreen::GetListRows(ECozyUiListSource Source, FName ParentRowId) const
 {
+	// 설정 창의 탭 · 확인 창 줄 (디자이너에서는 모두 한 줄씩 보여 배치를 고칠 수 있게)
+	if (UCozySettingsSubsystem::IsSettingsList(Source))
+	{
+		TArray<FCozyUiListRow> Rows;
+		if (const UCozySettingsSubsystem* Settings = IsDesignTime() ? nullptr : UCozySettingsSubsystem::Get(this))
+		{
+			Settings->GetListRows(Source, Rows);
+		}
+		else
+		{
+			Rows.Add({ TEXT("Row"), LOCTEXT("PvSettingsRow", "설정 (미리보기)") });
+		}
+		return Rows;
+	}
 	if (Source == ECozyUiListSource::UpgradeFacilities && SelectedUpgradeFacility.IsValid())
 	{
 		const UWorld* World = GetWorld();
@@ -1335,6 +1374,22 @@ FText UCozyUiScreen::GetActionName(ECozyUiAction Action)
 	case ECozyUiAction::SelectUpgradeFacility: return LOCTEXT("UpgradeSelect", "시설의 업그레이드 상세 정보 보기");
 	case ECozyUiAction::BackUpgradeList: return LOCTEXT("UpgradeBack", "시설 목록으로 돌아가기");
 	case ECozyUiAction::OpenUpgradeForWindow: return LOCTEXT("UpgradeForWindow", "후신소에서 이 시설 업그레이드 보기");
+	case ECozyUiAction::OpenSettings: return LOCTEXT("ActSettings", "설정 (사운드 · 화면 · 게임 종료)");
+	case ECozyUiAction::SettingsTab: return LOCTEXT("ActSettingsTab", "이 탭 보기");
+	case ECozyUiAction::SetVolume: return LOCTEXT("ActVolume", "음량 (움직이면 바로 들림 · 적용을 눌러야 저장)");
+	case ECozyUiAction::SetWindowMode: return LOCTEXT("ActWindowMode", "화면 모드 고르기 (적용을 눌러야 바뀜)");
+	case ECozyUiAction::ResolutionPrev: return LOCTEXT("ActResPrev", "더 낮은 해상도");
+	case ECozyUiAction::ResolutionNext: return LOCTEXT("ActResNext", "더 높은 해상도");
+	case ECozyUiAction::ToggleVSync: return LOCTEXT("ActVSync", "수직 동기화 켜기·끄기");
+	case ECozyUiAction::SetFrameLimit: return LOCTEXT("ActFps", "최대 프레임 고르기");
+	case ECozyUiAction::ApplySettings: return LOCTEXT("ActApply", "이 탭의 변경 적용 · 저장");
+	case ECozyUiAction::RevertSettings: return LOCTEXT("ActRevert", "적용하지 않은 변경 취소");
+	case ECozyUiAction::ResetSettingsTab: return LOCTEXT("ActResetTab", "이 탭만 기본값으로 (적용을 눌러야 저장 · 게임 진행은 그대로)");
+	case ECozyUiAction::KeepDisplay: return LOCTEXT("ActKeep2", "이 화면 설정 유지");
+	case ECozyUiAction::UndoDisplay: return LOCTEXT("ActUndo", "이전 화면 설정으로");
+	case ECozyUiAction::AskQuit: return LOCTEXT("ActAskQuit", "게임 종료 (확인 후 저장하고 종료)");
+	case ECozyUiAction::CancelQuit: return LOCTEXT("ActCancelQuit", "종료하지 않음");
+	case ECozyUiAction::ConfirmQuit: return LOCTEXT("ActConfirmQuit", "영지를 저장하고 종료");
 	case ECozyUiAction::StartUpgrade: return LOCTEXT("ActUpStart", "업그레이드 시작");
 	case ECozyUiAction::GoToFacility: return LOCTEXT("ActGoTo", "그 시설로 이동");
 	case ECozyUiAction::TakeOutStored: return LOCTEXT("ActTakeOut", "보관함에서 꺼내기");
@@ -1373,6 +1428,11 @@ void UCozyUiScreen::ShowMessage(const FText& Message) const
 
 bool UCozyUiScreen::CanRunAction(const FCozyUiElementEntry& Entry, FText& OutReason) const
 {
+	if (UCozySettingsSubsystem::IsSettingsAction(Entry.Action))
+	{
+		const UCozySettingsSubsystem* Settings = IsDesignTime() ? nullptr : UCozySettingsSubsystem::Get(this);
+		return !Settings || Settings->CanRun(Entry.Action, Entry.ActionParam, OutReason);
+	}
 	const UWorld* World = GetWorld();
 	const UCozyEstateSubsystem* Estate = World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
 	if (bPreview)
@@ -1565,8 +1625,38 @@ bool UCozyUiScreen::CanRunAction(const FCozyUiElementEntry& Entry, FText& OutRea
 	}
 }
 
+void UCozyUiScreen::RunSliderAction(const FCozyUiElementEntry& Entry, float Ratio)
+{
+	// 슬라이더는 설정 동작만 (게임 상태를 바꾸지 않음) · 끄는 중에는 줄을 다시 만들지 않고 값만 갱신
+	if (UCozySettingsSubsystem* Settings = UCozySettingsSubsystem::IsSettingsAction(Entry.Action) ? UCozySettingsSubsystem::Get(this) : nullptr)
+	{
+		Settings->Run(Entry.Action, Entry.ActionParam, GetOwningPlayer(), Ratio);
+		RefreshValues();
+	}
+}
+
 void UCozyUiScreen::RunAction(const FCozyUiElementEntry& Entry)
 {
+	// 설정 동작: 영지 상태에 손대지 않으므로 미리보기 중에도 그대로 동작
+	if (UCozySettingsSubsystem::IsSettingsAction(Entry.Action))
+	{
+		UE_LOG(LogCozyRealm, Log, TEXT("[UI] 설정 버튼: %s → %s"), *Entry.Id.ToString(), *GetActionName(Entry.Action).ToString());
+		const ACozyRealmEstatePlayerController* Controller = Cast<ACozyRealmEstatePlayerController>(GetOwningPlayer());
+		if (Entry.Action == ECozyUiAction::OpenSettings)
+		{
+			if (UCozyHudWidget* Hud = Controller ? Controller->GetHud() : nullptr)
+			{
+				Hud->ToggleSettingsWindow();
+			}
+			return;
+		}
+		if (UCozySettingsSubsystem* Settings = UCozySettingsSubsystem::Get(this))
+		{
+			Settings->Run(Entry.Action, Entry.ActionParam, GetOwningPlayer());
+		}
+		bRefreshPending = true;
+		return;
+	}
 	// 페이지 전환은 실제 데이터에 손대지 않으며 미리보기에서도 사용할 수 있다.
 	if (Entry.Action == ECozyUiAction::SelectUpgradeFacility || Entry.Action == ECozyUiAction::BackUpgradeList)
 	{

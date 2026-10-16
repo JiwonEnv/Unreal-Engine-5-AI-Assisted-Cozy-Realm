@@ -58,7 +58,9 @@ enum class ECozyWindowKind : uint8
 	/** 방치 보상: 꺼 둔 동안 정산한 결과 (D44) */
 	OfflineReport,
 	/** 신사: 영지 레벨 · 시설 레벨 상한 · 다음 성장 조건 (Window Screens에 Shrine 화면이 있을 때 · 없으면 예전 틀) */
-	Shrine
+	Shrine,
+	/** 설정: 사운드 · 화면 탭 · 게임 종료 (Window Screens의 Settings 화면 · 개발용 F1 디버그 창과 별개) */
+	Settings
 };
 
 /**
@@ -84,6 +86,9 @@ public:
 
 	void CloseWindow();
 	bool IsWindowOpen() const { return WindowKind != ECozyWindowKind::None; }
+	bool IsSettingsOpen() const { return WindowKind == ECozyWindowKind::Settings; }
+	/** 설정 창 열기 · 열려 있으면 닫기 (HUD 설정 버튼) */
+	void ToggleSettingsWindow();
 	/** 배치 모드 안내·보관함 패널과 미리보기 옆 버튼 (D45) */
 	void SetPlacementMode(bool bEnable);
 

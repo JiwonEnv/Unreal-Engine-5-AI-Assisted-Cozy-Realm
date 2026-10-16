@@ -77,6 +77,8 @@ public:
 
 	/** 버튼 클릭 → 기존 기능 (미리보기면 알림만) */
 	void RunAction(const FCozyUiElementEntry& Entry);
+	/** 슬라이더를 움직임 → 클릭 동작에 비율(0~1)을 넘김 (예: 음량) */
+	void RunSliderAction(const FCozyUiElementEntry& Entry, float Ratio);
 
 	static FText GetActionName(ECozyUiAction Action);
 	static FText GetPreviewStateName(ECozyUiPreviewState State);
@@ -108,4 +110,6 @@ private:
 
 	/** 설정 에셋이 바뀌어 다음 프레임에 다시 적용할지 (에디터 되돌리기 기록 밖에서 요소를 만들기 위해) */
 	bool bRefreshPending = false;
+	/** 마지막으로 반영한 설정 창 상태 번호 (탭 · 확인 창 · 시간 초과 복원이 바뀌면 다시 그림) */
+	int32 SeenSettingsRevision = -1;
 };

@@ -6,6 +6,7 @@
 #include "Facilities/CozyFacilityActor.h"
 #include "Environment/CozyEstateTerrain.h"
 #include "Environment/CozySeasonPreset.h"
+#include "Settings/CozySettingsSubsystem.h"
 #include "Blueprint/WidgetTree.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Components/Border.h"
@@ -1112,6 +1113,14 @@ void UCozyHudWidget::OpenWindow(ECozyWindowKind Kind, const FGuid& FacilityId, c
 		Controller->ClearSelection();
 	}
 	HideFacilityIcons();
+	// 설정 창 위에 다른 창을 열면(단축키 등) 설정 창을 닫은 것과 같게 정리
+	if (WindowKind == ECozyWindowKind::Settings && Kind != ECozyWindowKind::Settings)
+	{
+		if (UCozySettingsSubsystem* Settings = UCozySettingsSubsystem::Get(this))
+		{
+			Settings->CloseSettings();
+		}
+	}
 	WindowKind = Kind;
 	WindowFacility = FacilityId;
 	WindowTargetFacility = TargetFacility;
@@ -1159,8 +1168,33 @@ void UCozyHudWidget::OpenWindow(ECozyWindowKind Kind, const FGuid& FacilityId, c
 	RefreshWindow();
 }
 
+void UCozyHudWidget::ToggleSettingsWindow()
+{
+	if (IsSettingsOpen())
+	{
+		CloseWindow();
+		return;
+	}
+	if (UCozySettingsSubsystem* Settings = UCozySettingsSubsystem::Get(this))
+	{
+		Settings->OpenSettings();
+	}
+	OpenWindow(ECozyWindowKind::Settings, FGuid());
+}
+
 void UCozyHudWidget::CloseWindow()
 {
+	// 설정 창: 적용하지 않은 변경은 버림 (화면 변경 확인 중이면 이전 화면 설정으로) · 진행 데이터는 건드리지 않음
+	if (WindowKind == ECozyWindowKind::Settings)
+	{
+		if (UCozySettingsSubsystem* Settings = UCozySettingsSubsystem::Get(this))
+		{
+			if (Settings->CloseSettings())
+			{
+				ShowToast(LOCTEXT("SettingsDiscarded", "적용하지 않은 설정 변경은 취소했습니다"));
+			}
+		}
+	}
 	// 방치 보상 창은 닫기도 '확인'과 같게 처리 · 안 하면 남은 보고서 때문에 바로 다시 열려 닫기가 안 되는 것처럼 보임
 	if (WindowKind == ECozyWindowKind::OfflineReport && !bUiPreview)
 	{
@@ -1344,6 +1378,7 @@ FName UCozyHudWidget::GetWindowName(ECozyWindowKind Kind)
 	case ECozyWindowKind::FieldManagement: return TEXT("FieldManagement");
 	case ECozyWindowKind::OfflineReport: return TEXT("OfflineReport");
 	case ECozyWindowKind::Shrine: return TEXT("Shrine");
+	case ECozyWindowKind::Settings: return TEXT("Settings");
 	default: return NAME_None;
 	}
 }
