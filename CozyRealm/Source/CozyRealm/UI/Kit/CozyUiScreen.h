@@ -71,6 +71,8 @@ public:
 	FGuid ContextTarget;
 	/** 업그레이드 상세 페이지에서 고른 시설 · 저장 데이터와 분리된 화면 상태 */
 	FGuid SelectedUpgradeFacility;
+	/** 창으로 띄울 때 이 화면이 차지할 수 있는 높이 (화면 단위 · HUD가 정함 · 0이면 제한 없음) → 'Scroll When Tall' 영역이 이 안에 맞춤 */
+	float MaxScreenHeight = 0.f;
 	FCozyUiValueResult GetValue(ECozyUiValue Value, FName Param) const;
 
 	/** 버튼 클릭 → 기존 기능 (미리보기면 알림만) */

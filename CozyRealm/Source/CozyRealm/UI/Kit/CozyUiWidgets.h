@@ -243,11 +243,17 @@ public:
 #endif
 
 protected:
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+
 	/** 요소를 담는 상자 (틀에 'Host'라는 이름의 Border) */
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UBorder> Host;
 
 private:
+	/** 넘치면 스크롤하는 영역의 높이 상한 상자 (Scroll When Tall을 켰을 때만) */
+	UPROPERTY(Transient)
+	TObjectPtr<class USizeBox> ScrollSize;
+
 	FString BuiltSignature;
 	FName RowId;
 	FText RowName;

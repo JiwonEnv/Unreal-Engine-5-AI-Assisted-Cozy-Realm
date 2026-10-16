@@ -12,11 +12,13 @@
 #include "Components/SizeBox.h"
 #include "Components/SizeBoxSlot.h"
 #include "Components/WrapBoxSlot.h"
+#include "Components/ScrollBox.h"
 #include "Components/Spacer.h"
 #include "Components/UniformGridPanel.h"
 #include "Components/UniformGridSlot.h"
 #include "Engine/Texture2D.h"
 #include "Blueprint/WidgetTree.h"
+#include "Blueprint/WidgetLayoutLibrary.h"
 #include "Framework/Application/SlateApplication.h"
 
 #define LOCTEXT_NAMESPACE "CozyUi"
@@ -552,8 +554,18 @@ void UCozyUiArea::ApplyCozyTheme(const UCozyUiScreen& Screen)
 	}
 
 	// 구성(요소 목록 · 정렬 방식)이 바뀐 경우에만 다시 만듦 · 내용만 바뀌면 기존 요소에 다시 적용
-	FString Signature = FString::Printf(TEXT("%d|%d|%d|%d|%.1f|%s|"), (int32)Layout.Flow, (int32)Layout.Spread, (int32)Layout.PackAlign, (int32)Layout.ItemAlign, Gap,
-		*FString::Printf(TEXT("%.0f,%.0f,%.0f,%.0f"), Layout.Padding.Left, Layout.Padding.Top, Layout.Padding.Right, Layout.Padding.Bottom));
+	// 넘치면 스크롤: 세로로 쌓는 영역에서만 (줄바꿈·같은 크기 격자는 제외)
+	const bool bScroll = Layout.bScrollWhenTall && Layout.Flow == ECozyUiFlow::Vertical && Layout.Spread != ECozyUiSpread::EqualSize;
+	FString Signature = FString::Printf(TEXT("%d|%d|%d|%d|%.1f|%s|%d|"), (int32)Layout.Flow, (int32)Layout.Spread, (int32)Layout.PackAlign, (int32)Layout.ItemAlign, Gap,
+		*FString::Printf(TEXT("%.0f,%.0f,%.0f,%.0f"), Layout.Padding.Left, Layout.Padding.Top, Layout.Padding.Right, Layout.Padding.Bottom), bScroll ? 1 : 0);
+	if (bScroll)
+	{
+		for (const FName& Pinned : Layout.PinnedElements)
+		{
+			Signature += Pinned.ToString() + TEXT(",");
+		}
+		Signature += TEXT("|");
+	}
 	for (const FCozyUiElementEntry& Each : Entries)
 	{
 		if (Each.bVisible)
@@ -623,7 +635,40 @@ void UCozyUiArea::ApplyCozyTheme(const UCozyUiScreen& Screen)
 	{
 		Box = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
 	}
-	Host->SetContent(Box);
+
+	// 넘치면 스크롤: [높이 상한 상자 → 스크롤 → 요소들] + 그 아래 고정 요소 줄 (높이 상한은 NativeTick에서 화면 높이에 맞춤)
+	// 고정 요소 중 스크롤 요소보다 앞(Order가 작은 것 · 예: 제목 배경)은 위 줄, 뒤는 아래 줄
+	UPanelWidget* PinnedTopBox = nullptr;
+	UPanelWidget* PinnedBox = nullptr;
+	ScrollSize = nullptr;
+	if (bScroll)
+	{
+		UVerticalBox* Outer = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
+		PinnedTopBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
+		if (UVerticalBoxSlot* TopSlot = Outer->AddChildToVerticalBox(PinnedTopBox))
+		{
+			TopSlot->SetHorizontalAlignment(HAlign_Fill);
+		}
+		ScrollSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+		UScrollBox* Scroll = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass());
+		Scroll->SetConsumeMouseWheel(EConsumeMouseWheel::WhenScrollingPossible);
+		Scroll->AddChild(Box);
+		ScrollSize->SetContent(Scroll);
+		if (UVerticalBoxSlot* ScrollSlot = Outer->AddChildToVerticalBox(ScrollSize))
+		{
+			ScrollSlot->SetHorizontalAlignment(HAlign_Fill);
+		}
+		PinnedBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
+		if (UVerticalBoxSlot* PinnedSlot = Outer->AddChildToVerticalBox(PinnedBox))
+		{
+			PinnedSlot->SetHorizontalAlignment(HAlign_Fill);
+		}
+		Host->SetContent(Outer);
+	}
+	else
+	{
+		Host->SetContent(Box);
+	}
 
 	// 묶음 위치: 붙여서 놓을 때만 영역 안에서 앞·가운데·뒤 · 같은 크기·균등 간격·줄바꿈은 영역을 꽉 채움
 	const bool bHorizontal = Layout.Flow != ECozyUiFlow::Vertical;
@@ -670,17 +715,24 @@ void UCozyUiArea::ApplyCozyTheme(const UCozyUiScreen& Screen)
 		NewElement->SetEntry(Each, true);
 		NewElement->SetRow(Rows[EntryIndex].Id, Rows[EntryIndex].Name);
 
+		// 고정 요소는 스크롤 밖 아래 줄로
+		UPanelWidget* Target = Box;
+		if (PinnedBox && Layout.PinnedElements.Contains(Each.Id))
+		{
+			Target = Box->GetChildrenCount() == 0 ? PinnedTopBox : PinnedBox;
+		}
+
 		// 균등 간격: 요소 사이에 늘어나는 빈칸
-		if (Layout.Spread == ECozyUiSpread::EqualGap && Spawned.Num() > 0 && Layout.Flow != ECozyUiFlow::Wrap)
+		if (Layout.Spread == ECozyUiSpread::EqualGap && Target->GetChildrenCount() > 0 && Layout.Flow != ECozyUiFlow::Wrap)
 		{
 			USpacer* Spacer = WidgetTree->ConstructWidget<USpacer>(USpacer::StaticClass());
-			UPanelSlot* SpacerSlot = Box->AddChild(Spacer);
+			UPanelSlot* SpacerSlot = Target->AddChild(Spacer);
 			if (UHorizontalBoxSlot* H = Cast<UHorizontalBoxSlot>(SpacerSlot)) { H->SetSize(FSlateChildSize(ESlateSizeRule::Fill)); }
 			if (UVerticalBoxSlot* V = Cast<UVerticalBoxSlot>(SpacerSlot)) { V->SetSize(FSlateChildSize(ESlateSizeRule::Fill)); }
 		}
 
-		UPanelSlot* NewSlot = Box->AddChild(NewElement);
-		const bool bFirst = Spawned.Num() == 0;
+		const bool bFirst = Target->GetChildrenCount() == 0;
+		UPanelSlot* NewSlot = Target->AddChild(NewElement);
 		const float Lead = (bFirst || Layout.Spread == ECozyUiSpread::EqualGap) ? 0.f : Gap;
 		if (UHorizontalBoxSlot* H = Cast<UHorizontalBoxSlot>(NewSlot))
 		{
@@ -711,6 +763,62 @@ void UCozyUiArea::ApplyCozyTheme(const UCozyUiScreen& Screen)
 		Spawned.Add(NewElement);
 		NewElement->ApplyCozyTheme(Screen);
 		NewElement->UpdateCozyValue(Screen);
+	}
+
+	// 위·아래 고정 줄과 스크롤 부분 사이 간격 (해당 줄에 요소가 있을 때만 · 원래 세로 목록의 간격과 같게)
+	if (ScrollSize)
+	{
+		if (UVerticalBoxSlot* ScrollSlot = Cast<UVerticalBoxSlot>(ScrollSize->Slot))
+		{
+			ScrollSlot->SetPadding(FMargin(0.f, PinnedTopBox->GetChildrenCount() > 0 && Box->GetChildrenCount() > 0 ? Gap : 0.f, 0.f, 0.f));
+		}
+		if (UVerticalBoxSlot* PinnedSlot = Cast<UVerticalBoxSlot>(PinnedBox->Slot))
+		{
+			PinnedSlot->SetPadding(FMargin(0.f, PinnedBox->GetChildrenCount() > 0 ? Gap : 0.f, 0.f, 0.f));
+		}
+	}
+}
+
+void UCozyUiArea::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+	if (!ScrollSize)
+	{
+		return;
+	}
+	// 화면 전체가 HUD가 준 높이 안에 들어가도록 스크롤 부분의 높이만 줄인다
+	// (화면 원하는 높이 − 스크롤 부분 높이 = 제목·여백·고정 줄 · 지난 프레임 값이라 한두 프레임 안에 맞춰짐)
+	const UCozyUiScreen* Screen = GetTypedOuter<UCozyUiScreen>();
+	if (!Screen || Screen->MaxScreenHeight <= 0.f)
+	{
+		if (ScrollSize->GetMaxDesiredHeight() > 0.f)
+		{
+			ScrollSize->ClearMaxDesiredHeight();
+		}
+		return;
+	}
+	const float Chrome = FMath::Max(0.f, Screen->GetDesiredSize().Y - ScrollSize->GetDesiredSize().Y);
+	const float Base = FMath::Max(120.f, Screen->MaxScreenHeight - Chrome);
+	float Target = Base;
+
+	// 실제로 그려진 위치로 한 번 더: 창 틀이 원하는 높이보다 아래까지 그려지는 만큼은 위 계산에 잡히지 않으므로
+	// 이 영역 아래 끝 + 창 아래 여백이 화면 아래(여백 20)를 넘으면 그만큼 줄이고, 남으면 Base까지 되돌린다
+	// (위치는 한 프레임 늦게 들어오므로 넘친 값의 절반씩 · 4 미만은 무시해 흔들리지 않게)
+	const FGeometry ViewGeometry = UWidgetLayoutLibrary::GetViewportWidgetGeometry(this);
+	const float Current = ScrollSize->GetMaxDesiredHeight() > 0.f ? ScrollSize->GetMaxDesiredHeight() : Base;
+	if (ViewGeometry.GetLocalSize().Y > 1.f && MyGeometry.Scale > 0.f && MyGeometry.GetLocalSize().Y > 1.f)
+	{
+		const UCozyUiTheme* Theme = Screen->GetTheme();
+		const float FrameBottom = (Theme ? Theme->Metrics.WindowPadding.Bottom : 24.f) + 8.f;
+		const float LimitAbs = ViewGeometry.LocalToAbsolute(ViewGeometry.GetLocalSize()).Y - 20.f * ViewGeometry.Scale;
+		const float BottomAbs = MyGeometry.LocalToAbsolute(MyGeometry.GetLocalSize()).Y;
+		const float Overflow = (BottomAbs - LimitAbs) / MyGeometry.Scale + FrameBottom;
+		Target = FMath::Abs(Overflow) < 4.f ? Current : Current - Overflow * 0.5f;
+		Target = FMath::Clamp(Target, 120.f, Base);
+	}
+	if (!FMath::IsNearlyEqual(ScrollSize->GetMaxDesiredHeight(), Target, 1.f))
+	{
+		ScrollSize->SetMaxDesiredHeight(Target);
 	}
 }
 
