@@ -215,6 +215,38 @@ private:
 };
 
 /**
+ *  슬라이더 요소 (종류 Slider · 모양 틀 없이 코드로 만듦 · 테마 Element Templates의 Slider에 이 클래스를 지정).
+ *  값(Value)의 비율로 손잡이 위치를 정하고, 움직이면 클릭 동작(Action · Action Param)에 0~1 비율을 넘긴다.
+ *  막대 색 = 테마 Border · 손잡이 색 = 테마 Point · 크기 = 요소의 Size (비우면 가로 320 · 세로 36).
+ */
+UCLASS(meta = (DisplayName = "Cozy 슬라이더"))
+class UCozyUiSlider : public UCozyUiElementWidget
+{
+	GENERATED_BODY()
+
+public:
+	virtual void ApplyCozyTheme(const UCozyUiScreen& Screen) override;
+	virtual void UpdateCozyValue(const UCozyUiScreen& Screen) override;
+
+protected:
+	virtual TSharedRef<SWidget> RebuildWidget() override;
+
+private:
+	UFUNCTION()
+	void HandleValueChanged(float Value);
+	UFUNCTION()
+	void HandleCaptureBegin();
+	UFUNCTION()
+	void HandleCaptureEnd();
+
+	UPROPERTY(Transient)
+	TObjectPtr<class USlider> SliderWidget;
+
+	/** 끄는 중에는 화면 갱신이 손잡이를 되돌리지 않게 */
+	bool bDragging = false;
+};
+
+/**
  *  자동 정렬 영역 (WBP_UiArea의 부모).
  *  디자이너에서는 이 상자의 위치·크기·화면 기준점만 정한다.
  *  안에 들어갈 요소와 정렬 방식(가로·세로·줄바꿈 · 같은 크기 · 균등 간격)은 화면 설정의 영역·요소 목록이 정한다.

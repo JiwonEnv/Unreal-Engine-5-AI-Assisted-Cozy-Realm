@@ -158,7 +158,35 @@ enum class ECozyUiValue : uint8
 	/** 보관한 시설 한 줄 (매개변수: 시설 · 목록 안에서 @Row · {0} 레벨 · {4} '제분소 Lv2 · 밀') */
 	StoredLabel UMETA(DisplayName = "Stored Facility Label (보관 시설 이름)"),
 	/** 배치 중인 시설을 놓을 수 있는지 ({4} '놓을 수 있습니다' / 이유 · 보관 불가 이유 · 상태색: 충족 / 경고) */
-	PlacementStatus UMETA(DisplayName = "Placement Status (배치 가능 여부)")
+	PlacementStatus UMETA(DisplayName = "Placement Status (배치 가능 여부)"),
+	/** 설정 탭 버튼 (매개변수: Sound · Display · {4} 탭 이름 · 지금 탭이면 강조색) */
+	SettingsTab UMETA(DisplayName = "Settings Tab (설정 탭)"),
+	/** 음량 (매개변수: Master · Music · Sfx · {0} 0~100 · 슬라이더 = 비율) */
+	SettingsVolume UMETA(DisplayName = "Settings Volume (음량)"),
+	/** 소리 연결 안내 ({4} · 아직 배경음·효과음이 없다는 안내 등) */
+	SettingsAudioNote UMETA(DisplayName = "Settings Audio Note (소리 연결 안내)"),
+	/** 지금 적용된 화면 설정 ({4} '지금 적용: 창 모드 · 1280×720 · 수직 동기화 끔 · 최대 60') */
+	SettingsDisplayCurrent UMETA(DisplayName = "Settings Display Current (지금 화면 설정)"),
+	/** 화면 모드 선택지 (매개변수: Fullscreen · Borderless · Windowed · {4} 이름 · 고른 것은 강조색) */
+	SettingsWindowMode UMETA(DisplayName = "Settings Window Mode (화면 모드 선택지)"),
+	/** 고른 해상도 ({4} '1280 × 720' · 고를 수 없으면 잠김색) */
+	SettingsResolution UMETA(DisplayName = "Settings Resolution (해상도)"),
+	/** 해상도를 고를 수 없는 이유 ({4} · 고를 수 있으면 빈칸) */
+	SettingsResolutionNote UMETA(DisplayName = "Settings Resolution Note (해상도 안내)"),
+	/** 수직 동기화 ({4} '켜기' / '끄기') */
+	SettingsVSync UMETA(DisplayName = "Settings VSync (수직 동기화)"),
+	/** 최대 프레임 선택지 (매개변수: 30 · 60 · 120 · 0(제한 없음) · {4} 이름 · 고른 것은 강조색) */
+	SettingsFrameLimit UMETA(DisplayName = "Settings Frame Limit (최대 프레임 선택지)"),
+	/** 적용하지 않은 변경 안내 ({4} · 바뀐 것이 없으면 빈칸) */
+	SettingsPendingNote UMETA(DisplayName = "Settings Pending Note (적용 전 변경 안내)"),
+	/** 이 탭 기본값 복원이 바꾸는 것 ({4}) */
+	SettingsResetNote UMETA(DisplayName = "Settings Reset Note (기본값 복원 안내)"),
+	/** 화면 변경 확인 ({0} 남은 초 · {4} '이 설정을 유지할까요? N초 뒤 이전 설정으로 돌아갑니다') */
+	SettingsConfirm UMETA(DisplayName = "Settings Confirm (화면 변경 확인)"),
+	/** 게임 종료 확인 ({4} '게임을 종료할까요?' / 저장 실패 안내) */
+	SettingsQuit UMETA(DisplayName = "Settings Quit (게임 종료 확인)"),
+	/** 설정 창에서 방금 한 일 ({4}) */
+	SettingsFeedback UMETA(DisplayName = "Settings Feedback (설정 결과 안내)")
 };
 
 /** 반복 목록의 출처 · 줄 수가 게임 상태에 따라 바뀌는 목록 */
@@ -201,7 +229,17 @@ enum class ECozyUiListSource : uint8
 	/** 시설 한 줄 안에서: 조건 시설들 (줄 ID = 시설 정의 ID · '조건 시설로 이동' 버튼에 씀) */
 	UpgradeConditionTargets UMETA(DisplayName = "Upgrade Condition Targets (조건 시설)"),
 	/** 고른 시설의 메뉴 버튼 (시설 정의의 기능 조합에서 · 줄 ID = Info · Nagaya · Processing · Sales · Upgrade · Shrine · FieldManagement · Resident) */
-	FacilityMenuItems UMETA(DisplayName = "Facility Menu Items (시설 메뉴 버튼)")
+	FacilityMenuItems UMETA(DisplayName = "Facility Menu Items (시설 메뉴 버튼)"),
+	/** 설정 창: 사운드 탭이면 한 줄 · 아니면 0줄 */
+	SettingsSoundPage UMETA(DisplayName = "Settings Sound Page (사운드 탭 · 고른 탭일 때만 한 줄)"),
+	/** 설정 창: 화면 탭이면 한 줄 · 아니면 0줄 */
+	SettingsDisplayPage UMETA(DisplayName = "Settings Display Page (화면 탭 · 고른 탭일 때만 한 줄)"),
+	/** 화면 변경 확인 중이면 한 줄 · 아니면 0줄 */
+	SettingsConfirm UMETA(DisplayName = "Settings Confirm (화면 변경 확인 · 확인 중일 때만 한 줄)"),
+	/** 게임 종료를 묻는 중이면 한 줄 · 아니면 0줄 */
+	SettingsQuitAsk UMETA(DisplayName = "Settings Quit Ask (게임 종료 확인 · 묻는 중일 때만 한 줄)"),
+	/** 종료 전 저장에 실패했으면 한 줄 · 아니면 0줄 */
+	SettingsQuitFailed UMETA(DisplayName = "Settings Quit Failed (저장 실패 · 실패했을 때만 한 줄)")
 };
 
 /** 배경 안쪽 여백 */
@@ -310,7 +348,39 @@ enum class ECozyUiAction : uint8
 	/** 상세 페이지에서 시설 목록으로 돌아가기 */
 	BackUpgradeList UMETA(DisplayName = "Back Upgrade List (시설 목록으로)"),
 	/** 후신소 업그레이드 창을 열어 이 창 시설의 상세를 바로 보여 줌 (예: 신사 창) · 업그레이드 시작은 그 창에서 */
-	OpenUpgradeForWindow UMETA(DisplayName = "Open Upgrade For Window (이 시설 업그레이드 보기)")
+	OpenUpgradeForWindow UMETA(DisplayName = "Open Upgrade For Window (이 시설 업그레이드 보기)"),
+	/** 설정 창 열기/닫기 (사운드 · 화면 · 게임 종료) */
+	OpenSettings UMETA(DisplayName = "Open Settings (설정 창)"),
+	/** 설정 탭 바꾸기 (Action Param: Sound · Display) */
+	SettingsTab UMETA(DisplayName = "Settings Tab (설정 탭 바꾸기)"),
+	/** 음량 (슬라이더 전용 · Action Param: Master · Music · Sfx · 움직이면 바로 들림 · 적용을 눌러야 저장) */
+	SetVolume UMETA(DisplayName = "Set Volume (음량 · 슬라이더)"),
+	/** 화면 모드 고르기 (Action Param: Fullscreen · Borderless · Windowed) */
+	SetWindowMode UMETA(DisplayName = "Set Window Mode (화면 모드 고르기)"),
+	/** 해상도 이전 (지원 목록에서 · 테두리 없는 창이면 꺼짐) */
+	ResolutionPrev UMETA(DisplayName = "Resolution Prev (해상도 이전)"),
+	/** 해상도 다음 */
+	ResolutionNext UMETA(DisplayName = "Resolution Next (해상도 다음)"),
+	/** 수직 동기화 켜기/끄기 */
+	ToggleVSync UMETA(DisplayName = "Toggle VSync (수직 동기화)"),
+	/** 최대 프레임 고르기 (Action Param: 30 · 60 · 120 · 0 = 제한 없음) */
+	SetFrameLimit UMETA(DisplayName = "Set Frame Limit (최대 프레임 고르기)"),
+	/** 이 탭의 변경 적용 · 저장 (화면 모드·해상도가 바뀌면 유지 확인) */
+	ApplySettings UMETA(DisplayName = "Apply Settings (적용)"),
+	/** 이 탭의 적용 전 변경 취소 (저장된 값으로) */
+	RevertSettings UMETA(DisplayName = "Revert Settings (변경 취소)"),
+	/** 이 탭 기본값으로 (적용을 눌러야 저장 · 게임 진행은 그대로) */
+	ResetSettingsTab UMETA(DisplayName = "Reset Settings Tab (이 탭 기본값 복원)"),
+	/** 바꾼 화면 설정 유지 */
+	KeepDisplay UMETA(DisplayName = "Keep Display (화면 설정 유지)"),
+	/** 바꾼 화면 설정 되돌리기 (이전 설정으로) */
+	UndoDisplay UMETA(DisplayName = "Undo Display (화면 설정 되돌리기)"),
+	/** 게임 종료 묻기 */
+	AskQuit UMETA(DisplayName = "Ask Quit (게임 종료 묻기)"),
+	/** 게임 종료 취소 */
+	CancelQuit UMETA(DisplayName = "Cancel Quit (종료 취소)"),
+	/** 저장 후 게임 종료 (저장에 실패하면 종료하지 않고 안내 · 같은 동작으로 다시 시도) */
+	ConfirmQuit UMETA(DisplayName = "Confirm Quit (저장 후 종료)")
 };
 
 /** 미리보기 상태 · 실제 값 대신 보여 줄 가짜 상태 */
@@ -474,7 +544,9 @@ enum class ECozyUiElementKind : uint8
 	/** 정보 패널 (배경 + 안쪽 영역 · 다른 요소를 담음) */
 	Panel UMETA(DisplayName = "Panel (정보 패널)"),
 	/** 반복 목록 (목록 출처의 줄마다 '한 줄 영역'의 요소들을 만듦 · 예: 창고 재료 목록) */
-	List UMETA(DisplayName = "List (반복 목록)")
+	List UMETA(DisplayName = "List (반복 목록)"),
+	/** 슬라이더 (값 = 비율 · 움직이면 클릭 동작에 비율을 넘김 · 예: 음량) */
+	Slider UMETA(DisplayName = "Slider (슬라이더)")
 };
 
 /** 이미지를 정해진 칸에 넣는 방법 · 이미지 비율이 바뀌어도 칸 크기는 그대로 */
