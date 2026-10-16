@@ -576,6 +576,14 @@ struct FCozyUiAreaLayout
 	/** 영역 안쪽 여백 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "영역 (Area)", meta = (DisplayName = "Padding (안쪽 여백)"))
 	FMargin Padding = FMargin(0.f);
+
+	/** 세로 영역만: 창이 화면보다 길어지면 이 영역만 스크롤 (창 높이는 HUD 아래 화면 높이에 맞춤) · 고정 요소는 스크롤 밖 아래에 항상 보임 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "영역 (Area)", meta = (DisplayName = "Scroll When Tall (넘치면 이 영역만 스크롤)"))
+	bool bScrollWhenTall = false;
+
+	/** 스크롤을 켠 영역에서 스크롤 밖 아래에 고정할 요소 Id (닫기 · 수령처럼 늘 보여야 하는 버튼 줄) · Order 순서대로 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "영역 (Area)", meta = (DisplayName = "Pinned Elements (항상 보이는 아래 요소)", EditCondition = "bScrollWhenTall"))
+	TArray<FName> PinnedElements;
 };
 
 /**

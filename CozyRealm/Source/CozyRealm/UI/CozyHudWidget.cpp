@@ -29,6 +29,10 @@
 
 namespace CozyHud
 {
+	/** 위쪽 HUD 줄(칩 · 시계 · 창고·주민·배치·메뉴 버튼)이 차지하는 높이 (화면 단위) · 창 덮개 위 여백 · 배치 패널 위치와 같은 값 */
+	constexpr float HudTopSafe = 100.f;
+	/** 시설 메뉴를 화면 가장자리에서 띄우는 거리 (화면 단위) */
+	constexpr float MenuEdgeMargin = 12.f;
 	const FLinearColor PanelColor(0.05f, 0.05f, 0.08f, 0.75f);
 	const FLinearColor OverlayColor(0.f, 0.f, 0.f, 0.7f);
 	const FLinearColor WindowColor(0.12f, 0.11f, 0.14f, 0.97f);
@@ -322,6 +326,15 @@ void UCozyHudWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		{
 			WindowScreenSize->SetMaxDesiredHeight(MaxHeight);
 		}
+		// 화면 안 'Scroll When Tall' 영역이 이 높이에 맞춰 줄어든다 → 아래 고정 버튼 줄이 늘 보임
+		// (디자이너에서 창을 띄워 둔 만큼은 영역이 실제 그려진 위치로 한 번 더 맞춤 · UCozyUiArea::NativeTick)
+		if (MyGeometry.GetLocalSize().Y > 1.f)
+		{
+			if (UCozyUiScreen* OpenScreen = GetWindowScreen(WindowKind))
+			{
+				OpenScreen->MaxScreenHeight = MaxHeight;
+			}
+		}
 	}
 
 	if (DebugSize)
@@ -353,6 +366,15 @@ void UCozyHudWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		FVector2D ScreenPosition;
 		if (UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(GetOwningPlayer(), IconFacility->GetIconAnchorLocation(), ScreenPosition, false))
 		{
+			// 메뉴(아래 가운데 기준)가 화면 가장자리 밖이나 위쪽 HUD 줄(칩 · 시계 · 버튼)로 넘어가지 않게 화면 안으로 당김
+			const FVector2D View = MyGeometry.GetLocalSize();
+			const FVector2D Menu = IconBox->GetDesiredSize();
+			if (View.X > 1.f && Menu.X > 1.f)
+			{
+				const float HalfWidth = Menu.X * 0.5f + CozyHud::MenuEdgeMargin;
+				ScreenPosition.X = View.X > HalfWidth * 2.f ? FMath::Clamp(ScreenPosition.X, HalfWidth, View.X - HalfWidth) : View.X * 0.5f;
+				ScreenPosition.Y = FMath::Clamp(ScreenPosition.Y, CozyHud::HudTopSafe + Menu.Y, FMath::Max(CozyHud::HudTopSafe + Menu.Y, View.Y - CozyHud::MenuEdgeMargin));
+			}
 			IconSlot->SetPosition(ScreenPosition);
 		}
 	}
