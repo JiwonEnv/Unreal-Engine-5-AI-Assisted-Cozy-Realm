@@ -4,6 +4,7 @@
 #include "Engine/DataAsset.h"
 #include "Engine/DeveloperSettings.h"
 #include "UI/Kit/CozyUiTypes.h"
+#include "UI/Kit/CozyUiScale.h"
 #include "CozyUiTheme.generated.h"
 
 class UCozyUiTheme;
@@ -143,6 +144,15 @@ public:
 	 */
 	UPROPERTY(Config, EditAnywhere, Category = "2 화면 (Screens)", meta = (DisplayName = "Window Screens (창별 화면)"))
 	TMap<FName, TSoftClassPtr<UCozyUiScreen>> WindowScreens;
+
+	/**
+	 *  화면 크기별 UI 배율 (글자 · 버튼 · 창이 함께 커지고 작아짐).
+	 *  화면의 짧은 쪽(보통 세로) 픽셀 → 배율 · 점 사이는 직선으로 이음 · 목록 밖은 끝 점 비율로 늘이거나 줄임.
+	 *  기본: 720 → 0.78 (1280×720에서 덜 작아지게 · 엔진 기본은 0.67 · 0.8은 HUD 위쪽 줄이 겹쳐서 0.78) · 1080 → 1.0 (기준) · 2160 → 2.0
+	 *  적용: Config/DefaultEngine.ini [/Script/Engine.UserInterfaceSettings] UIScaleRule=Custom · CustomScalingRuleClass=CozyDpiScalingRule
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "3 화면 배율 (UI Scale)", meta = (DisplayName = "Scale Points (화면 크기별 UI 배율)", TitleProperty = "ShortSide"))
+	TArray<FCozyUiScalePoint> ScalePoints = { {720, 0.78f}, {1080, 1.f}, {2160, 2.f} };
 
 	static const UCozyUiSettings* Get() { return GetDefault<UCozyUiSettings>(); }
 	static UCozyUiTheme* LoadDefaultTheme();
