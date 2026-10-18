@@ -1,0 +1,119 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Character.h"
+#include "Hero/CozyHeroSettings.h"
+#include "CozyHeroCharacter.generated.h"
+
+class UStaticMeshComponent;
+class UTextRenderComponent;
+class UMaterialInstanceDynamic;
+
+/** 회색 도형 SD 인형 모양 (몸통 원기둥 + 머리 구 + 앞쪽 표시) · 주인공과 비교용 인형이 같이 씀 */
+USTRUCT()
+struct FCozyHeroBody
+{
+	GENERATED_BODY()
+
+	UPROPERTY() TObjectPtr<UStaticMeshComponent> Body;
+	UPROPERTY() TObjectPtr<UStaticMeshComponent> Head;
+	UPROPERTY() TObjectPtr<UStaticMeshComponent> Nose;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> BodyMaterial;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> HeadMaterial;
+
+	/** 액터 생성자에서 부품을 만듦 */
+	void Create(AActor* Owner, USceneComponent* Parent);
+	/** 키 · 비율 · 색 적용 · BaseZ = 부모 기준 발바닥 높이 */
+	void Apply(const FCozyHeroConfig& Config, float Height, float BaseZ);
+};
+
+/**
+ *  주인공 (4주차 기능 1 · 회색 도형 · 5주차 주인공 3D 에셋 전까지).
+ *  WASD(카메라 방향 기준) · 오른쪽 클릭 땅 이동(칸 격자 길찾기로 시설을 돌아감) · E 상호작용 · 조작이 없으면 산책.
+ *  플레이어 컨트롤러는 카메라를 조종하고, 이 액터는 컨트롤러 없이 스스로 움직인다.
+ */
+UCLASS()
+class ACozyHeroCharacter : public ACharacter
+{
+	GENERATED_BODY()
+
+public:
+
+	ACozyHeroCharacter();
+
+	void SetSettings(UCozyHeroSettings* InSettings);
+	const FCozyHeroConfig& GetConfig() const { return Config; }
+
+	/** 키보드 이동 방향 (월드 · 길이 0~1) · 매 프레임 컨트롤러가 넣음 · 0이면 멈춤 */
+	void SetKeyboardInput(const FVector& WorldDirection, bool bRun);
+	/** 오른쪽 클릭 이동: 칸 격자로 길을 찾아 감 · 갈 수 없으면 false */
+	bool MoveToLocation(const FVector& Target);
+	/** 플레이어가 조작함 → 산책 대기 시간 처음부터 */
+	void NotifyPlayerInput();
+	/** 배치 모드 등에서 멈춰 세움 (산책도 안 함) */
+	void SetFrozen(bool bFreeze);
+
+	/** E: 상호작용 거리 안의 가장 가까운 시설 (없으면 빈 ID) */
+	FGuid FindInteractFacility() const;
+
+protected:
+
+	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void Tick(float DeltaSeconds) override;
+
+private:
+
+	void ApplyConfig();
+	void HandleSettingsChanged(const UCozyHeroSettings* Changed);
+	void SpawnCompareDolls();
+	void DestroyCompareDolls();
+
+	/** 칸 격자 A* (8방향 · 모서리 끼어 지나가기 없음) · 결과는 월드 경유점 */
+	bool FindPath(FIntPoint Start, FIntPoint Goal, TArray<FVector>& OutPoints) const;
+	/** 걸을 수 있는 칸 중 Cell에서 가장 가까운 칸 */
+	bool FindNearestWalkable(FIntPoint Cell, FIntPoint& OutCell) const;
+	void StartWander();
+	void FollowPath(float SpeedScale);
+	void KeepInsideEstate();
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCozyHeroSettings> Settings;
+
+	UPROPERTY(VisibleAnywhere)
+	FCozyHeroBody Shape;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<AActor>> CompareDolls;
+
+	FCozyHeroConfig Config;
+	FDelegateHandle SettingsChangedHandle;
+
+	FVector KeyboardDirection = FVector::ZeroVector;
+	bool bKeyboardRun = false;
+	TArray<FVector> PathPoints;
+	bool bWandering = false;
+	bool bFrozen = false;
+	double LastInputTime = 0.0;
+	double WanderResumeTime = 0.0;
+};
+
+/** 비교용 인형 (크기 기준 시험 · 움직이지 않음 · 머리 위에 키 숫자) */
+UCLASS(NotPlaceable)
+class ACozyScaleDoll : public AActor
+{
+	GENERATED_BODY()
+
+public:
+
+	ACozyScaleDoll();
+	void Setup(const FCozyHeroConfig& Config, float Height);
+
+private:
+
+	UPROPERTY(VisibleAnywhere)
+	FCozyHeroBody Shape;
+
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UTextRenderComponent> Label;
+};

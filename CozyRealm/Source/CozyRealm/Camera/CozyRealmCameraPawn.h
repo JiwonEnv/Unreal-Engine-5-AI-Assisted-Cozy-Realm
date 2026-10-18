@@ -46,6 +46,13 @@ public:
 	/** 휠 버튼 드래그 회전 (마우스 이동 픽셀) */
 	void RotateByPixels(float DeltaX);
 
+	/** 따라갈 대상 (주인공) · 정하는 순간 그 자리로 바로 옮김 · nullptr이면 따라가지 않음 */
+	void SetFollowTarget(AActor* Target);
+	/** 지금 카메라가 바라보는 방향 (도 · WASD 방향 계산용) */
+	float GetCurrentYaw() const { return CurrentYaw; }
+
+	virtual void Tick(float DeltaSeconds) override;
+
 protected:
 
 	virtual void OnConstruction(const FTransform& Transform) override;
@@ -64,6 +71,8 @@ private:
 	/** 플레이 중 줌·회전 값 (설정 에셋은 바꾸지 않음) */
 	float CurrentDistance = 8500.f;
 	float CurrentYaw = 45.f;
+
+	TWeakObjectPtr<AActor> FollowTarget;
 
 	/** Settings asset the change delegate is currently bound to */
 	TWeakObjectPtr<UCozyRealmCameraSettings> BoundSettings;

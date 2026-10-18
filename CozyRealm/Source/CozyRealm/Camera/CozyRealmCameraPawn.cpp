@@ -5,7 +5,8 @@
 
 ACozyRealmCameraPawn::ACozyRealmCameraPawn()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	// 주인공 따라가기 (따라갈 대상이 없으면 하는 일 없음)
+	PrimaryActorTick.bCanEverTick = true;
 
 	// Pawns placed in a level get an AI controller by default, which would stop the player from possessing this camera
 	AutoPossessAI = EAutoPossessAI::Disabled;
@@ -53,6 +54,30 @@ void ACozyRealmCameraPawn::RotateByPixels(float DeltaX)
 	const FCozyRealmCameraConfig Config = Settings ? Settings->Config : FCozyRealmCameraConfig();
 	CurrentYaw = FRotator::NormalizeAxis(CurrentYaw + DeltaX * Config.RotateDegreesPerPixel);
 	CameraBoom->SetWorldRotation(FRotator(Config.Pitch, CurrentYaw, 0.f));
+}
+
+void ACozyRealmCameraPawn::SetFollowTarget(AActor* Target)
+{
+	FollowTarget = Target;
+	const FCozyRealmCameraConfig Config = Settings ? Settings->Config : FCozyRealmCameraConfig();
+	if (Target && Config.FollowSpeed > 0.f)
+	{
+		SetActorLocation(FVector(Target->GetActorLocation().X, Target->GetActorLocation().Y, Config.FocusLocation.Z));
+	}
+}
+
+void ACozyRealmCameraPawn::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	const AActor* Target = FollowTarget.Get();
+	const FCozyRealmCameraConfig Config = Settings ? Settings->Config : FCozyRealmCameraConfig();
+	if (!Target || Config.FollowSpeed <= 0.f)
+	{
+		return;
+	}
+	// 바라보는 지점이 주인공 발밑을 부드럽게 따라감 (높이는 설정의 바라보는 지점 그대로)
+	const FVector Want(Target->GetActorLocation().X, Target->GetActorLocation().Y, Config.FocusLocation.Z);
+	SetActorLocation(FMath::VInterpTo(GetActorLocation(), Want, DeltaSeconds, Config.FollowSpeed));
 }
 
 void ACozyRealmCameraPawn::ApplyCameraConfig(const FCozyRealmCameraConfig& Config)

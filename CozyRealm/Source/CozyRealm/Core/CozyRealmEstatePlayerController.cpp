@@ -5,6 +5,8 @@
 #include "Settings/CozySettingsSubsystem.h"
 #include "EngineUtils.h"
 #include "Camera/CozyRealmCameraPawn.h"
+#include "Hero/CozyHeroCharacter.h"
+#include "Hero/CozyHeroSettings.h"
 #include "CozyRealm.h"
 
 ACozyRealmEstatePlayerController::ACozyRealmEstatePlayerController()
@@ -42,6 +44,122 @@ void ACozyRealmEstatePlayerController::BeginPlay()
 		{
 			Settings->ApplySavedAudio(this);
 		}
+		SpawnHero();
+	}
+}
+
+void ACozyRealmEstatePlayerController::SpawnHero()
+{
+	UCozyHeroSettings* HeroSettings = UCozyHeroProjectSettings::Get()->HeroSettings.LoadSynchronous();
+	const UCozyEstateSubsystem* Estate = GetWorld()->GetSubsystem<UCozyEstateSubsystem>();
+	if (!HeroSettings || !Estate)
+	{
+		UE_LOG(LogCozyRealm, Log, TEXT("[주인공] 프로젝트 설정 Cozy Hero에 설정 에셋이 없어 주인공을 만들지 않음"));
+		return;
+	}
+	// 영지 가운데 칸 (시설이 덮고 있으면 주인공이 가장 가까운 빈 칸으로 스스로 옮겨 감)
+	const FIntPoint Center(Estate->GetGridSize().X / 2, Estate->GetGridSize().Y / 2);
+	const FVector Location = Estate->GetCellCenter(Center) + FVector(0.f, 0.f, HeroSettings->Config.Height * 0.5f + 5.f);
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	Hero = GetWorld()->SpawnActor<ACozyHeroCharacter>(Location, FRotator(0.f, 225.f, 0.f), Params);
+	if (!Hero)
+	{
+		return;
+	}
+	Hero->SetSettings(HeroSettings);
+	if (ACozyRealmCameraPawn* CameraPawn = Cast<ACozyRealmCameraPawn>(GetPawn()))
+	{
+		CameraPawn->SetFollowTarget(Hero);
+	}
+}
+
+ACozyFacilityActor* ACozyRealmEstatePlayerController::FindFacilityActor(const FGuid& FacilityId) const
+{
+	for (TActorIterator<ACozyFacilityActor> It(GetWorld()); FacilityId.IsValid() && It; ++It)
+	{
+		if (It->GetFacilityId() == FacilityId)
+		{
+			return *It;
+		}
+	}
+	return nullptr;
+}
+
+void ACozyRealmEstatePlayerController::TickHero(bool bCompact)
+{
+	if (!Hero)
+	{
+		return;
+	}
+	// 조작이 있으면 산책 대기 시간을 처음부터 (키·마우스 버튼·휠)
+	static const FKey ActivityKeys[] = { EKeys::LeftMouseButton, EKeys::RightMouseButton, EKeys::MiddleMouseButton, EKeys::MouseScrollUp, EKeys::MouseScrollDown,
+		EKeys::E, EKeys::SpaceBar, EKeys::Tab, EKeys::I, EKeys::B, EKeys::M, EKeys::F1, EKeys::Escape };
+	for (const FKey& Key : ActivityKeys)
+	{
+		if (WasInputKeyJustPressed(Key))
+		{
+			Hero->NotifyPlayerInput();
+			break;
+		}
+	}
+
+	const bool bWindowOpen = Hud && Hud->IsWindowOpen();
+	const bool bCanMove = !bPlacementMode && !bWindowOpen;
+
+	// WASD: 카메라가 바라보는 방향 기준 (W = 화면 위쪽)
+	FVector2D Input(0.f, 0.f);
+	if (bCanMove)
+	{
+		Input.X = (IsInputKeyDown(EKeys::W) ? 1.f : 0.f) - (IsInputKeyDown(EKeys::S) ? 1.f : 0.f);
+		Input.Y = (IsInputKeyDown(EKeys::D) ? 1.f : 0.f) - (IsInputKeyDown(EKeys::A) ? 1.f : 0.f);
+	}
+	const ACozyRealmCameraPawn* CameraPawn = Cast<ACozyRealmCameraPawn>(GetPawn());
+	const FRotator Yaw(0.f, CameraPawn ? CameraPawn->GetCurrentYaw() : 45.f, 0.f);
+	const FVector Direction = Yaw.RotateVector(FVector::ForwardVector) * Input.X + Yaw.RotateVector(FVector::RightVector) * Input.Y;
+	Hero->SetKeyboardInput(Direction.GetSafeNormal(), IsInputKeyDown(EKeys::LeftShift) || IsInputKeyDown(EKeys::RightShift));
+
+	// 오른쪽 클릭: 시설이면 이동하지 않고 메뉴 · 땅이면 그 자리로 걸어감 (🙋 2026-10-18)
+	if (bCanMove && !bCompact && WasInputKeyJustPressed(EKeys::RightMouseButton))
+	{
+		FHitResult Hit;
+		if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))
+		{
+			if (ACozyFacilityActor* Facility = Cast<ACozyFacilityActor>(Hit.GetActor()))
+			{
+				UE_LOG(LogCozyRealm, Log, TEXT("[주인공] 오른쪽 클릭 시설 → 메뉴 (이동 안 함): %s"), *Facility->GetName());
+				SelectFacility(Facility);
+				return;
+			}
+		}
+		const UCozyEstateSubsystem* Estate = GetWorld()->GetSubsystem<UCozyEstateSubsystem>();
+		FVector RayOrigin;
+		FVector RayDirection;
+		if (Estate && DeprojectMousePositionToWorld(RayOrigin, RayDirection) && !FMath::IsNearlyZero(RayDirection.Z))
+		{
+			const FVector Ground = RayOrigin + RayDirection * ((Estate->GetGroundZ() - RayOrigin.Z) / RayDirection.Z);
+			const bool bMoving = Hero->MoveToLocation(Ground);
+			UE_LOG(LogCozyRealm, Log, TEXT("[주인공] 오른쪽 클릭 땅 → 이동 %s (%.0f, %.0f)"), bMoving ? TEXT("시작") : TEXT("불가"), Ground.X, Ground.Y);
+		}
+	}
+
+	// E: 상호작용 거리 안의 가장 가까운 시설 메뉴
+	if (WasInputKeyJustPressed(EKeys::E) && (bPlacementMode || bWindowOpen || bCompact))
+	{
+		UE_LOG(LogCozyRealm, Log, TEXT("[주인공] E 무시: %s"), bPlacementMode ? TEXT("배치 모드") : bWindowOpen ? TEXT("창이 열려 있음") : TEXT("작은 창 모드"));
+	}
+	else if (WasInputKeyJustPressed(EKeys::E))
+	{
+		if (ACozyFacilityActor* Facility = FindFacilityActor(Hero->FindInteractFacility()))
+		{
+			UE_LOG(LogCozyRealm, Log, TEXT("[주인공] E 상호작용 → %s"), *Facility->GetName());
+			SelectFacility(Facility);
+		}
+		else if (Hud)
+		{
+			UE_LOG(LogCozyRealm, Log, TEXT("[주인공] E: 상호작용 거리 안에 시설 없음"));
+			Hud->ShowToast(NSLOCTEXT("CozyRealm", "HeroNoFacility", "가까운 시설이 없습니다 (시설 옆으로 가서 E)"));
+		}
 	}
 }
 
@@ -64,6 +182,7 @@ void ACozyRealmEstatePlayerController::PlayerTick(float DeltaTime)
 	{
 		HandleWorldClick();
 	}
+	TickHero(bCompact);
 	if (WasInputKeyJustPressed(EKeys::F1) && Hud && !Hud->IsCompactMode())
 	{
 		Hud->ToggleDebugPanel();
@@ -225,6 +344,11 @@ void ACozyRealmEstatePlayerController::SetPlacementMode(bool bEnable)
 	}
 	bPlacementMode = bEnable;
 	bDraggingPlacement = false;
+	if (Hero)
+	{
+		// 배치 중에는 주인공을 세워 둠 (산책도 안 함) · 끝나면 시설에 덮였을 때 빈 칸으로 옮겨 감
+		Hero->SetFrozen(bEnable);
+	}
 	ClearSelection();
 	if (Hud)
 	{
