@@ -71,6 +71,11 @@ public:
 	FGuid ContextTarget;
 	/** 업그레이드 상세 페이지에서 고른 시설 · 저장 데이터와 분리된 화면 상태 */
 	FGuid SelectedUpgradeFacility;
+	/** 작은 창 모드 (화면 설정의 Compact Elements만 보임 · HUD가 정함) */
+	void SetCompact(bool bEnable);
+	bool IsCompact() const { return bCompact; }
+	/** 이 요소가 지금 보이는가 (작은 창 모드 규칙 · 화면 설정의 Visible과 별개) */
+	bool IsElementShown(FName ElementId) const;
 	/** 창으로 띄울 때 이 화면이 차지할 수 있는 높이 (화면 단위 · HUD가 정함 · 0이면 제한 없음) → 'Scroll When Tall' 영역이 이 안에 맞춤 */
 	float MaxScreenHeight = 0.f;
 	FCozyUiValueResult GetValue(ECozyUiValue Value, FName Param) const;
@@ -112,4 +117,5 @@ private:
 	bool bRefreshPending = false;
 	/** 마지막으로 반영한 설정 창 상태 번호 (탭 · 확인 창 · 시간 초과 복원이 바뀌면 다시 그림) */
 	int32 SeenSettingsRevision = -1;
+	bool bCompact = false;
 };

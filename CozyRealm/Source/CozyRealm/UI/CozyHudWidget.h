@@ -89,6 +89,9 @@ public:
 	bool IsSettingsOpen() const { return WindowKind == ECozyWindowKind::Settings; }
 	/** 설정 창 열기 · 열려 있으면 닫기 (HUD 설정 버튼) */
 	void ToggleSettingsWindow();
+	/** 작은 창 모드: 간단한 HUD만 (시계 · 전부 수확 · 크게 보기) · 열린 창 · 시설 메뉴 · 이름표 · 디버그 창 숨김 */
+	void SetCompactMode(bool bEnable);
+	bool IsCompactMode() const { return bCompactMode; }
 	/** 배치 모드 안내·보관함 패널과 미리보기 옆 버튼 (D45) */
 	void SetPlacementMode(bool bEnable);
 
@@ -271,6 +274,7 @@ private:
 	TObjectPtr<class USizeBox> WindowScreenSize;
 	UPROPERTY(Transient)
 	TObjectPtr<class UScrollBox> WindowScreenScroll;
+	bool bCompactMode = false;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> ToastText;

@@ -9,6 +9,20 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Sound/SoundClass.h"
 #include "Sound/SoundMix.h"
+#include "Core/CozyRealmEstatePlayerController.h"
+#include "UI/CozyHudWidget.h"
+#include "Engine/GameViewportClient.h"
+#include "UnrealEngine.h"
+#include "Widgets/SWindow.h"
+#include "Framework/Application/SlateApplication.h"
+#if WITH_EDITOR
+#include "Framework/Docking/TabManager.h"
+#endif
+#if PLATFORM_WINDOWS
+#include "Windows/AllowWindowsPlatformTypes.h"
+#include <windows.h>
+#include "Windows/HideWindowsPlatformTypes.h"
+#endif
 
 #define LOCTEXT_NAMESPACE "CozySettings"
 
@@ -40,12 +54,12 @@ UCozySettingsSubsystem* UCozySettingsSubsystem::Get(const UObject* WorldContext)
 
 bool UCozySettingsSubsystem::IsSettingsAction(ECozyUiAction Action)
 {
-	return Action >= ECozyUiAction::OpenSettings && Action <= ECozyUiAction::ConfirmQuit;
+	return Action >= ECozyUiAction::OpenSettings && Action <= ECozyUiAction::ToggleCompactTop;
 }
 
 bool UCozySettingsSubsystem::IsSettingsValue(ECozyUiValue Value)
 {
-	return Value >= ECozyUiValue::SettingsTab && Value <= ECozyUiValue::SettingsFeedback;
+	return Value >= ECozyUiValue::SettingsTab && Value <= ECozyUiValue::SettingsCompactTop;
 }
 
 bool UCozySettingsSubsystem::IsSettingsList(ECozyUiListSource Source)
@@ -117,6 +131,13 @@ UCozySettingsSubsystem::FDisplayChoice UCozySettingsSubsystem::ReadAppliedDispla
 		Choice.Resolution = Settings->GetScreenResolution();
 		Choice.bVSync = Settings->IsVSyncEnabled();
 		Choice.FrameLimit = FMath::RoundToInt(Settings->GetFrameRateLimit());
+		Choice.bCompactTop = Settings->bCompactAlwaysOnTop;
+		// 작은 창 모드 중에는 엔진이 창 크기를 해상도 설정에 써 넣으므로, 들어가기 전 값을 보여 줌
+		if (bCompact)
+		{
+			Choice.Mode = SavedMode;
+			Choice.Resolution = SavedResolution;
+		}
 	}
 	return Choice;
 }
@@ -283,7 +304,7 @@ FCozyUiValueResult UCozySettingsSubsystem::GetUiValue(ECozyUiValue Value, FName 
 	case ECozyUiValue::SettingsResetNote:
 		R.Text = Tab == ETab::Sound
 			? LOCTEXT("ResetSound", "'이 탭 기본값 복원' → 전체·배경음·효과음 음량을 모두 100으로 (적용을 눌러야 저장 · 화면 설정과 게임 진행은 그대로)")
-			: FText::Format(LOCTEXT("ResetDisplay", "'이 탭 기본값 복원' → {0} · {1} · 수직 동기화 켬 · 최대 프레임 {2} (적용을 눌러야 저장 · 음량과 게임 진행은 그대로)"),
+			: FText::Format(LOCTEXT("ResetDisplay2", "'이 탭 기본값 복원' → {0} · {1} · 수직 동기화 켬 · 최대 프레임 {2} · 작은 창 항상 위 끔 (적용을 눌러야 저장 · 음량과 게임 진행은 그대로)"),
 				ModeName(CozySettings::DefaultMode), ResolutionName(DesktopResolution), FrameLimitName(CozySettings::DefaultFrameLimit));
 		R.StateColor = ECozyUiColor::InkMuted;
 		break;
@@ -305,6 +326,10 @@ FCozyUiValueResult UCozySettingsSubsystem::GetUiValue(ECozyUiValue Value, FName 
 	case ECozyUiValue::SettingsFeedback:
 		R.Text = Feedback;
 		R.StateColor = ECozyUiColor::InkMuted;
+		break;
+	case ECozyUiValue::SettingsCompactTop:
+		R.Text = PendingDisplay.bCompactTop ? LOCTEXT("CompactTopOn", "켜기") : LOCTEXT("CompactTopOff", "끄기");
+		R.StateColor = PendingDisplay.bCompactTop ? ECozyUiColor::Point : ECozyUiColor::Ink;
 		break;
 	default:
 		R.bValid = false;
@@ -344,6 +369,13 @@ bool UCozySettingsSubsystem::CanRun(ECozyUiAction Action, FName Param, FText& Ou
 	case ECozyUiAction::ConfirmQuit:
 		return QuitState != EQuit::None;
 	case ECozyUiAction::OpenSettings:
+		return true;
+	case ECozyUiAction::ToggleCompactWindow:
+		if (bDialog)
+		{
+			OutReason = LOCTEXT("WhyCompactDialog", "설정 창의 확인을 먼저 닫아 주세요");
+			return false;
+		}
 		return true;
 	default:
 		break;
@@ -445,6 +477,22 @@ bool UCozySettingsSubsystem::Run(ECozyUiAction Action, FName Param, APlayerContr
 	case ECozyUiAction::ResolutionPrev: StepResolution(-1); break;
 	case ECozyUiAction::ResolutionNext: StepResolution(1); break;
 	case ECozyUiAction::ToggleVSync: PendingDisplay.bVSync = !PendingDisplay.bVSync; Touch(); break;
+	case ECozyUiAction::ToggleCompactTop: PendingDisplay.bCompactTop = !PendingDisplay.bCompactTop; Touch(); break;
+	case ECozyUiAction::ToggleCompactWindow:
+	{
+		FText Reason;
+		if (!ToggleCompact(Controller, Reason) && !Reason.IsEmpty())
+		{
+			if (const ACozyRealmEstatePlayerController* Cozy = Cast<ACozyRealmEstatePlayerController>(Controller))
+			{
+				if (UCozyHudWidget* Hud = Cozy->GetHud())
+				{
+					Hud->ShowToast(Reason);
+				}
+			}
+		}
+		break;
+	}
 	case ECozyUiAction::SetFrameLimit: PendingDisplay.FrameLimit = FMath::Max(0, FCString::Atoi(*Param.ToString())); Touch(); break;
 	case ECozyUiAction::ApplySettings: Tab == ETab::Sound ? ApplySound() : ApplyDisplay(); break;
 	case ECozyUiAction::RevertSettings: RevertTab(); break;
@@ -523,6 +571,11 @@ void UCozySettingsSubsystem::ApplyDisplay()
 
 	Settings->SetVSyncEnabled(Want.bVSync);
 	Settings->SetFrameRateLimit(static_cast<float>(Want.FrameLimit));
+	Settings->bCompactAlwaysOnTop = Want.bCompactTop;
+	if (bCompact)
+	{
+		ApplyCompactTopmost(Want.bCompactTop);
+	}
 	Settings->ApplyNonResolutionSettings();
 	if (!bVideoMode)
 	{
@@ -609,8 +662,165 @@ void UCozySettingsSubsystem::ResetTab()
 		PendingDisplay.Resolution = Settings ? Settings->GetDesktopResolution() : PendingDisplay.Resolution;
 		PendingDisplay.bVSync = CozySettings::bDefaultVSync;
 		PendingDisplay.FrameLimit = CozySettings::DefaultFrameLimit;
+		PendingDisplay.bCompactTop = false;
 		Touch(LOCTEXT("ResetDisplayDone", "화면 탭을 기본값으로 바꿨습니다 · '적용'을 눌러야 바뀌고 저장됩니다"));
 	}
+}
+
+// ---------------------------------------------------------------------------
+// 작은 창 모드
+
+TSharedPtr<SWindow> UCozySettingsSubsystem::GetGameWindow(const UWorld* World) const
+{
+	const UGameViewportClient* Viewport = World ? World->GetGameViewport() : nullptr;
+	return Viewport ? Viewport->GetWindow() : nullptr;
+}
+
+bool UCozySettingsSubsystem::ToggleCompact(APlayerController* Controller, FText& OutReason)
+{
+	UWorld* World = Controller ? Controller->GetWorld() : nullptr;
+	UCozyGameUserSettings* Settings = UCozyGameUserSettings::Get();
+	TSharedPtr<SWindow> Window = bCompact ? CompactWindow.Pin() : GetGameWindow(World);
+	if (!World || !Settings || !Window.IsValid())
+	{
+		OutReason = LOCTEXT("CompactNoWindow", "게임 창을 찾지 못해 작은 창으로 바꿀 수 없습니다");
+		return false;
+	}
+#if WITH_EDITOR
+	// 에디터 뷰포트 안에서 플레이 중이면 게임 창이 곧 에디터 창 → 에디터를 줄이지 않음
+	if (GIsEditor && Window == FGlobalTabmanager::Get()->GetRootWindow())
+	{
+		OutReason = LOCTEXT("CompactInViewport", "에디터 뷰포트 안 플레이에서는 작은 창을 쓸 수 없습니다 (새 창으로 플레이하거나 실행 파일에서)");
+		return false;
+	}
+#endif
+	if (HasDialog())
+	{
+		OutReason = LOCTEXT("CompactDialog", "설정 창의 확인을 먼저 닫아 주세요");
+		return false;
+	}
+
+	const bool bEditorWindow = GIsEditor;
+	if (!bCompact)
+	{
+		// 들어가기: 지금 창·화면 설정을 기억 (화면 설정 파일은 바꾸지 않음)
+		SavedMode = Settings->GetFullscreenMode();
+		SavedResolution = Settings->GetScreenResolution();
+		SavedClientSize = FVector2D(Window->GetClientSizeInScreen());
+		SavedPosition = FVector2D(Window->GetPositionInScreen());
+		CompactWindow = Window;
+		bCompact = true;
+		if (!bEditorWindow)
+		{
+			// 전체 화면 · 테두리 없는 창이어도 창 모드 작은 창으로 (r.setres와 같은 방법 · 다음 프레임에 적용)
+			FSystemResolution::RequestResolutionChange(CompactWidth, CompactHeight, EWindowMode::Windowed);
+		}
+		else
+		{
+			Window->Resize(FVector2D(CompactWidth, CompactHeight));
+		}
+		bMoveToCorner = true;
+		CompactMoveFrames = 6;
+		UE_LOG(LogCozyRealm, Log, TEXT("[작은 창] 켬: %dx%d (이전 %s %dx%d · 창 %.0fx%.0f)"), CompactWidth, CompactHeight,
+			*ModeName(SavedMode).ToString(), SavedResolution.X, SavedResolution.Y, SavedClientSize.X, SavedClientSize.Y);
+	}
+	else
+	{
+		// 나오기: 항상 위를 풀고, 화면 설정과 창을 들어가기 전으로
+		ApplyCompactTopmost(false);
+		bCompact = false;
+		RestoreSettingsValues();
+		if (!bEditorWindow)
+		{
+			Settings->ApplyResolutionSettings(false);
+			Settings->ConfirmVideoMode();
+		}
+		else
+		{
+			Window->Resize(SavedClientSize);
+		}
+		bMoveToCorner = false;
+		CompactMoveFrames = SavedMode == EWindowMode::Windowed ? 6 : 0;
+		UE_LOG(LogCozyRealm, Log, TEXT("[작은 창] 끔 → %s %dx%d"), *ModeName(SavedMode).ToString(), SavedResolution.X, SavedResolution.Y);
+	}
+
+	if (const ACozyRealmEstatePlayerController* Cozy = Cast<ACozyRealmEstatePlayerController>(Controller))
+	{
+		if (UCozyHudWidget* Hud = Cozy->GetHud())
+		{
+			Hud->SetCompactMode(bCompact);
+		}
+	}
+	Touch();
+	return true;
+}
+
+void UCozySettingsSubsystem::PlaceCompactWindow()
+{
+	TSharedPtr<SWindow> Window = CompactWindow.Pin();
+	if (!Window.IsValid() || !FSlateApplication::IsInitialized())
+	{
+		return;
+	}
+	if (!bMoveToCorner)
+	{
+		Window->MoveWindowTo(SavedPosition);
+		return;
+	}
+	// 창이 있는 모니터의 작업 영역(작업 표시줄 제외) 오른쪽 아래 구석
+	FDisplayMetrics Metrics;
+	FSlateApplication::Get().GetDisplayMetrics(Metrics);
+	const FVector2D Position = FVector2D(Window->GetPositionInScreen());
+	const FVector2D Size = FVector2D(Window->GetSizeInScreen());
+	const FPlatformRect WorkArea = Metrics.GetMonitorWorkAreaFromPoint(Position + Size * 0.5f);
+	constexpr float Margin = 16.f;
+	Window->MoveWindowTo(FVector2D(WorkArea.Right - Size.X - Margin, WorkArea.Bottom - Size.Y - Margin));
+	if (const UCozyGameUserSettings* Settings = UCozyGameUserSettings::Get())
+	{
+		ApplyCompactTopmost(Settings->bCompactAlwaysOnTop);
+	}
+}
+
+void UCozySettingsSubsystem::ApplyCompactTopmost(bool bTop)
+{
+#if PLATFORM_WINDOWS
+	TSharedPtr<SWindow> Window = CompactWindow.Pin();
+	TSharedPtr<FGenericWindow> Native = Window.IsValid() ? Window->GetNativeWindow() : nullptr;
+	if (HWND Handle = Native.IsValid() ? static_cast<HWND>(Native->GetOSWindowHandle()) : nullptr)
+	{
+		::SetWindowPos(Handle, bTop ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+		UE_LOG(LogCozyRealm, Log, TEXT("[작은 창] 항상 위 %s"), bTop ? TEXT("켬") : TEXT("끔"));
+	}
+#endif
+}
+
+void UCozySettingsSubsystem::RestoreSettingsValues()
+{
+	// 창 모드에서 창 크기를 바꾸면 엔진이 그 크기를 해상도 설정에 써 넣음 → 들어가기 전 값으로 되돌림
+	if (UCozyGameUserSettings* Settings = UCozyGameUserSettings::Get())
+	{
+		if (SavedResolution.X > 0)
+		{
+			Settings->SetScreenResolution(SavedResolution);
+			Settings->SetFullscreenMode(SavedMode);
+		}
+	}
+}
+
+void UCozySettingsSubsystem::Deinitialize()
+{
+	// 작은 창인 채로 끝나도 다음 실행은 원래 화면 설정으로 (작은 창 크기가 설정에 남지 않게)
+	if (bCompact)
+	{
+		ApplyCompactTopmost(false);
+		RestoreSettingsValues();
+		if (UCozyGameUserSettings* Settings = UCozyGameUserSettings::Get())
+		{
+			Settings->ConfirmVideoMode();
+		}
+		bCompact = false;
+	}
+	Super::Deinitialize();
 }
 
 // ---------------------------------------------------------------------------
@@ -657,6 +867,15 @@ void UCozySettingsSubsystem::ApplyAudioToWorld(const UObject* WorldContext, floa
 
 void UCozySettingsSubsystem::Tick(float DeltaTime)
 {
+	// 작은 창 위치: 크기 변경이 적용된 뒤(몇 프레임) 구석으로 · 마지막 프레임에 한 번 더
+	if (CompactMoveFrames > 0)
+	{
+		--CompactMoveFrames;
+		if (CompactMoveFrames == 3 || CompactMoveFrames == 0)
+		{
+			PlaceCompactWindow();
+		}
+	}
 	if (!bConfirmActive)
 	{
 		return;

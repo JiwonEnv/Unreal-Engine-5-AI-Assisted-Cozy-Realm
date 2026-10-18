@@ -12,4 +12,5 @@ void UCozyGameUserSettings::SetToDefaults()
 	MasterVolume = 1.f;
 	MusicVolume = 1.f;
 	SfxVolume = 1.f;
+	bCompactAlwaysOnTop = false;
 }

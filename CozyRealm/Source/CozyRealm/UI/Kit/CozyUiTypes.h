@@ -186,7 +186,9 @@ enum class ECozyUiValue : uint8
 	/** 게임 종료 확인 ({4} '게임을 종료할까요?' / 저장 실패 안내) */
 	SettingsQuit UMETA(DisplayName = "Settings Quit (게임 종료 확인)"),
 	/** 설정 창에서 방금 한 일 ({4}) */
-	SettingsFeedback UMETA(DisplayName = "Settings Feedback (설정 결과 안내)")
+	SettingsFeedback UMETA(DisplayName = "Settings Feedback (설정 결과 안내)"),
+	/** 작은 창을 항상 위에 ({4} '켜기' / '끄기' · 적용 전 값) */
+	SettingsCompactTop UMETA(DisplayName = "Settings Compact On Top (작은 창 항상 위)")
 };
 
 /** 반복 목록의 출처 · 줄 수가 게임 상태에 따라 바뀌는 목록 */
@@ -380,7 +382,11 @@ enum class ECozyUiAction : uint8
 	/** 게임 종료 취소 */
 	CancelQuit UMETA(DisplayName = "Cancel Quit (종료 취소)"),
 	/** 저장 후 게임 종료 (저장에 실패하면 종료하지 않고 안내 · 같은 동작으로 다시 시도) */
-	ConfirmQuit UMETA(DisplayName = "Confirm Quit (저장 후 종료)")
+	ConfirmQuit UMETA(DisplayName = "Confirm Quit (저장 후 종료)"),
+	/** 작은 창 모드 켜기/끄기 (M · 화면 구석의 작은 창 · 원래 크기·화면 설정은 그대로 두었다가 되돌림) */
+	ToggleCompactWindow UMETA(DisplayName = "Toggle Compact Window (작은 창)"),
+	/** 작은 창을 항상 위에 켜기/끄기 (화면 탭 · 적용을 눌러야 저장) */
+	ToggleCompactTop UMETA(DisplayName = "Toggle Compact On Top (작은 창 항상 위)")
 };
 
 /** 미리보기 상태 · 실제 값 대신 보여 줄 가짜 상태 */

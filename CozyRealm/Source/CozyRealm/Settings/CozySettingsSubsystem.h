@@ -52,10 +52,20 @@ public:
 	/** 저장된 음량을 지금 월드에 적용 (게임 시작 · 레벨 시작 때) */
 	void ApplySavedAudio(const UObject* WorldContext);
 
+	/** 작은 창 크기 (게임 화면 · 화면 구석에 붙음) */
+	static constexpr int32 CompactWidth = 640;
+	static constexpr int32 CompactHeight = 360;
+	/** 작은 창 모드 (화면 설정 · GameUserSettings는 바꾸지 않고 창만 바꿨다가 되돌림) */
+	bool IsCompact() const { return bCompact; }
+	/** 작은 창 ↔ 원래 크기 · 바꿨으면 true (할 수 없으면 OutReason) */
+	bool ToggleCompact(APlayerController* Controller, FText& OutReason);
+
+	virtual void Deinitialize() override;
+
 	// FTickableGameObject
 	virtual void Tick(float DeltaTime) override;
 	virtual TStatId GetStatId() const override { RETURN_QUICK_DECLARE_CYCLE_STAT(UCozySettingsSubsystem, STATGROUP_Tickables); }
-	virtual bool IsTickable() const override { return bConfirmActive; }
+	virtual bool IsTickable() const override { return bConfirmActive || CompactMoveFrames > 0; }
 	virtual bool IsTickableWhenPaused() const override { return true; }
 	virtual ETickableTickType GetTickableTickType() const override { return IsTemplate() ? ETickableTickType::Never : ETickableTickType::Conditional; }
 
@@ -70,8 +80,14 @@ private:
 		FIntPoint Resolution = FIntPoint(1280, 720);
 		bool bVSync = false;
 		int32 FrameLimit = 0;
-		bool operator==(const FDisplayChoice& O) const { return Mode == O.Mode && Resolution == O.Resolution && bVSync == O.bVSync && FrameLimit == O.FrameLimit; }
+		bool bCompactTop = false;
+		bool operator==(const FDisplayChoice& O) const { return Mode == O.Mode && Resolution == O.Resolution && bVSync == O.bVSync && FrameLimit == O.FrameLimit && bCompactTop == O.bCompactTop; }
 	};
+
+	TSharedPtr<class SWindow> GetGameWindow(const UWorld* World) const;
+	void PlaceCompactWindow();
+	void ApplyCompactTopmost(bool bTop);
+	void RestoreSettingsValues();
 
 	FDisplayChoice ReadAppliedDisplay() const;
 	void LoadPendingFromSaved();
@@ -109,4 +125,15 @@ private:
 	TWeakObjectPtr<UWorld> MixWorld;
 	/** 화면 변경 확인 · 시간 초과 복원 · 종료에 쓸 월드 (설정 창을 연 월드) */
 	TWeakObjectPtr<UWorld> SettingsWorld;
+
+	// 작은 창 모드: 들어가기 전 상태 (나올 때 그대로 되돌림 · 엔진이 창 크기를 해상도 설정에 써 넣어도 원래 값으로)
+	bool bCompact = false;
+	TWeakPtr<class SWindow> CompactWindow;
+	EWindowMode::Type SavedMode = EWindowMode::Windowed;
+	FIntPoint SavedResolution = FIntPoint::ZeroValue;
+	FVector2D SavedClientSize = FVector2D::ZeroVector;
+	FVector2D SavedPosition = FVector2D::ZeroVector;
+	/** 창 크기가 바뀐 뒤 위치를 맞출 남은 프레임 (해상도 변경은 한두 프레임 늦게 적용됨) */
+	int32 CompactMoveFrames = 0;
+	bool bMoveToCorner = false;
 };

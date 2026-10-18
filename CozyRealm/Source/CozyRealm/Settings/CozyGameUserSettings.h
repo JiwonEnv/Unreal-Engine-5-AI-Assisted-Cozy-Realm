@@ -36,6 +36,10 @@ public:
 	/** 효과음 음량 (0~1) */
 	UPROPERTY(config)
 	float SfxVolume = 1.f;
+
+	/** 작은 창 모드일 때 다른 프로그램 창보다 항상 위에 */
+	UPROPERTY(config)
+	bool bCompactAlwaysOnTop = false;
 };
 
 /**
