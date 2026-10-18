@@ -91,6 +91,25 @@ class Ws:
                 return m['d'].get('responseData', {})
 
 
+def find_window_title(prefix):
+    """지금 떠 있는 언리얼 창 중 제목이 prefix로 시작하는 창의 전체 제목 (없으면 None)"""
+    import ctypes
+    from ctypes import wintypes
+    u = ctypes.windll.user32
+    found = []
+
+    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    def cb(h, _):
+        n = u.GetWindowTextLengthW(h)
+        if n and u.IsWindowVisible(h):
+            b = ctypes.create_unicode_buffer(n + 1); u.GetWindowTextW(h, b, n + 1)
+            if b.value.startswith(prefix):
+                found.append(b.value)
+        return True
+    u.EnumWindows(cb, 0)
+    return found[0] if found else None
+
+
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else 'status'
     ws = Ws()
@@ -107,8 +126,11 @@ def main():
         scenes = [s['sceneName'] for s in ws.req('GetSceneList')['scenes']]
         if SCENE not in scenes:
             ws.req('CreateScene', {'sceneName': SCENE})
-        # 창 지정: '제목:창 클래스:exe' · priority 2 = 실행 파일 이름이 같으면 제목이 달라도 잡음
-        settings = {'window': '%s:UnrealWindow:%s' % (title, exe), 'priority': 2, 'method': 2, 'cursor': False, 'client_area': True}
+        # 창 지정: '제목:창 클래스:exe' · priority 0 = 제목이 같은 창만 (2 = 같은 exe면 아무 창이나 →
+        # PIE가 꺼지면 에디터 본 창을 찍어 버림 · 2026-10-18) · 제목은 지금 떠 있는 창에서 시작 글자로 찾아 정확히 넣음
+        full = find_window_title(title) or title
+        settings = {'window': '%s:UnrealWindow:%s' % (full.replace(':', '#3A'), exe), 'priority': 0, 'method': 2, 'cursor': False, 'client_area': True}
+        title = full
         inputs = [i['inputName'] for i in ws.req('GetInputList')['inputs']]
         if SOURCE in inputs:
             ws.req('SetInputSettings', {'inputName': SOURCE, 'inputSettings': settings, 'overlay': True})

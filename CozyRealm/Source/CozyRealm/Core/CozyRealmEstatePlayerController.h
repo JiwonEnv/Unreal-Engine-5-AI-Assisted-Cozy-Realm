@@ -6,6 +6,7 @@
 
 class UCozyHudWidget;
 class ACozyFacilityActor;
+class ACozyHeroCharacter;
 
 /**
  *  Player controller for the estate.
@@ -62,6 +63,15 @@ private:
 	TObjectPtr<UCozyHudWidget> Hud;
 
 	TWeakObjectPtr<ACozyFacilityActor> SelectedFacility;
+
+	/** 주인공 (4주차 기능 1 · 프로젝트 설정 Cozy Hero에 설정 에셋이 있을 때만) */
+	void SpawnHero();
+	/** WASD(카메라 방향 기준) · Shift 달리기 · 오른쪽 클릭 땅 이동 / 시설 메뉴 · E 상호작용 */
+	void TickHero(bool bCompact);
+	ACozyFacilityActor* FindFacilityActor(const FGuid& FacilityId) const;
+
+	UPROPERTY(Transient)
+	TObjectPtr<ACozyHeroCharacter> Hero;
 
 	/** 배치 모드 입력 (누르고 끌기 · R 회전) */
 	void TickPlacement();

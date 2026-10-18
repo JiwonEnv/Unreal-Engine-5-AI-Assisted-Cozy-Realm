@@ -77,6 +77,13 @@ struct FCozyRealmCameraConfig
 	/** 휠 버튼 드래그 회전: 마우스 1픽셀당 도 · 🤖 테스트 값 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Control", meta=(ClampMin="0.01"))
 	float RotateDegreesPerPixel = 0.25f;
+
+	/**
+	 *  주인공 따라가기 속도 (클수록 바로 따라붙음 · 0이면 따라가지 않고 FocusLocation 고정).
+	 *  🙋 2026-10-18 사용자 결정: 항상 부드럽게 따라감 · 숫자는 🤖 테스트 값
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Control", meta=(DisplayName="Follow Speed (주인공 따라가기 속도)", ClampMin="0.0"))
+	float FollowSpeed = 4.f;
 };
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnCozyRealmCameraSettingsChanged, const class UCozyRealmCameraSettings*);

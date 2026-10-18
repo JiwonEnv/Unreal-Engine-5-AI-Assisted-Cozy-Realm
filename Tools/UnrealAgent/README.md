@@ -165,6 +165,7 @@ python obs_ws.py restore                                                  # setu
 
 - 준비(사용자 1회): OBS → 도구 → WebSocket 서버 설정 → 서버 사용 켬 · **인증 끔** (이 도구는 비밀번호를 다루지 않음). OBS가 꺼져 있으면 `obs64.exe --minimize-to-tray`로 켭니다(작업 폴더 = `C:\Program Files\obs-studio\bin\64bit`).
 - 녹화 파일은 OBS 녹화 폴더(지금 `E:\Project\자료\CozyRealm\Recode`)에 생기므로, 이름을 바꿔 노션 규칙의 녹화 폴더로 옮깁니다. 끝나면 `video_frame.ps1`로 확인.
+- 창 캡처는 **제목이 정확히 같은 창만** 잡습니다(setup이 지금 떠 있는 창에서 전체 제목을 찾아 넣음). 예전 방식(같은 exe면 아무 창)은 PIE가 꺼지면 에디터 본 창을 찍어 버렸습니다(2026-10-18). PIE에서 **Esc는 플레이 종료**이니 시험 중에는 누르지 마세요. PIE를 다시 켰으면 setup을 다시 실행하세요.
 - 패키지 게임 키 입력도 창에 직접 보낼 수 있습니다(PostMessage `WM_KEYDOWN` — 2026-10-18 M 키 확인 · 그때 게임 창은 맨 앞이었음 · 게임 창이 뒤에 있을 때도 먹히는지는 아직 미확인). 마우스 클릭은 아직 실제 입력이 필요합니다.
 
 ### 캡처 확대 — `crop_image.ps1`

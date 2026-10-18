@@ -837,6 +837,59 @@ FIntPoint UCozyEstateSubsystem::WorldToCell(const FVector& WorldLocation) const
 	return FIntPoint(FMath::FloorToInt(Local.X), FMath::FloorToInt(Local.Y));
 }
 
+FVector UCozyEstateSubsystem::GetCellCenter(FIntPoint Cell) const
+{
+	return Config.GridOrigin + FVector((Cell.X + 0.5f) * Config.CellSize, (Cell.Y + 0.5f) * Config.CellSize, 0.f);
+}
+
+bool UCozyEstateSubsystem::IsCellWalkable(FIntPoint Cell) const
+{
+	if (Cell.X < 0 || Cell.Y < 0 || Cell.X >= Config.GridSize.X || Cell.Y >= Config.GridSize.Y)
+	{
+		return false;
+	}
+	for (const FCozyFacilityState& Facility : State.Facilities)
+	{
+		if (Facility.bStored)
+		{
+			continue;
+		}
+		const FIntPoint Size = GetFootprint(Facility.InstanceId, Facility.Rotation);
+		if (Cell.X >= Facility.GridCoord.X && Cell.X < Facility.GridCoord.X + Size.X
+			&& Cell.Y >= Facility.GridCoord.Y && Cell.Y < Facility.GridCoord.Y + Size.Y)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+FGuid UCozyEstateSubsystem::FindNearestFacility(const FVector& Location, float Range) const
+{
+	FGuid Best;
+	float BestDistance = Range;
+	const FVector2D Point(Location.X, Location.Y);
+	for (const FCozyFacilityState& Facility : State.Facilities)
+	{
+		if (Facility.bStored)
+		{
+			continue;
+		}
+		const FIntPoint Size = GetFootprint(Facility.InstanceId, Facility.Rotation);
+		const FVector2D Min(Config.GridOrigin.X + Facility.GridCoord.X * Config.CellSize, Config.GridOrigin.Y + Facility.GridCoord.Y * Config.CellSize);
+		const FVector2D Max = Min + FVector2D(Size.X, Size.Y) * Config.CellSize;
+		// 시설 차지 칸(사각형) 바깥 테두리까지 거리 · 안에 있으면 0
+		const FVector2D Closest(FMath::Clamp(Point.X, Min.X, Max.X), FMath::Clamp(Point.Y, Min.Y, Max.Y));
+		const float Distance = FVector2D::Distance(Point, Closest);
+		if (Distance <= BestDistance)
+		{
+			BestDistance = Distance;
+			Best = Facility.InstanceId;
+		}
+	}
+	return Best;
+}
+
 bool UCozyEstateSubsystem::CanPlaceFacility(const FGuid& FacilityId, FIntPoint Coord, int32 Rotation, FText& OutReason) const
 {
 	const FIntPoint Size = GetFootprint(FacilityId, Rotation);

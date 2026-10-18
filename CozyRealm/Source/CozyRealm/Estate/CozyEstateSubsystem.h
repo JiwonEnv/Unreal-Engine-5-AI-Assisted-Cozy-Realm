@@ -457,6 +457,17 @@ public:
 	/** 영지 바닥 높이 (커서 광선과 만나는 평면) */
 	float GetGroundZ() const { return Config.GridOrigin.Z; }
 
+	// --- 주인공 이동 (4주차 기능 1) ---
+
+	FIntPoint GetGridSize() const { return Config.GridSize; }
+	float GetCellSize() const { return Config.CellSize; }
+	/** 칸 가운데의 월드 위치 (바닥 높이) */
+	FVector GetCellCenter(FIntPoint Cell) const;
+	/** 걸을 수 있는 칸: 영지 안 · 놓인 시설이 차지하지 않음 (보관한 시설은 제외) */
+	bool IsCellWalkable(FIntPoint Cell) const;
+	/** 위치에서 가장 가까운 시설 (시설이 차지한 칸 테두리까지 거리가 Range 이하 · 없으면 빈 ID) */
+	FGuid FindNearestFacility(const FVector& Location, float Range) const;
+
 	// --- 저장 / 불러오기 (2주차 기능 3 · 슬롯 1개 · 자동 저장 1분마다 + 종료 시) ---
 
 	/** 지금 상태를 저장 (Reason은 로그용) */
