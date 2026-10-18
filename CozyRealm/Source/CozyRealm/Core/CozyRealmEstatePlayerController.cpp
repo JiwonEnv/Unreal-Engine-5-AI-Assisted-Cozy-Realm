@@ -2,6 +2,7 @@
 #include "Facilities/CozyFacilityActor.h"
 #include "UI/CozyHudWidget.h"
 #include "Estate/CozyEstateSubsystem.h"
+#include "Settings/CozySettingsSubsystem.h"
 #include "EngineUtils.h"
 #include "Camera/CozyRealmCameraPawn.h"
 #include "CozyRealm.h"
@@ -31,6 +32,15 @@ void ACozyRealmEstatePlayerController::BeginPlay()
 		if (Hud)
 		{
 			Hud->AddToViewport();
+		}
+	}
+
+	// 저장된 음량(설정 창 · GameUserSettings.ini)을 이 레벨에 적용
+	if (IsLocalController())
+	{
+		if (UCozySettingsSubsystem* Settings = UCozySettingsSubsystem::Get(this))
+		{
+			Settings->ApplySavedAudio(this);
 		}
 	}
 }
@@ -117,13 +127,19 @@ void ACozyRealmEstatePlayerController::PlayerTick(float DeltaTime)
 	}
 	else if (WasInputKeyJustPressed(EKeys::Escape) && Hud)
 	{
-		if (Hud->IsWindowOpen())
+		// 설정 창: 화면 변경 확인 · 종료 확인이 떠 있으면 그 확인부터 취소 (화면 변경은 이전 설정으로) · 없으면 창 닫기
+		UCozySettingsSubsystem* Settings = Hud->IsSettingsOpen() ? UCozySettingsSubsystem::Get(this) : nullptr;
+		const bool bCanceledDialog = Settings && Settings->CancelDialog();
+		if (!bCanceledDialog)
 		{
-			Hud->CloseWindow();
-		}
-		else
-		{
-			ClearSelection();
+			if (Hud->IsWindowOpen())
+			{
+				Hud->CloseWindow();
+			}
+			else
+			{
+				ClearSelection();
+			}
 		}
 	}
 }
