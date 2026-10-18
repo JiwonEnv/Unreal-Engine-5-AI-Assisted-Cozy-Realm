@@ -88,6 +88,7 @@ private:
 	void PlaceCompactWindow();
 	void ApplyCompactTopmost(bool bTop);
 	void RestoreSettingsValues();
+	void SaveRestoredSettings();
 
 	FDisplayChoice ReadAppliedDisplay() const;
 	void LoadPendingFromSaved();

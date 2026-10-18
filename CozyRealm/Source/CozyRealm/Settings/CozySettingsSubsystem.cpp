@@ -807,17 +807,25 @@ void UCozySettingsSubsystem::RestoreSettingsValues()
 	}
 }
 
+void UCozySettingsSubsystem::SaveRestoredSettings()
+{
+	// 엔진은 창 크기가 바뀔 때마다 그 크기를 설정 파일에 바로 저장함(UGameEngine::OnViewportResized)
+	// → 작은 창이 된 뒤와 종료 때 들어가기 전 값으로 되돌려 파일에 다시 저장 (갑자기 꺼져도 640×360이 남지 않게)
+	if (UCozyGameUserSettings* Settings = UCozyGameUserSettings::Get())
+	{
+		RestoreSettingsValues();
+		Settings->ConfirmVideoMode();
+		Settings->SaveSettings();
+	}
+}
+
 void UCozySettingsSubsystem::Deinitialize()
 {
 	// 작은 창인 채로 끝나도 다음 실행은 원래 화면 설정으로 (작은 창 크기가 설정에 남지 않게)
 	if (bCompact)
 	{
 		ApplyCompactTopmost(false);
-		RestoreSettingsValues();
-		if (UCozyGameUserSettings* Settings = UCozyGameUserSettings::Get())
-		{
-			Settings->ConfirmVideoMode();
-		}
+		SaveRestoredSettings();
 		bCompact = false;
 	}
 	Super::Deinitialize();
@@ -874,6 +882,10 @@ void UCozySettingsSubsystem::Tick(float DeltaTime)
 		if (CompactMoveFrames == 3 || CompactMoveFrames == 0)
 		{
 			PlaceCompactWindow();
+		}
+		if (CompactMoveFrames == 0 && bCompact)
+		{
+			SaveRestoredSettings();
 		}
 	}
 	if (!bConfirmActive)

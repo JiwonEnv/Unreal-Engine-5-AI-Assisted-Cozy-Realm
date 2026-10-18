@@ -16,6 +16,7 @@ Claude Code·Codex 같은 AI 채팅이 CozyRealm 언리얼 에디터에 연결�
 | 에디터 조작 (PIE·캡처·로그·Live Coding) | 언리얼 MCP 서버 (HTTP) | `mcp_call.py` |
 | 게임 화면 클릭·키 입력 | Windows 입력 (user32.dll) + 보호 기능 | `ue_input.ps1`, `ue_steps.ps1` |
 | 녹화 시작·중지 | Xbox Game Bar (`Win+Alt+R`) + 보호 기능 | `record_toggle.ps1` |
+| 녹화 (창 뒤에 있어도 · 창 크기가 바뀌어도) | OBS WebSocket (인증 끔 · 127.0.0.1:4455) | `obs_ws.py` |
 | 녹화 파일 옮기기·이름 바꾸기 | PowerShell | `save_recording.ps1` |
 | 영상 장면 추출 (녹화 확인) | Windows 기본 WinRT 영상 기능 | `video_frame.ps1` |
 | 캡처 일부 확대 | System.Drawing | `crop_image.ps1` |
@@ -149,6 +150,22 @@ powershell -ExecutionPolicy Bypass -File ue_steps.ps1 -RefWidth 1296 -RefHeight 
 - 좌표는 그 캡처 이미지의 픽셀을 그대로 쓰고, `ue_steps.ps1`에 `-RefWidth`·`-RefHeight`로 캡처 크기를 알려 줍니다.
 - **패키지 게임 녹화:** 2026-10-07에는 Game Bar가 패키지 게임을 녹화하지 못했지만(뒤에 있던 에디터가 찍히거나 파일이 생기지 않음), 2026-10-16에는 패키지 게임 창이 맨 앞일 때 정상으로 녹화됐습니다. 녹화 뒤 `video_frame.ps1`로 게임 화면이 담겼는지 꼭 확인하고, 안 되면 단계별 캡처로 기록하세요.
 - **Game Bar 단축키가 가끔 먹히지 않습니다.** 시작·중지 모두 `동영상\Captures`에 파일이 생겼는지, 중지 뒤 파일 크기가 더 이상 늘지 않는지 확인하세요. 중지가 안 된 채 옮기면 파일이 계속 커지고 장면을 뽑을 수 없습니다.
+
+### OBS 녹화 — `obs_ws.py` (2026-10-18)
+
+Game Bar는 맨 앞 창만 찍고, 창 크기·모드가 바뀌면 녹화가 끊깁니다. OBS '창 캡처'는 게임 창이 다른 창 뒤에 있어도 찍고, 작은 창 ↔ 전체 화면 전환에도 끊기지 않습니다 → 사용자가 PC를 쓰는 동안에도 녹화할 수 있습니다.
+
+```powershell
+python obs_ws.py status                                                   # 연결 · 녹화 중인지 · 녹화 폴더
+python obs_ws.py setup "CozyRealm (64-bit Development PCD3D_SM6) " CozyRealm.exe   # 'CozyRealm 녹화' 장면 + 게임 창 캡처
+python obs_ws.py start
+python obs_ws.py stop                                                     # 저장된 파일 경로 출력
+python obs_ws.py restore                                                  # setup 전에 보던 장면으로
+```
+
+- 준비(사용자 1회): OBS → 도구 → WebSocket 서버 설정 → 서버 사용 켬 · **인증 끔** (이 도구는 비밀번호를 다루지 않음). OBS가 꺼져 있으면 `obs64.exe --minimize-to-tray`로 켭니다(작업 폴더 = `C:\Program Files\obs-studio\bin\64bit`).
+- 녹화 파일은 OBS 녹화 폴더(지금 `E:\Project\자료\CozyRealm\Recode`)에 생기므로, 이름을 바꿔 노션 규칙의 녹화 폴더로 옮깁니다. 끝나면 `video_frame.ps1`로 확인.
+- 패키지 게임 키 입력도 창에 직접 보낼 수 있습니다(PostMessage `WM_KEYDOWN` — 2026-10-18 M 키 확인 · 그때 게임 창은 맨 앞이었음 · 게임 창이 뒤에 있을 때도 먹히는지는 아직 미확인). 마우스 클릭은 아직 실제 입력이 필요합니다.
 
 ### 캡처 확대 — `crop_image.ps1`
 ```powershell
