@@ -49,7 +49,9 @@ void ACozyRealmEstatePlayerController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
 
-	if (WasInputKeyJustPressed(EKeys::B))
+	// 작은 창 모드: 영지를 보며 수확만 (시설 메뉴 · 창 · 배치는 크게 보기 후)
+	const bool bCompact = Hud && Hud->IsCompactMode();
+	if (!bCompact && WasInputKeyJustPressed(EKeys::B))
 	{
 		SetPlacementMode(!bPlacementMode);
 	}
@@ -58,13 +60,21 @@ void ACozyRealmEstatePlayerController::PlayerTick(float DeltaTime)
 	{
 		TickPlacement();
 	}
-	else if (WasInputKeyJustPressed(EKeys::LeftMouseButton))
+	else if (!bCompact && WasInputKeyJustPressed(EKeys::LeftMouseButton))
 	{
 		HandleWorldClick();
 	}
-	if (WasInputKeyJustPressed(EKeys::F1) && Hud)
+	if (WasInputKeyJustPressed(EKeys::F1) && Hud && !Hud->IsCompactMode())
 	{
 		Hud->ToggleDebugPanel();
+	}
+	// 작은 창 모드 (M · 화면 구석의 작은 창 ↔ 원래 크기)
+	if (Hud && WasInputKeyJustPressed(EKeys::M))
+	{
+		if (UCozySettingsSubsystem* Settings = UCozySettingsSubsystem::Get(this))
+		{
+			Settings->Run(ECozyUiAction::ToggleCompactWindow, NAME_None, this);
+		}
 	}
 	// 단축키 (기획서 4 조작 · 3주차 기능 3) · 창 안의 글자 입력은 아직 없어 그대로 받음
 	if (Hud && WasInputKeyJustPressed(EKeys::SpaceBar))
@@ -74,12 +84,12 @@ void ACozyRealmEstatePlayerController::PlayerTick(float DeltaTime)
 			Hud->ShowToast(Estate->CollectAllProduction());
 		}
 	}
-	if (Hud && WasInputKeyJustPressed(EKeys::Tab))
+	if (Hud && !bCompact && WasInputKeyJustPressed(EKeys::Tab))
 	{
 		ClearSelection();
 		Hud->ToggleNagayaWindow();
 	}
-	if (Hud && WasInputKeyJustPressed(EKeys::I))
+	if (Hud && !bCompact && WasInputKeyJustPressed(EKeys::I))
 	{
 		ClearSelection();
 		Hud->ToggleStorageWindow();

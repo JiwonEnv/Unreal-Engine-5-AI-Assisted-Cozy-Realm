@@ -230,6 +230,47 @@ const FCozyUiAreaLayout* UCozyUiScreen::FindArea(FName AreaId) const
 	return Config ? Config->FindArea(AreaId) : nullptr;
 }
 
+void UCozyUiScreen::SetCompact(bool bEnable)
+{
+	if (bCompact != bEnable)
+	{
+		bCompact = bEnable;
+		bRefreshPending = true;
+	}
+}
+
+bool UCozyUiScreen::IsElementShown(FName ElementId) const
+{
+	if (!Config || (Config->CompactElements.Num() == 0 && Config->CompactOnlyElements.Num() == 0))
+	{
+		return true;
+	}
+	const bool bCompactOnly = Config->CompactOnlyElements.Contains(ElementId);
+	if (!bCompact)
+	{
+		return !bCompactOnly;
+	}
+	// 작은 창: 정한 요소와 그 안쪽 요소만 (목록에 없는 요소는 숨김)
+	if (bCompactOnly || Config->CompactElements.Contains(ElementId))
+	{
+		return true;
+	}
+	const FCozyUiElementEntry* Entry = Config->FindElement(ElementId);
+	if (!Entry || Entry->Area.IsNone())
+	{
+		return false;
+	}
+	// 안쪽 영역의 요소: 그 영역을 담은 요소가 보이면 보임
+	for (const FCozyUiElementEntry& Parent : Config->Elements)
+	{
+		if (Parent.ChildArea == Entry->Area && Parent.Id != ElementId && (Config->CompactElements.Contains(Parent.Id) || Config->CompactOnlyElements.Contains(Parent.Id)))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 TArray<FCozyUiElementEntry> UCozyUiScreen::GetElementsForArea(FName AreaId) const
 {
 	TArray<FCozyUiElementEntry> Result;
@@ -237,7 +278,7 @@ TArray<FCozyUiElementEntry> UCozyUiScreen::GetElementsForArea(FName AreaId) cons
 	{
 		for (const FCozyUiElementEntry& Each : Config->Elements)
 		{
-			if (Each.Area == AreaId)
+			if (Each.Area == AreaId && IsElementShown(Each.Id))
 			{
 				// 목록과 상세 영역은 동시에 보여 주지 않는다. 편집 에셋의 배치는 그대로 유지한다.
 				const bool bDetail = SelectedUpgradeFacility.IsValid();
@@ -1390,6 +1431,8 @@ FText UCozyUiScreen::GetActionName(ECozyUiAction Action)
 	case ECozyUiAction::AskQuit: return LOCTEXT("ActAskQuit", "게임 종료 (확인 후 저장하고 종료)");
 	case ECozyUiAction::CancelQuit: return LOCTEXT("ActCancelQuit", "종료하지 않음");
 	case ECozyUiAction::ConfirmQuit: return LOCTEXT("ActConfirmQuit", "영지를 저장하고 종료");
+	case ECozyUiAction::ToggleCompactWindow: return LOCTEXT("ActCompact", "작은 창으로 띄워 두기 / 크게 보기 (M)");
+	case ECozyUiAction::ToggleCompactTop: return LOCTEXT("ActCompactTop", "작은 창을 항상 위에 켜기·끄기 (적용을 눌러야 저장)");
 	case ECozyUiAction::StartUpgrade: return LOCTEXT("ActUpStart", "업그레이드 시작");
 	case ECozyUiAction::GoToFacility: return LOCTEXT("ActGoTo", "그 시설로 이동");
 	case ECozyUiAction::TakeOutStored: return LOCTEXT("ActTakeOut", "보관함에서 꺼내기");

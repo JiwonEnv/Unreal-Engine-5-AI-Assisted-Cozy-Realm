@@ -1168,8 +1168,43 @@ void UCozyHudWidget::OpenWindow(ECozyWindowKind Kind, const FGuid& FacilityId, c
 	RefreshWindow();
 }
 
+void UCozyHudWidget::SetCompactMode(bool bEnable)
+{
+	bCompactMode = bEnable;
+	if (bEnable)
+	{
+		CloseWindow();
+		HideFacilityIcons();
+		if (ACozyRealmEstatePlayerController* Controller = Cast<ACozyRealmEstatePlayerController>(GetOwningPlayer()))
+		{
+			Controller->ClearSelection();
+			if (Controller->IsPlacementMode())
+			{
+				Controller->SetPlacementMode(false);
+			}
+		}
+		if (bDebugVisible)
+		{
+			ToggleDebugPanel();
+		}
+	}
+	if (LabelLayer)
+	{
+		LabelLayer->SetVisibility(bEnable ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	}
+	if (HudScreen)
+	{
+		HudScreen->SetCompact(bEnable);
+	}
+}
+
 void UCozyHudWidget::ToggleSettingsWindow()
 {
+	// 작은 창에서는 설정 창을 열지 않음 (크게 보기 후 열기)
+	if (bCompactMode)
+	{
+		return;
+	}
 	if (IsSettingsOpen())
 	{
 		CloseWindow();

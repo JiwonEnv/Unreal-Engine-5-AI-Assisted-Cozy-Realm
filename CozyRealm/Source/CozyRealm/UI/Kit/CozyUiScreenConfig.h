@@ -40,6 +40,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "3 요소", meta = (DisplayName = "Elements (화면 요소 목록)", TitleProperty = "{Id} · {Purpose} · {Kind} · {Area} {Order}"))
 	TArray<FCozyUiElementEntry> Elements;
 
+	/** 작은 창 모드에서 보일 요소 Id (비우면 작은 창 모드에서도 모두 그대로) · 나머지는 숨김 · 예: HUD의 시계 · 전부 수확 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "4 작은 창", meta = (DisplayName = "Compact Elements (작은 창에서 보일 요소)"))
+	TArray<FName> CompactElements;
+
+	/** 작은 창 모드에서만 보일 요소 Id (보통 화면에서는 숨김) · 예: '크게 보기' 버튼 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "4 작은 창", meta = (DisplayName = "Compact Only Elements (작은 창에서만 보일 요소)"))
+	TArray<FName> CompactOnlyElements;
+
 	const FCozyUiAreaLayout* FindArea(FName AreaId) const
 	{
 		return AreaId.IsNone() ? nullptr : Areas.FindByPredicate([AreaId](const FCozyUiAreaLayout& Each) { return Each.Id == AreaId; });
