@@ -516,6 +516,12 @@ struct FCozyUiMetrics
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "크기·여백 (Metrics)", meta = (DisplayName = "Icon Size (아이콘 칸 기본 크기)")) FVector2D IconSize = FVector2D(32.f, 32.f);
 	/** 게이지 기본 높이 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "크기·여백 (Metrics)", meta = (DisplayName = "Gauge Height (게이지 기본 높이)")) float GaugeHeight = 14.f;
+	/** 작은 창 폭 (화면 설정에서 창 패널의 Size Mode를 Window Small로 고른 창 · 방치 보상 등) · 1920×1080 기준 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "창 크기 (Window Sizes)", meta = (DisplayName = "Window Small Width (작은 창 폭)", ClampMin = "200")) float WindowSmallWidth = 520.f;
+	/** 기본 창 폭 (창고 · 가공 · 판매 · 시설 정보 등 대부분의 창) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "창 크기 (Window Sizes)", meta = (DisplayName = "Window Medium Width (기본 창 폭)", ClampMin = "200")) float WindowMediumWidth = 660.f;
+	/** 큰 창 폭 (업그레이드 · 설정처럼 내용이 넓은 창) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "창 크기 (Window Sizes)", meta = (DisplayName = "Window Large Width (큰 창 폭)", ClampMin = "200")) float WindowLargeWidth = 720.f;
 };
 
 /** 게이지 모양 (배경 · 채움 이미지와 여백 · 채움 색은 상태색) */
@@ -576,7 +582,13 @@ enum class ECozyUiSizeMode : uint8
 	/** 고정 크기 (Size · 한쪽이 0이면 그쪽만 내용에 맞춤) */
 	Fixed UMETA(DisplayName = "Fixed (고정)"),
 	/** 줄의 남은 공간 채우기 (가로 줄이면 남은 폭 · 긴 글은 Wrap Text와 함께 쓰면 줄 안에서 줄바꿈) */
-	Fill UMETA(DisplayName = "Fill (남은 공간 채우기)")
+	Fill UMETA(DisplayName = "Fill (남은 공간 채우기)"),
+	/** 창 폭 = 테마 '6 크기·여백'의 작은 창 폭 (높이는 Size의 Y · 0이면 내용에 맞춤) */
+	WindowSmall UMETA(DisplayName = "Window Small (테마 작은 창 폭)"),
+	/** 창 폭 = 테마의 기본 창 폭 */
+	WindowMedium UMETA(DisplayName = "Window Medium (테마 기본 창 폭)"),
+	/** 창 폭 = 테마의 큰 창 폭 */
+	WindowLarge UMETA(DisplayName = "Window Large (테마 큰 창 폭)")
 };
 
 /** 자동 정렬 방향 */

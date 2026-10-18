@@ -428,6 +428,14 @@ void UCozyUiElementWidget::ApplyCozyTheme(const UCozyUiScreen& Screen)
 	if (SizeBox)
 	{
 		FVector2D Want = Entry.SizeMode == ECozyUiSizeMode::Fixed ? Entry.Size : FVector2D::ZeroVector;
+		// 창 크기 종류: 폭은 테마의 창 폭 (테마에서 숫자 하나로 같은 종류의 창을 모두 바꿈) · 높이는 Size의 Y
+		const float WindowWidth = Entry.SizeMode == ECozyUiSizeMode::WindowSmall ? Theme->Metrics.WindowSmallWidth
+			: Entry.SizeMode == ECozyUiSizeMode::WindowMedium ? Theme->Metrics.WindowMediumWidth
+			: Entry.SizeMode == ECozyUiSizeMode::WindowLarge ? Theme->Metrics.WindowLargeWidth : 0.f;
+		if (WindowWidth > 0.f)
+		{
+			Want = FVector2D(WindowWidth, Entry.Size.Y);
+		}
 		if (Entry.SizeMode == ECozyUiSizeMode::Content && Entry.Kind == ECozyUiElementKind::Button)
 		{
 			// 내용 맞춤 버튼은 최소 크기만 유지하고 긴 글자·아이콘에 따라 늘어난다.
