@@ -25,7 +25,7 @@ public:
 	bool WorldToPaintUV(const FVector& WorldPosition, FVector2D& OutUV) const;
 	UFUNCTION(BlueprintCallable, Category="바닥 꾸미기") void BeginPaintStroke();
 	UFUNCTION(BlueprintCallable, Category="바닥 꾸미기") bool PaintAt(FVector WorldPosition, float Radius, int32 Layer, float Strength);
-	UFUNCTION(BlueprintCallable, Category="바닥 꾸미기") void EndPaintStroke();
+	UFUNCTION(BlueprintCallable, Category="바닥 꾸미기") bool EndPaintStroke();
 	UFUNCTION(BlueprintCallable, Category="바닥 꾸미기") bool UndoPaint();
 	UFUNCTION(BlueprintCallable, Category="바닥 꾸미기") bool RedoPaint();
 	const FCozyPaintMask& GetPaintMask() const { return PaintMask; }

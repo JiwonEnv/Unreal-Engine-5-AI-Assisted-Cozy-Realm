@@ -21,7 +21,7 @@ void UCozySurfaceComponent::BeginPlay()
 }
 
 void UCozySurfaceComponent::BeginPaintStroke() { History.Begin(PaintMask); }
-void UCozySurfaceComponent::EndPaintStroke() { History.Commit(PaintMask); }
+bool UCozySurfaceComponent::EndPaintStroke() { return History.Commit(PaintMask); }
 bool UCozySurfaceComponent::UndoPaint() { const bool Changed = History.Undo(PaintMask); if (Changed) RefreshPaintTexture(); return Changed; }
 bool UCozySurfaceComponent::RedoPaint() { const bool Changed = History.Redo(PaintMask); if (Changed) RefreshPaintTexture(); return Changed; }
 bool UCozySurfaceComponent::RestorePaint(const FCozyPaintMask& Saved)

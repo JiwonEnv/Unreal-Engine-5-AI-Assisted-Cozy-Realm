@@ -22,7 +22,8 @@ class FCozyPaintHistory
 {
 public:
 	void Begin(const FCozyPaintMask& Mask);
-	void Commit(const FCozyPaintMask& Mask);
+	/** 바뀐 것이 있어 되돌리기 기록이 하나 늘었으면 true */
+	bool Commit(const FCozyPaintMask& Mask);
 	bool Undo(FCozyPaintMask& Mask);
 	bool Redo(FCozyPaintMask& Mask);
 private:

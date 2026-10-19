@@ -48,16 +48,19 @@ bool FCozyPaintMask::Stamp(FVector2D UV, FVector2D RadiusUV, int32 Layer, float 
 }
 
 void FCozyPaintHistory::Begin(const FCozyPaintMask& Mask) { if (!Before.IsSet()) Before = Mask; }
-void FCozyPaintHistory::Commit(const FCozyPaintMask& Mask)
+bool FCozyPaintHistory::Commit(const FCozyPaintMask& Mask)
 {
-	if (!Before.IsSet()) return;
+	if (!Before.IsSet()) return false;
+	bool bAdded = false;
 	if (Before->DomainId == Mask.DomainId && Before->Pixels != Mask.Pixels)
 	{
 		UndoStack.Add(MoveTemp(Before.GetValue()));
 		if (UndoStack.Num() > 16) UndoStack.RemoveAt(0);
 		RedoStack.Reset();
+		bAdded = true;
 	}
 	Before.Reset();
+	return bAdded;
 }
 bool FCozyPaintHistory::Undo(FCozyPaintMask& Mask)
 {

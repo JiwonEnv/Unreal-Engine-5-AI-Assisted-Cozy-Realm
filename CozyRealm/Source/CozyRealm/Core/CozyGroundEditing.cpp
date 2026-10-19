@@ -7,6 +7,13 @@
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
 #include "InputKeyEventArgs.h"
+#include "Components/CapsuleComponent.h"
+#include "HAL/IConsoleManager.h"
+#include "EngineUtils.h"
+#include "CozyRealm.h"
+
+static TAutoConsoleVariable<int32> CVarCozySurfaceDebug(TEXT("Cozy.SurfaceDebug"), 0,
+	TEXT("1: 마우스 아래 표면 ID·경사, 표면별 도색 영역, 주인공 발-지면 높이 차이를 화면에 표시"));
 
 bool ACozyRealmEstatePlayerController::InputKey(const FInputKeyEventArgs& Params)
 {
@@ -17,12 +24,8 @@ bool ACozyRealmEstatePlayerController::InputKey(const FInputKeyEventArgs& Params
 	if (GroundMode == 1 && Params.Event == IE_Pressed && (bGroundLeftControl || bGroundRightControl)
 		&& (Params.Key == EKeys::Z || Params.Key == EKeys::Y) && !(Hud && Hud->IsWindowOpen()))
 	{
-		FinishGroundStroke();
-		if (LastPaintSurface.IsValid())
-		{
-			const bool Changed = Params.Key == EKeys::Z ? LastPaintSurface->UndoPaint() : LastPaintSurface->RedoPaint();
-			if (Changed) GetWorld()->GetSubsystem<UCozyEstateSubsystem>()->SaveEstate(TEXT("도색 되돌리기"));
-		}
+		const bool Changed = Params.Key == EKeys::Z ? UndoGroundPaint() : RedoGroundPaint();
+		if (Changed) GetWorld()->GetSubsystem<UCozyEstateSubsystem>()->SaveEstate(TEXT("도색 되돌리기"));
 		return true;
 	}
 	return Handled;
@@ -53,15 +56,155 @@ void ACozyRealmEstatePlayerController::CozyGroundMode(int32 Mode)
 		: GroundMode == 2 ? TEXT("바닥 타일 · 클릭 미리보기 · Enter 확정 · 우클릭 취소 · H 보관 · U 꺼내기 · V 이동 · Shift+클릭 제거") : TEXT("바닥 꾸미기를 종료했습니다")));
 }
 
+void ACozyRealmEstatePlayerController::EndPaintSegment()
+{
+	if (StrokeSurface.IsValid() && StrokeSurface->EndPaintStroke()) DragSurfaces.Add(StrokeSurface);
+	StrokeSurface.Reset();
+}
+
 void ACozyRealmEstatePlayerController::FinishGroundStroke()
 {
-	if (StrokeSurface.IsValid())
+	EndPaintSegment();
+	bPaintDragActive = false;
+	if (DragSurfaces.IsEmpty()) return;
+	// 한 드래그가 평지·경사로·언덕에 걸쳐도 되돌리기는 한 번에 (Claude 후속 2026-10-20)
+	PaintUndoGroups.Add(MoveTemp(DragSurfaces));
+	DragSurfaces.Reset();
+	if (PaintUndoGroups.Num() > 16) PaintUndoGroups.RemoveAt(0);
+	PaintRedoGroups.Reset();
+	if (auto* Estate = GetWorld()->GetSubsystem<UCozyEstateSubsystem>()) Estate->SaveEstate(TEXT("지면 브러시"));
+}
+
+bool ACozyRealmEstatePlayerController::UndoGroundPaint()
+{
+	FinishGroundStroke();
+	while (!PaintUndoGroups.IsEmpty())
 	{
-		StrokeSurface->EndPaintStroke();
-		LastPaintSurface = StrokeSurface;
-		StrokeSurface.Reset();
-		if (auto* Estate = GetWorld()->GetSubsystem<UCozyEstateSubsystem>()) Estate->SaveEstate(TEXT("지면 브러시"));
+		TArray<TWeakObjectPtr<UCozySurfaceComponent>> Group = PaintUndoGroups.Pop();
+		bool bAny = false;
+		for (int32 I = Group.Num() - 1; I >= 0; --I) if (Group[I].IsValid()) bAny |= Group[I]->UndoPaint();
+		if (bAny) { PaintRedoGroups.Add(MoveTemp(Group)); return true; }
 	}
+	return false;
+}
+
+bool ACozyRealmEstatePlayerController::RedoGroundPaint()
+{
+	FinishGroundStroke();
+	while (!PaintRedoGroups.IsEmpty())
+	{
+		TArray<TWeakObjectPtr<UCozySurfaceComponent>> Group = PaintRedoGroups.Pop();
+		bool bAny = false;
+		for (const TWeakObjectPtr<UCozySurfaceComponent>& Surface : Group) if (Surface.IsValid()) bAny |= Surface->RedoPaint();
+		if (bAny) { PaintUndoGroups.Add(MoveTemp(Group)); return true; }
+	}
+	return false;
+}
+
+void ACozyRealmEstatePlayerController::PaintBrushTo(const FCozySurfaceHit& Hit)
+{
+	UCozySurfaceComponent* Surface = Hit.Rules.Get();
+	// 절벽 벽면·칠할 수 없는 곳을 지날 때는 지금 표면 기록만 닫고 드래그는 이어 간다.
+	if (!Surface || !Surface->bAllowPainting || Hit.Normal.Z < .85f) { EndPaintSegment(); return; }
+	auto Paintable = [this](UCozySurfaceComponent* Target, const FVector& Position, FCozySurfaceHit& Out)
+	{
+		return Target && Target->bAllowPainting && CozySurface::GroundAt(GetWorld(), Position, Out, &Target->SurfaceId)
+			&& Out.Rules.Get() == Target && Out.Normal.Z >= .85f;
+	};
+	auto StampOn = [this](UCozySurfaceComponent* Target, const FVector& Position)
+	{
+		if (StrokeSurface.Get() != Target) { EndPaintSegment(); StrokeSurface = Target; Target->BeginPaintStroke(); }
+		return Target->PaintAt(Position, BrushRadius, GroundStyle, .6f);
+	};
+	if (!bPaintDragActive)
+	{
+		bPaintDragActive = true;
+		LastBrushPosition = Hit.Position;
+		const bool Changed = StampOn(Surface, Hit.Position);
+		if (FParse::Param(FCommandLine::Get(), TEXT("CozyTerrainTest")))
+		{
+			FVector2D UV; const bool InBounds = Surface->WorldToPaintUV(Hit.Position, UV);
+			UE_LOG(LogTemp, Display, TEXT("[도색 입력] 표면=%s 위치=%s UV=%s 영역=%d 레이어=%d 픽셀=%d 변경=%d"),
+				*Surface->SurfaceId.ToString(), *Hit.Position.ToString(), *UV.ToString(), InBounds, GroundStyle, Surface->GetPaintMask().Pixels.Num(), Changed);
+		}
+		return;
+	}
+	// 이동 거리에 따라 찍으므로 프레임 수와 상관없이 일정한 밀도로 칠한다.
+	// 표면이 바뀌어도 이전 위치부터 이어서 찍어 경계 앞뒤에 빈틈이 생기지 않게 한다 (Claude 후속 2026-10-20).
+	const float Step = FMath::Max(10.f, BrushRadius * .2f);
+	const FVector Delta = Hit.Position - LastBrushPosition;
+	const int32 Count = FMath::Min(512, FMath::FloorToInt(Delta.Size() / Step));
+	const FVector StepVector = Delta.GetSafeNormal() * Step;
+	for (int32 I = 0; I < Count; ++I)
+	{
+		LastBrushPosition += StepVector;
+		UCozySurfaceComponent* Previous = StrokeSurface.Get();
+		FCozySurfaceHit OnTarget, OnPrevious;
+		const bool bTarget = Paintable(Surface, LastBrushPosition, OnTarget);
+		const bool bPrevious = Previous && Previous != Surface && Paintable(Previous, LastBrushPosition, OnPrevious);
+		// 같은 XY에 두 표면이 모두 있으면 지금 붓 높이에 더 가까운 쪽 (언덕 아래 숨은 바닥을 칠하지 않게)
+		if (bTarget && (!bPrevious || FMath::Abs(OnTarget.Position.Z - LastBrushPosition.Z) <= FMath::Abs(OnPrevious.Position.Z - LastBrushPosition.Z)))
+			StampOn(Surface, OnTarget.Position);
+		else if (bPrevious)
+			StampOn(Previous, OnPrevious.Position);
+	}
+}
+
+void ACozyRealmEstatePlayerController::DrawSurfaceDebug(const FCozySurfaceHit* InHit) const
+{
+#if ENABLE_DRAW_DEBUG
+	if (CVarCozySurfaceDebug.GetValueOnGameThread() <= 0) return;
+	UWorld* World = GetWorld();
+	static const FColor Colors[] = { FColor::Cyan, FColor::Orange, FColor::Magenta, FColor::Yellow, FColor::Green };
+	int32 Index = 0;
+	for (TActorIterator<AActor> It(World); It; ++It)
+	{
+		const UCozySurfaceComponent* Surface = It->FindComponentByClass<UCozySurfaceComponent>();
+		if (!Surface) continue;
+		const FColor Color = Colors[Index++ % UE_ARRAY_COUNT(Colors)];
+		const FTransform T = It->GetActorTransform();
+		const FVector A = T.TransformPosition(FVector(Surface->PaintMin.X, Surface->PaintMin.Y, 0));
+		const FVector B = T.TransformPosition(FVector(Surface->PaintMax.X, Surface->PaintMin.Y, 0));
+		const FVector C = T.TransformPosition(FVector(Surface->PaintMax.X, Surface->PaintMax.Y, 0));
+		const FVector D = T.TransformPosition(FVector(Surface->PaintMin.X, Surface->PaintMax.Y, 0));
+		// 메시 상판은 로컬 Z가 0이 아닐 수 있어 실제 지면 높이에 맞춘 중심에 이름을 단다.
+		FCozySurfaceHit Center;
+		const FVector Mid = (A + C) * .5;
+		const FVector Label = CozySurface::GroundAt(World, Mid, Center, &Surface->SurfaceId) ? Center.Position : Mid;
+		DrawDebugLine(World, A, B, Color, false, -1, 0, 3); DrawDebugLine(World, B, C, Color, false, -1, 0, 3);
+		DrawDebugLine(World, C, D, Color, false, -1, 0, 3); DrawDebugLine(World, D, A, Color, false, -1, 0, 3);
+		DrawDebugString(World, Label + FVector(0, 0, 40), FString::Printf(TEXT("Surface %s"), *Surface->SurfaceId.ToString().Left(8)), nullptr, Color, 0.f, true, 1.2f);
+	}
+	FCozySurfaceHit Hit;
+	FVector Origin, Direction;
+	if (InHit) Hit = *InHit;
+	const bool bHit = InHit || (DeprojectMousePositionToWorld(Origin, Direction) && CozySurface::Trace(World, Origin, Origin + Direction * 100000.f, Hit));
+	if (bHit)
+	{
+		const float Slope = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(Hit.Normal.Z, -1.f, 1.f)));
+		DrawDebugString(World, Hit.Position + FVector(0, 0, 60), FString::Printf(TEXT("Cursor: %s  slope %.0f deg  z %.0f"),
+			Hit.Rules.IsValid() ? *Hit.SurfaceId.ToString().Left(8) : TEXT("Landscape"), Slope, Hit.Position.Z), nullptr, FColor::White, 0.f, true, 1.2f);
+	}
+	if (Hero)
+	{
+		const FVector Feet = Hero->GetActorLocation() - FVector(0, 0, Hero->GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+		FCozySurfaceHit Ground;
+		if (CozySurface::GroundAt(World, Feet, Ground))
+		{
+			const float Gap = Feet.Z - Ground.Position.Z;
+			DrawDebugString(World, Hero->GetActorLocation() + FVector(0, 0, 140), FString::Printf(TEXT("Feet-ground %.1f cm"), Gap), nullptr, FMath::Abs(Gap) <= 5.f ? FColor::Green : FColor::Red, 0.f, true, 1.2f);
+			static double LastLog = 0;
+			const double Now = World->GetTimeSeconds();
+			if (Now - LastLog >= .5)
+			{
+				LastLog = Now;
+				UE_LOG(LogCozyRealm, Log, TEXT("[표면 디버그] 주인공 발-지면 %.1fcm · 표면 %s · 경사 %.0f도 · 위치 (%.0f, %.0f, %.0f)"), Gap,
+					Ground.Rules.IsValid() ? *Ground.SurfaceId.ToString().Left(8) : TEXT("Landscape"),
+					FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(Ground.Normal.Z, -1.f, 1.f))), Feet.X, Feet.Y, Feet.Z);
+			}
+		}
+	}
+#endif
 }
 
 void ACozyRealmEstatePlayerController::TickGroundEditing()
@@ -79,7 +222,7 @@ void ACozyRealmEstatePlayerController::TickGroundEditing()
 	FCozySurfaceHit Hit;
 	if (!DeprojectMousePositionToWorld(Origin, Direction) || !CozySurface::Trace(GetWorld(), Origin, Origin + Direction * 100000.f, Hit))
 	{
-		FinishGroundStroke(); return;
+		EndPaintSegment(); return;
 	}
 	DrawDebugCircle(GetWorld(), Hit.Position + FVector(0, 0, 3), BrushRadius, 32, FColor::Cyan, false, -1, 0, 2, FVector::ForwardVector, FVector::RightVector, false);
 	if (GroundMode == 2)
@@ -138,30 +281,5 @@ void ACozyRealmEstatePlayerController::TickGroundEditing()
 
 	// 한 프레임 안에 누름·뗌이 끝난 짧은 클릭도 첫 도장을 남긴다.
 	if (GroundMode != 1 || (!IsInputKeyDown(EKeys::LeftMouseButton) && !WasInputKeyJustPressed(EKeys::LeftMouseButton))) return;
-	UCozySurfaceComponent* Surface = Hit.Rules.Get();
-	if (!Surface || !Surface->bAllowPainting || Hit.Normal.Z < .85f) { FinishGroundStroke(); return; }
-	if (StrokeSurface.Get() != Surface)
-	{
-		FinishGroundStroke(); StrokeSurface = Surface;
-		Surface->BeginPaintStroke(); LastBrushPosition = Hit.Position;
-		const bool Changed = Surface->PaintAt(Hit.Position, BrushRadius, GroundStyle, .6f);
-		if (FParse::Param(FCommandLine::Get(), TEXT("CozyTerrainTest")))
-		{
-			FVector2D UV; const bool InBounds = Surface->WorldToPaintUV(Hit.Position, UV);
-			UE_LOG(LogTemp, Display, TEXT("[도색 입력] 표면=%s 위치=%s UV=%s 영역=%d 레이어=%d 픽셀=%d 변경=%d"),
-				*Surface->SurfaceId.ToString(), *Hit.Position.ToString(), *UV.ToString(), InBounds, GroundStyle, Surface->GetPaintMask().Pixels.Num(), Changed);
-		}
-	}
-	// 이동 거리에 따라 찍으므로 프레임 수와 상관없이 일정한 밀도로 칠한다.
-	const float Step = FMath::Max(10.f, BrushRadius * .2f);
-	const FVector Delta = Hit.Position - LastBrushPosition;
-	const int32 Count = FMath::Min(128, FMath::FloorToInt(Delta.Size() / Step));
-	const FVector StepVector = Delta.GetSafeNormal() * Step;
-	for (int32 I = 0; I < Count; ++I)
-	{
-		LastBrushPosition += StepVector;
-		FCozySurfaceHit Sample;
-		if (CozySurface::GroundAt(GetWorld(), LastBrushPosition, Sample, &Surface->SurfaceId) && Sample.Rules.Get() == Surface && Sample.Normal.Z >= .85f)
-			Surface->PaintAt(Sample.Position, BrushRadius, GroundStyle, .6f);
-	}
+	PaintBrushTo(Hit);
 }

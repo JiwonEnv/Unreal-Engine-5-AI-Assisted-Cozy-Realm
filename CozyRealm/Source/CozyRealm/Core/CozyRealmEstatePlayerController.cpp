@@ -169,6 +169,7 @@ void ACozyRealmEstatePlayerController::TickHero(bool bCompact)
 void ACozyRealmEstatePlayerController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
+	DrawSurfaceDebug(nullptr);
 	if (const UCozyEstateSubsystem* Estate = GetWorld()->GetSubsystem<UCozyEstateSubsystem>())
 	{
 		const FString& Notice = Estate->GetRecoveryNotice();
