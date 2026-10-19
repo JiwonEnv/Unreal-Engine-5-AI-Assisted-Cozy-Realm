@@ -142,11 +142,18 @@ void ACozyRealmEstatePlayerController::PaintBrushTo(const FCozySurfaceHit& Hit)
 		FCozySurfaceHit OnTarget, OnPrevious;
 		const bool bTarget = Paintable(Surface, LastBrushPosition, OnTarget);
 		const bool bPrevious = Previous && Previous != Surface && Paintable(Previous, LastBrushPosition, OnPrevious);
-		// 같은 XY에 두 표면이 모두 있으면 지금 붓 높이에 더 가까운 쪽 (언덕 아래 숨은 바닥을 칠하지 않게)
-		if (bTarget && (!bPrevious || FMath::Abs(OnTarget.Position.Z - LastBrushPosition.Z) <= FMath::Abs(OnPrevious.Position.Z - LastBrushPosition.Z)))
-			StampOn(Surface, OnTarget.Position);
-		else if (bPrevious)
-			StampOn(Previous, OnPrevious.Position);
+		if (bTarget && bPrevious)
+		{
+			// 같은 XY에 두 표면이 겹치면 위에서 보이는 쪽(높은 쪽)을 칠한다 (경사로 끝이 언덕 상판 밑으로 들어간 곳).
+			// 단, 붓보다 1m 넘게 높은 면(절벽 위)은 지나가는 중이 아니므로 붓 높이에 가까운 쪽.
+			const bool bTargetHigher = OnTarget.Position.Z >= OnPrevious.Position.Z;
+			const FCozySurfaceHit& Higher = bTargetHigher ? OnTarget : OnPrevious;
+			const bool bUseHigher = Higher.Position.Z - LastBrushPosition.Z <= 100.f;
+			const bool bUseTarget = bUseHigher ? bTargetHigher : !bTargetHigher;
+			StampOn(bUseTarget ? Surface : Previous, bUseTarget ? OnTarget.Position : OnPrevious.Position);
+		}
+		else if (bTarget) StampOn(Surface, OnTarget.Position);
+		else if (bPrevious) StampOn(Previous, OnPrevious.Position);
 	}
 }
 

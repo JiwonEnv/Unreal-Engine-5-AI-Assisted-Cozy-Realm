@@ -136,7 +136,7 @@ static FAutoConsoleCommandWithWorld CozyTerrainPaintCheck(
 		for (UCozySurfaceComponent* Surface : All) After.Add(Surface, Surface->GetPaintMask().Pixels);
 		TSet<UCozySurfaceComponent*> Touched;
 		int32 Gaps = 0, Samples = 0, Skipped = 0;
-		FString Boundaries;
+		FString Boundaries, GapAt;
 		const UCozySurfaceComponent* Last = nullptr;
 		for (double X = From.X; X <= To.X; X += 10)
 		{
@@ -147,8 +147,9 @@ static FAutoConsoleCommandWithWorld CozyTerrainPaintCheck(
 			// 칠할 수 없는 면(벽·급경사)은 빈틈 계산에서 뺀다
 			if (!Surface->bAllowPainting || Hit.Normal.Z < .85f) { ++Skipped; continue; }
 			++Samples; Touched.Add(Surface);
-			if (LayerAt(Surface, Hit.Position, 1) < 128) ++Gaps;
+			if (LayerAt(Surface, Hit.Position, 1) < 128) { ++Gaps; GapAt += FString::Printf(TEXT(" %.0fcm"), X); }
 		}
+		if (!GapAt.IsEmpty()) Report += FString::Printf(TEXT("참고: 빈틈 위치%s\n"), *GapAt);
 		Report += FString::Printf(TEXT("참고: 선 위 표면이 바뀌는 곳%s · 칠할 수 없어 뺀 지점 %d\n"), *Boundaries, Skipped);
 		Check(Touched.Num() >= 2 && Gaps == 0, FString::Printf(TEXT("표면 %d개를 지나는 빠른 획이 경계 앞뒤로 끊기지 않음 (10cm 간격 %d곳 중 빈틈 %d)"), Touched.Num(), Samples, Gaps));
 		Check(Controller->UndoGroundPaint() && SameAs(Before), TEXT("여러 표면에 걸친 한 드래그를 Ctrl+Z 한 번에 모두 되돌림"));
