@@ -41,6 +41,17 @@ static FAutoConsoleCommandWithWorld CozyTerrainWorldCheck(
 		Check(CozySurface::GroundAt(World, FVector(-350, 0, 0), RampLow, &RampId)
 			&& CozySurface::GroundAt(World, FVector(150, 0, 0), RampHigh, &RampId)
 			&& RampHigh.Position.Z > RampLow.Position.Z + 250, TEXT("검증 경사로가 언덕 방향으로 상승"));
+		// 경사로 양 끝이 언덕 상판·평지와 턱 없이 맞닿는지 (예전 배치는 위쪽에 약 25cm 턱 · Claude 후속 2026-10-20)
+		{
+			FCozySurfaceHit RampTop, HillEdge, RampBottom, GroundEdge;
+			const bool bTop = CozySurface::GroundAt(World, FVector(198, 0, 0), RampTop, &RampId) && CozySurface::GroundAt(World, FVector(202, 0, 0), HillEdge, &HillId);
+			const bool bBottom = CozySurface::GroundAt(World, FVector(-486, 0, 0), RampBottom, &RampId) && CozySurface::GroundAt(World, FVector(-500, 0, 0), GroundEdge, &LandscapeId);
+			const double TopStep = bTop ? HillEdge.Position.Z - RampTop.Position.Z : 999.0;
+			const double BottomStep = bBottom ? RampBottom.Position.Z - GroundEdge.Position.Z : 999.0;
+			Report += FString::Printf(TEXT("경사로 이음매 높이 차: 위(언덕-경사로) %.1fcm · 아래(경사로-평지) %.1fcm\n"), TopStep, BottomStep);
+			Check(FMath::Abs(TopStep) <= 5.0, TEXT("경사로 위쪽 끝과 언덕 상판 사이 턱 5cm 이하"));
+			Check(FMath::Abs(BottomStep) <= 8.0, TEXT("경사로 아래쪽 끝과 평지 사이 턱 8cm 이하"));
+		}
 		TArray<FVector> Path;
 		const double Begin = FPlatformTime::Seconds();
 		const bool RampPath = Nav->FindPath(FVector(-550, 150, 20), FVector(550, 150, 420), Path);

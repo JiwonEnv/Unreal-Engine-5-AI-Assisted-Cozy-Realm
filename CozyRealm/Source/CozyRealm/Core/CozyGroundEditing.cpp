@@ -68,6 +68,7 @@ void ACozyRealmEstatePlayerController::FinishGroundStroke()
 {
 	EndPaintSegment();
 	bPaintDragActive = false;
+	LastStampSurface.Reset();
 	if (DragSurfaces.IsEmpty()) return;
 	// 한 드래그가 평지·경사로·언덕에 걸쳐도 되돌리기는 한 번에 (Claude 후속 2026-10-20)
 	PaintUndoGroups.Add(MoveTemp(DragSurfaces));
@@ -116,6 +117,7 @@ void ACozyRealmEstatePlayerController::PaintBrushTo(const FCozySurfaceHit& Hit)
 	auto StampOn = [this](UCozySurfaceComponent* Target, const FVector& Position)
 	{
 		if (StrokeSurface.Get() != Target) { EndPaintSegment(); StrokeSurface = Target; Target->BeginPaintStroke(); }
+		LastStampSurface = Target;
 		return Target->PaintAt(Position, BrushRadius, GroundStyle, .6f);
 	};
 	if (!bPaintDragActive)
@@ -140,7 +142,8 @@ void ACozyRealmEstatePlayerController::PaintBrushTo(const FCozySurfaceHit& Hit)
 	for (int32 I = 0; I < Count; ++I)
 	{
 		LastBrushPosition += StepVector;
-		UCozySurfaceComponent* Previous = StrokeSurface.Get();
+		// 한 프레임이 경사로 끝면 같은 벽에 떨어져 기록이 닫혔어도 마지막으로 칠한 표면을 이어 칠할 후보로 둔다
+		UCozySurfaceComponent* Previous = StrokeSurface.IsValid() ? StrokeSurface.Get() : LastStampSurface.Get();
 		FCozySurfaceHit OnTarget, OnPrevious;
 		const bool bTarget = Paintable(Surface, LastBrushPosition, OnTarget);
 		const bool bPrevious = Previous && Previous != Surface && Paintable(Previous, LastBrushPosition, OnPrevious);

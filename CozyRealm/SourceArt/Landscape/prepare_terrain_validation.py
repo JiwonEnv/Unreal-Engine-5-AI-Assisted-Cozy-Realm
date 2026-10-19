@@ -203,7 +203,8 @@ def main():
     cube = unreal.load_asset('/Engine/BasicShapes/Cube')
     for label, position, scale, rotation, number in [
         ('검증_언덕_평평한상판', (600, 0, 220), (8, 8, 4), (0, 0, 0), 1),
-        ('검증_고정경사로', (-100, 0, 210), (8, 4, .2), (30, 0, 0), 2),
+        # 위쪽 끝이 언덕 상판(Z 420) 가장자리와 같은 높이로 맞닿게 (Claude 후속 2026-10-20 · fix_validation_ramp.py)
+        ('검증_고정경사로', (-138.4, 0, 211.34), (8, 4, .2), (30, 0, 0), 2),
         ('검증_위아래표면_고립상판', (-800, 0, 500), (4, 4, .2), (0, 0, 0), 3),
     ]:
         actor = next((a for a in actors.get_all_level_actors() if a.get_actor_label() == label), None)
@@ -212,6 +213,7 @@ def main():
         if not actor:
             actor = actors.spawn_actor_from_class(ground_cls, unreal.Vector(*position), angles)
         actor.modify()
+        actor.set_actor_location(unreal.Vector(*position), False, False)
         actor.set_actor_rotation(angles, False)
         unreal.log(label + ' 회전 확인: ' + str(actor.get_actor_rotation()))
         actor.set_actor_label(label)

@@ -108,6 +108,8 @@ private:
 	/** 한 드래그 동안 기록이 생긴 표면들 (같은 표면이 여러 번 나올 수 있음) */
 	TArray<TWeakObjectPtr<class UCozySurfaceComponent>> DragSurfaces;
 	bool bPaintDragActive = false;
+	/** 드래그 중 마지막으로 찍은 표면 (벽면을 지나 기록이 닫혀도 이어 칠할 후보로 씀) */
+	TWeakObjectPtr<class UCozySurfaceComponent> LastStampSurface;
 	/** 드래그 단위 되돌리기 · 다시 실행 (각 표면 기록 16회와 같은 한도) */
 	TArray<TArray<TWeakObjectPtr<class UCozySurfaceComponent>>> PaintUndoGroups, PaintRedoGroups;
 	bool bFloorPreview = false;
