@@ -1,4 +1,5 @@
 #include "Estate/CozyEstateSubsystem.h"
+#include "Environment/CozySurfaceComponent.h"
 #include "Facilities/CozyFacilityActor.h"
 #include "CozyRealm.h"
 #include "Engine/DataTable.h"
@@ -8,6 +9,10 @@
 #include "Estate/CozyEstateSaveGame.h"
 #include "Kismet/GameplayStatics.h"
 #include "HAL/FileManager.h"
+#include "EngineUtils.h"
+#include "Environment/CozyFloorTiles.h"
+#include "Environment/CozySurfaceNavigation.h"
+#include "Environment/CozyEstateTerrain.h"
 
 #define LOCTEXT_NAMESPACE "CozyEstate"
 
@@ -62,7 +67,7 @@ namespace CozyEstate
 {
 	static const TCHAR* SaveSlotName = TEXT("CozyRealm_Slot1");
 	static constexpr int32 SaveUserIndex = 0;
-	static constexpr int32 CurrentSaveFileVersion = 1;
+	static constexpr int32 CurrentSaveFileVersion = 2;
 }
 
 bool UCozyEstateSubsystem::HasSaveFile() const
@@ -72,6 +77,16 @@ bool UCozyEstateSubsystem::HasSaveFile() const
 
 bool UCozyEstateSubsystem::SaveEstate(const FString& Reason)
 {
+	if (bSaveBlockedByInvalidFile) return false;
+	State.SaveVersion = 2;
+	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+	{
+		const UCozySurfaceComponent* Surface = It->FindComponentByClass<UCozySurfaceComponent>();
+		if (!Surface || !Surface->HasBegunPlay() || !Surface->CanExportPaint() || !Surface->GetPaintMask().IsValid()) continue;
+		const FCozyPaintMask& Mask = Surface->GetPaintMask();
+		FCozyPaintMask* Existing = State.PaintMasks.FindByPredicate([&](const FCozyPaintMask& M) { return M.DomainId == Mask.DomainId; });
+		if (Existing) *Existing = Mask; else State.PaintMasks.Add(Mask);
+	}
 	UCozyEstateSaveGame* Save = Cast<UCozyEstateSaveGame>(UGameplayStatics::CreateSaveGameObject(UCozyEstateSaveGame::StaticClass()));
 	if (!Save)
 	{
@@ -80,34 +95,151 @@ bool UCozyEstateSubsystem::SaveEstate(const FString& Reason)
 	Save->FileVersion = CozyEstate::CurrentSaveFileVersion;
 	Save->SavedUtc = FDateTime::UtcNow();
 	Save->State = State;
-	if (!UGameplayStatics::SaveGameToSlot(Save, CozyEstate::SaveSlotName, CozyEstate::SaveUserIndex))
-	{
-		UE_LOG(LogCozyRealm, Error, TEXT("저장 실패 (%s)"), *Reason);
-		return false;
-	}
-	LastSavedUtc = Save->SavedUtc;
-	AutosaveAccumulator = 0.0;
-	UE_LOG(LogCozyRealm, Log, TEXT("저장: %s · 게임 시간 %.0f초 · 시설 %d · 작업 %d · %s(UTC)"), *Reason, State.GameSeconds, State.Facilities.Num(), State.Jobs.Num(), *LastSavedUtc.ToString());
-	return true;
+	TArray<uint8> Bytes;
+    if (!UGameplayStatics::SaveGameToMemory(Save, Bytes)) return false;
+    if (!SaveWriter.IsInitialized())
+        SaveWriter.Initialize(FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"), FString(CozyEstate::SaveSlotName) + TEXT(".sav")), {});
+    const int32 ByteCount = Bytes.Num();
+    SaveWriter.Enqueue(MoveTemp(Bytes), Save->SavedUtc);
+    AutosaveAccumulator = 0.0;
+    UE_LOG(LogCozyRealm, Log, TEXT("저장 요청: %s · 스냅샷 %d바이트"), *Reason, ByteCount);
+    return true;
+}
+
+void UCozyEstateSubsystem::RestoreGroundReferences()
+{
+    bGroundRestorePending = false;
+    int32 Revision = 1, Recovered = 0, PendingPaint = 0;
+    TMap<FGuid, UCozySurfaceComponent*> Registered;
+    for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+    {
+        if (const auto* Terrain = Cast<ACozyEstateTerrain>(*It)) Revision = FMath::Max(Revision, Terrain->TerrainRevision);
+        if (auto* Surface = It->FindComponentByClass<UCozySurfaceComponent>())
+        {
+            if (UCozySurfaceComponent** Duplicate = Registered.Find(Surface->SurfaceId))
+            {
+                Surface->bAllowBuilding = false; Surface->bAllowPainting = false;
+                (*Duplicate)->bAllowBuilding = false; (*Duplicate)->bAllowPainting = false;
+                RecoveryNotice = TEXT("중복된 표면 ID가 있어 해당 표면의 편집을 중단했습니다. 에디터에서 ID를 확인해 주세요.");
+            }
+            else Registered.Add(Surface->SurfaceId, Surface);
+        }
+    }
+    for (FCozyFacilityState& Facility : State.Facilities)
+    {
+        if (Facility.bStored) continue;
+        if (!GetFacilityDef(Facility.DefinitionId))
+        {
+            Facility.bStored = true; ++Recovered;
+            if (ACozyFacilityActor* Actor = FindFacilityActor(Facility.InstanceId)) { FacilityActors.Remove(Actor); Actor->Destroy(); }
+            continue;
+        }
+        // 이전 평지 저장은 기본 Landscape를 명시적으로 참조하도록 이관한다.
+        // 새 언덕의 가장 높은 면으로 기존 시설을 임의로 올리지 않는다.
+        const FGuid LegacySurfaceId(0xC02E0001, 0, 0, 1);
+        const FGuid& RequiredSurface = Facility.bHasSurfacePlacement ? Facility.SurfaceId : LegacySurfaceId;
+        const FIntPoint Size = GetFootprint(Facility.InstanceId, Facility.Rotation);
+        const FVector Min = Config.GridOrigin + FVector(Facility.GridCoord.X * Config.CellSize, Facility.GridCoord.Y * Config.CellSize, 0);
+        FCozySurfaceHit Support; FText Reason;
+        if (!CozySurface::CheckFootprint(GetWorld(), Min, FVector2D(Size.X, Size.Y) * Config.CellSize, Config.CellSize * .5f, Support, Reason, &RequiredSurface))
+        {
+            Facility.bStored = true; ++Recovered;
+            if (ACozyFacilityActor* Actor = FindFacilityActor(Facility.InstanceId)) { FacilityActors.Remove(Actor); Actor->Destroy(); }
+        }
+        else
+        {
+            Facility.SurfaceId = Support.SurfaceId;
+            Facility.bHasSurfacePlacement = true;
+            Facility.SurfaceHeight = Support.Position.Z;
+            if (ACozyFacilityActor* Actor = FindFacilityActor(Facility.InstanceId)) Actor->SetActorLocation(Support.Position);
+        }
+    }
+    for (FCozyFloorTile& Tile : State.FloorTiles)
+    {
+        if (Tile.bStored) continue;
+        static const FName Definitions[] = { TEXT("FloorWood"), TEXT("FloorStone"), TEXT("FloorGrass") };
+        const bool KnownStyle = Tile.Style >= 0 && Tile.Style <= 2;
+        if (KnownStyle && Tile.DefinitionId.IsNone()) Tile.DefinitionId = Definitions[Tile.Style];
+        const FVector Min = Config.GridOrigin + FVector(Tile.Cell.X * Config.CellSize, Tile.Cell.Y * Config.CellSize, 0);
+        FCozySurfaceHit Support; FText Reason;
+        if (!KnownStyle || Tile.DefinitionId != Definitions[Tile.Style] || Tile.Transform.ContainsNaN()
+            || !CozySurface::CheckFootprint(GetWorld(), Min, FVector2D(Config.CellSize), Config.CellSize * .25f, Support, Reason, &Tile.SurfaceId))
+        { Tile.bStored = true; ++Recovered; }
+        else Tile.Transform.SetLocation(Support.Position + FVector(0, 0, 1.5));
+    }
+    for (const FCozyPaintMask& Mask : State.PaintMasks)
+    {
+        bool Found = false;
+        for (const auto& Pair : Registered) if (Pair.Value->PaintDomainId == Mask.DomainId) { Found = true; break; }
+        if (!Found || !Mask.IsValid()) ++PendingPaint;
+    }
+    if (Recovered || PendingPaint)
+        RecoveryNotice = FString::Printf(TEXT("지형 복구: 시설·바닥 %d개를 상태를 유지한 채 보관했습니다. 적용하지 못한 도색 %d개는 저장 데이터에 보존했습니다."), Recovered, PendingPaint);
+    if (State.TerrainRevision && State.TerrainRevision != Revision)
+        UE_LOG(LogCozyRealm, Log, TEXT("지형 리비전 이관: %d → %d · 표면 참조와 지지면 재검사"), State.TerrainRevision, Revision);
+    State.TerrainRevision = Revision;
+    if (FloorTileActor) FloorTileActor->Rebuild(State.FloorTiles);
+    GetWorld()->GetSubsystem<UCozySurfaceNavigation>()->Invalidate();
+    if (!RecoveryNotice.IsEmpty()) UE_LOG(LogCozyRealm, Warning, TEXT("%s"), *RecoveryNotice);
+    SaveEstate(TEXT("지형 복원 확인"));
+}
+
+void UCozyEstateSubsystem::PollSave(bool bWait)
+{
+    FString Error;
+    if (SaveWriter.Pump(LastSavedUtc, Error, bWait)) UE_LOG(LogCozyRealm, Log, TEXT("저장 완료: %s (UTC)"), *LastSavedUtc.ToString());
+    if (!Error.IsEmpty()) { RecoveryNotice = Error; UE_LOG(LogCozyRealm, Error, TEXT("%s"), *Error); }
 }
 
 bool UCozyEstateSubsystem::LoadEstateFromSave(FDateTime& OutSavedUtc)
 {
-	if (!HasSaveFile())
+	bSaveBlockedByInvalidFile = false;
+	if (!HasSaveFile() && !UGameplayStatics::DoesSaveGameExist(FString(CozyEstate::SaveSlotName) + TEXT("_previous"), CozyEstate::SaveUserIndex))
 	{
 		return false;
 	}
 	UCozyEstateSaveGame* Save = Cast<UCozyEstateSaveGame>(UGameplayStatics::LoadGameFromSlot(CozyEstate::SaveSlotName, CozyEstate::SaveUserIndex));
-	if (!Save || Save->FileVersion > CozyEstate::CurrentSaveFileVersion)
-	{
-		// 읽을 수 없는 파일은 지우지 않고 옆에 사본을 남긴 뒤 새 게임으로 (사용자 데이터 보호)
-		const FString Path = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"), FString(CozyEstate::SaveSlotName) + TEXT(".sav"));
-		const FString Backup = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"), FString::Printf(TEXT("%s_unreadable_%s.sav"), CozyEstate::SaveSlotName, *FDateTime::Now().ToString(TEXT("%Y%m%d_%H%M%S"))));
-		IFileManager::Get().Copy(*Backup, *Path);
-		UE_LOG(LogCozyRealm, Error, TEXT("저장 파일을 읽을 수 없어 새 게임으로 시작합니다 · 원본 사본: %s"), *Backup);
-		return false;
-	}
+    FString LoadedSlot = CozyEstate::SaveSlotName;
+    if (!Save)
+    {
+        if (HasSaveFile())
+        {
+            const FString Source = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"), FString(CozyEstate::SaveSlotName) + TEXT(".sav"));
+            const FString Damaged = Source + TEXT(".damaged_") + FDateTime::UtcNow().ToString(TEXT("%Y%m%d_%H%M%S"));
+            if (IFileManager::Get().Copy(*Damaged, *Source) != COPY_OK)
+            {
+                bSaveBlockedByInvalidFile = true;
+                RecoveryNotice = TEXT("손상 파일의 사본을 보관하지 못해 저장을 중단했습니다.");
+                return false;
+            }
+        }
+        LoadedSlot += TEXT("_previous");
+        Save = Cast<UCozyEstateSaveGame>(UGameplayStatics::LoadGameFromSlot(LoadedSlot, CozyEstate::SaveUserIndex));
+        if (Save) RecoveryNotice = TEXT("현재 저장본을 읽지 못해 직전 정상 저장본으로 복구했습니다.");
+    }
+    if (!Save || Save->FileVersion > CozyEstate::CurrentSaveFileVersion)
+    {
+        bSaveBlockedByInvalidFile = true;
+        RecoveryNotice = TEXT("저장본이 손상되었거나 더 새로운 버전입니다. 원본을 보호하기 위해 이번 실행은 저장하지 않습니다.");
+        UE_LOG(LogCozyRealm, Error, TEXT("%s"), *RecoveryNotice);
+        return false;
+    }
+    TArray<uint8> PreviousBytes;
+    UGameplayStatics::LoadDataFromSlot(PreviousBytes, LoadedSlot, CozyEstate::SaveUserIndex);
+    const FString SavePath = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"), FString(CozyEstate::SaveSlotName) + TEXT(".sav"));
+    if (Save->FileVersion == 1)
+    {
+        const FString MigrationCopy = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"), FString(CozyEstate::SaveSlotName) + TEXT("_before_terrain_v1.sav"));
+        if (!IFileManager::Get().FileExists(*MigrationCopy) && !FFileHelper::SaveArrayToFile(PreviousBytes, *MigrationCopy))
+        {
+            bSaveBlockedByInvalidFile = true;
+            RecoveryNotice = TEXT("이전 저장 형식의 원본 보관에 실패해 저장을 중단했습니다.");
+        }
+    }
+    SaveWriter.Initialize(SavePath, MoveTemp(PreviousBytes));
+
 	State = Save->State;
+	State.SaveVersion = 2; // 버전 1에는 없는 도색·타일 배열은 빈 배열로 이관된다.
 	OutSavedUtc = Save->SavedUtc;
 	LastSavedUtc = Save->SavedUtc;
 	SanitizeLoadedState();
@@ -177,6 +309,8 @@ void UCozyEstateSubsystem::SanitizeLoadedState()
 
 void UCozyEstateSubsystem::DebugReloadFromSave()
 {
+	PollSave(true);
+	bGroundRestorePending = true;
 	if (!HasSaveFile())
 	{
 		UE_LOG(LogCozyRealm, Warning, TEXT("불러올 저장 파일이 없습니다"));
@@ -276,6 +410,7 @@ void UCozyEstateSubsystem::DebugSkipOffline(double Seconds)
 
 void UCozyEstateSubsystem::DebugShiftSaveTime(double Seconds)
 {
+	PollSave(true);
 	UCozyEstateSaveGame* Save = HasSaveFile() ? Cast<UCozyEstateSaveGame>(UGameplayStatics::LoadGameFromSlot(CozyEstate::SaveSlotName, CozyEstate::SaveUserIndex)) : nullptr;
 	if (!Save)
 	{
@@ -293,6 +428,7 @@ void UCozyEstateSubsystem::Deinitialize()
 	if (bStarted)
 	{
 		SaveEstate(TEXT("종료"));
+		PollSave(true);
 		bStarted = false;
 	}
 	Super::Deinitialize();
@@ -750,6 +886,16 @@ void UCozyEstateSubsystem::BuildNewGameState()
 
 void UCozyEstateSubsystem::SpawnFacilityActors()
 {
+	if (!FloorTileActor) FloorTileActor = GetWorld()->SpawnActor<ACozyFloorTiles>();
+	if (FloorTileActor) FloorTileActor->Rebuild(State.FloorTiles);
+	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+	{
+		UCozySurfaceComponent* Surface = It->FindComponentByClass<UCozySurfaceComponent>();
+		if (!Surface || !Surface->HasBegunPlay()) continue;
+		const FCozyPaintMask* Saved = State.PaintMasks.FindByPredicate([&](const FCozyPaintMask& M) { return M.DomainId == Surface->PaintDomainId; });
+		if (Saved) Surface->RestorePaint(*Saved);
+		else { FCozyPaintMask Empty; Empty.DomainId = Surface->PaintDomainId; Empty.Initialize(128); Surface->RestorePaint(Empty); }
+	}
 	for (const FCozyFacilityState& Facility : State.Facilities)
 	{
 		if (!Facility.bStored)
@@ -769,7 +915,8 @@ void UCozyEstateSubsystem::SpawnFacilityActor(const FCozyFacilityState& Facility
 	}
 
 	const FIntPoint Size = (Facility.Rotation % 2 == 0) ? Def->Size : FIntPoint(Def->Size.Y, Def->Size.X);
-	const FVector Center = ComputeFacilityLocation(Facility.GridCoord, Size);
+	FVector Center = ComputeFacilityLocation(Facility.GridCoord, Size);
+	if (Facility.bHasSurfacePlacement) Center.Z = Facility.SurfaceHeight;
 
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -784,27 +931,12 @@ void UCozyEstateSubsystem::SpawnFacilityActor(const FCozyFacilityState& Facility
 	}
 }
 
-FVector UCozyEstateSubsystem::ComputeFacilityLocation(FIntPoint Coord, FIntPoint Size) const
+FVector UCozyEstateSubsystem::ComputeFacilityLocation(FIntPoint Coord, FIntPoint Size, const FGuid* Surface) const
 {
 	FVector Center = Config.GridOrigin + FVector((Coord.X + Size.X * 0.5f) * Config.CellSize, (Coord.Y + Size.Y * 0.5f) * Config.CellSize, 0.f);
-	// 실제 지면 높이에 맞춤 (영지 판 두께가 바뀌어도 시설·오라가 묻히지 않게)
-	if (const UWorld* World = GetWorld())
-	{
-		FHitResult GroundHit;
-		FCollisionQueryParams TraceParams(SCENE_QUERY_STAT(CozyFacilityGround), false);
-		for (ACozyFacilityActor* Existing : FacilityActors)
-		{
-			TraceParams.AddIgnoredActor(Existing);
-		}
-		if (PlacementActor)
-		{
-			TraceParams.AddIgnoredActor(PlacementActor);
-		}
-		if (World->LineTraceSingleByChannel(GroundHit, Center + FVector(0.f, 0.f, 2000.f), Center - FVector(0.f, 0.f, 2000.f), ECC_Visibility, TraceParams))
-		{
-			Center.Z = GroundHit.ImpactPoint.Z;
-		}
-	}
+	FCozySurfaceHit Ground;
+	if (CozySurface::GroundAt(GetWorld(), Center, Ground, Surface)) Center.Z = Ground.Position.Z;
+
 	return Center;
 }
 
@@ -839,7 +971,84 @@ FIntPoint UCozyEstateSubsystem::WorldToCell(const FVector& WorldLocation) const
 
 FVector UCozyEstateSubsystem::GetCellCenter(FIntPoint Cell) const
 {
-	return Config.GridOrigin + FVector((Cell.X + 0.5f) * Config.CellSize, (Cell.Y + 0.5f) * Config.CellSize, 0.f);
+	FVector Center = Config.GridOrigin + FVector((Cell.X + 0.5f) * Config.CellSize, (Cell.Y + 0.5f) * Config.CellSize, 0.f);
+	FCozySurfaceHit Hit;
+	if (CozySurface::GroundAt(GetWorld(), Center, Hit)) Center.Z = Hit.Position.Z;
+	return Center;
+}
+
+const FCozyFloorTile* UCozyEstateSubsystem::FindFloorTile(FVector Position, const FGuid& Surface) const
+{
+    const FIntPoint Cell = WorldToCell(Position);
+    return State.FloorTiles.FindByPredicate([&](const FCozyFloorTile& Tile) { return !Tile.bStored && Tile.Cell == Cell && Tile.SurfaceId == Surface; });
+}
+
+bool UCozyEstateSubsystem::StoreFloorTile(const FGuid& Id, FText& Reason)
+{
+    FCozyFloorTile* Tile = State.FloorTiles.FindByPredicate([&](const FCozyFloorTile& Item) { return Item.InstanceId == Id; });
+    if (!Tile || Tile->bStored) return false;
+    Tile->bStored = true;
+    if (FloorTileActor) FloorTileActor->Rebuild(State.FloorTiles);
+    const bool Saved = SaveEstate(TEXT("바닥 타일 보관"));
+    Reason = FText::FromString(Saved ? TEXT("바닥 타일을 보관했습니다 · 시설은 유지됩니다") : TEXT("타일을 보관했지만 파일 저장에 실패했습니다"));
+    return true;
+}
+
+bool UCozyEstateSubsystem::EditFloorTile(FVector Position, int32 Style, int32 Rotation, bool bErase, FText& Reason, const FGuid* Surface, const FGuid& MovingId)
+{
+    const FIntPoint Cell = WorldToCell(Position);
+    if (Cell.X < 0 || Cell.Y < 0 || Cell.X >= Config.GridSize.X || Cell.Y >= Config.GridSize.Y || Style < 0 || Style > 2)
+    {
+        Reason = LOCTEXT("FloorOutside", "영지 안의 바닥을 선택해 주세요"); return false;
+    }
+    FCozySurfaceHit Support;
+    const FVector Min = Config.GridOrigin + FVector(Cell.X * Config.CellSize, Cell.Y * Config.CellSize, 0);
+    if (!CozySurface::CheckFootprint(GetWorld(), Min, FVector2D(Config.CellSize), Config.CellSize * .25f, Support, Reason, Surface)) return false;
+    const int32 Index = State.FloorTiles.IndexOfByPredicate([&](const FCozyFloorTile& Tile) { return !Tile.bStored && Tile.Cell == Cell && Tile.SurfaceId == Support.SurfaceId; });
+    if (bErase)
+    {
+        if (Index == INDEX_NONE) { Reason = LOCTEXT("FloorMissing", "이 칸에 설치한 바닥이 없습니다"); return false; }
+        State.FloorTiles.RemoveAt(Index);
+    }
+    else
+    {
+        const int32 MovingIndex = MovingId.IsValid() ? State.FloorTiles.IndexOfByPredicate([&](const FCozyFloorTile& Item) { return Item.InstanceId == MovingId; }) : INDEX_NONE;
+        if (MovingId.IsValid() && MovingIndex == INDEX_NONE) return false;
+        if (MovingId.IsValid() && Index != INDEX_NONE && Index != MovingIndex)
+        {
+            Reason = LOCTEXT("FloorOccupied", "옮길 칸의 기존 바닥을 먼저 보관하거나 제거해 주세요"); return false;
+        }
+        const int32 Target = MovingId.IsValid() ? MovingIndex : Index;
+        FCozyFloorTile Tile;
+        Tile.InstanceId = Target == INDEX_NONE ? FGuid::NewGuid() : State.FloorTiles[Target].InstanceId;
+        Tile.Cell = Cell; Tile.SurfaceId = Support.SurfaceId; Tile.Style = Style;
+        static const FName Definitions[] = { TEXT("FloorWood"), TEXT("FloorStone"), TEXT("FloorGrass") };
+        Tile.DefinitionId = Definitions[Style];
+        Tile.Transform = FTransform(FRotator(0, ((Rotation % 4 + 4) % 4) * 90.f, 0), Support.Position + FVector(0, 0, 1.5), FVector(Config.CellSize * .0098f, Config.CellSize * .0098f, .02f));
+        if (Target == INDEX_NONE) State.FloorTiles.Add(Tile); else State.FloorTiles[Target] = Tile;
+    }
+    if (!FloorTileActor) FloorTileActor = GetWorld()->SpawnActor<ACozyFloorTiles>();
+    if (FloorTileActor) FloorTileActor->Rebuild(State.FloorTiles);
+    const bool Saved = SaveEstate(TEXT("바닥 타일 편집"));
+    Reason = FText::FromString(!Saved ? TEXT("바닥을 편집했지만 파일 저장에 실패했습니다") : bErase ? TEXT("바닥 타일을 제거했습니다 · 시설은 유지됩니다") : TEXT("바닥 타일을 설치했습니다"));
+    return true;
+}
+
+bool UCozyEstateSubsystem::CanWalkBetween(FIntPoint From, FIntPoint To) const
+{
+	if (!IsCellWalkable(To)) return false;
+	const FVector Start = GetCellCenter(From), End = GetCellCenter(To);
+	const int32 Samples = FMath::Max(1, FMath::CeilToInt(FVector::Dist2D(Start, End) / 25.f));
+	float PreviousZ = Start.Z;
+	for (int32 I = 1; I <= Samples; ++I)
+	{
+		FCozySurfaceHit Hit;
+		if (!CozySurface::GroundAt(GetWorld(), FMath::Lerp(Start, End, float(I) / Samples), Hit)
+			|| Hit.Normal.Z < .72f || FMath::Abs(Hit.Position.Z - PreviousZ) > 35.f
+			|| (Hit.Rules.IsValid() && !Hit.Rules->bAllowWalking)) return false;
+		PreviousZ = Hit.Position.Z;
+	}
+	return true;
 }
 
 bool UCozyEstateSubsystem::IsCellWalkable(FIntPoint Cell) const
@@ -876,6 +1085,9 @@ FGuid UCozyEstateSubsystem::FindNearestFacility(const FVector& Location, float R
 			continue;
 		}
 		const FIntPoint Size = GetFootprint(Facility.InstanceId, Facility.Rotation);
+		const float GroundHeight = Facility.bHasSurfacePlacement ? Facility.SurfaceHeight : ComputeFacilityLocation(Facility.GridCoord, Size).Z;
+		// Location은 주인공 캡슐 중심이다. 다른 층 시설을 수평 거리만으로 선택하지 않는다.
+		if (Location.Z < GroundHeight - 30.f || Location.Z > GroundHeight + 180.f) continue;
 		const FVector2D Min(Config.GridOrigin.X + Facility.GridCoord.X * Config.CellSize, Config.GridOrigin.Y + Facility.GridCoord.Y * Config.CellSize);
 		const FVector2D Max = Min + FVector2D(Size.X, Size.Y) * Config.CellSize;
 		// 시설 차지 칸(사각형) 바깥 테두리까지 거리 · 안에 있으면 0
@@ -892,12 +1104,31 @@ FGuid UCozyEstateSubsystem::FindNearestFacility(const FVector& Location, float R
 
 bool UCozyEstateSubsystem::CanPlaceFacility(const FGuid& FacilityId, FIntPoint Coord, int32 Rotation, FText& OutReason) const
 {
+	const FCozyFacilityState* Facility = FindFacility(FacilityId);
+	const FCozyFacilityRow* Def = Facility ? GetFacilityDef(Facility->DefinitionId) : nullptr;
+	if (!Def) { OutReason = LOCTEXT("PlaceMissing", "시설 정보를 찾을 수 없습니다"); return false; }
 	const FIntPoint Size = GetFootprint(FacilityId, Rotation);
 	if (Coord.X < 0 || Coord.Y < 0 || Coord.X + Size.X > Config.GridSize.X || Coord.Y + Size.Y > Config.GridSize.Y)
 	{
 		OutReason = LOCTEXT("PlaceOutside", "영지 밖에는 놓을 수 없습니다");
 		return false;
 	}
+	FCozySurfaceHit Support;
+	const FVector Min = Config.GridOrigin + FVector(Coord.X * Config.CellSize, Coord.Y * Config.CellSize, 0);
+	const FGuid* TargetSurface = IsPlacing() && PlacementId == FacilityId ? &PlacementSurfaceId : nullptr;
+	if (!CozySurface::CheckFootprint(GetWorld(), Min, FVector2D(Size.X, Size.Y) * Config.CellSize, Config.CellSize * .5f, Support, OutReason, TargetSurface)) return false;
+	FCollisionQueryParams CollisionParams(SCENE_QUERY_STAT(CozyBuildClearance), false);
+	CollisionParams.AddIgnoredActor(FindFacilityActor(FacilityId));
+	CollisionParams.AddIgnoredActor(PlacementActor);
+	FCollisionObjectQueryParams Objects;
+	Objects.AddObjectTypesToQuery(ECC_WorldStatic);
+	Objects.AddObjectTypesToQuery(ECC_WorldDynamic);
+	const FVector HalfExtent(Size.X * Config.CellSize * .45f, Size.Y * Config.CellSize * .45f, FMath::Max(10.f, Def->GreyboxHeight) * .5f);
+	if (GetWorld()->OverlapAnyTestByObjectType(Support.Position + FVector(0, 0, HalfExtent.Z + 15), FQuat::Identity, Objects, FCollisionShape::MakeBox(HalfExtent), CollisionParams))
+	{
+		OutReason = LOCTEXT("PlaceObstacle", "시설을 놓을 공간에 장애물이 있습니다"); return false;
+	}
+
 	for (const FCozyFacilityState& Other : State.Facilities)
 	{
 		if (Other.InstanceId == FacilityId || Other.bStored)
@@ -905,6 +1136,9 @@ bool UCozyEstateSubsystem::CanPlaceFacility(const FGuid& FacilityId, FIntPoint C
 			continue;
 		}
 		const FIntPoint OtherSize = GetFootprint(Other.InstanceId, Other.Rotation);
+		const FCozyFacilityRow* OtherDef = GetFacilityDef(Other.DefinitionId);
+		const float OtherZ = Other.bHasSurfacePlacement ? Other.SurfaceHeight : ComputeFacilityLocation(Other.GridCoord, OtherSize).Z;
+		if (OtherDef && (Support.Position.Z >= OtherZ + OtherDef->GreyboxHeight + 20 || OtherZ >= Support.Position.Z + Def->GreyboxHeight + 20)) continue;
 		const bool bOverlap = Coord.X < Other.GridCoord.X + OtherSize.X && Other.GridCoord.X < Coord.X + Size.X
 			&& Coord.Y < Other.GridCoord.Y + OtherSize.Y && Other.GridCoord.Y < Coord.Y + Size.Y;
 		if (bOverlap)
@@ -913,6 +1147,13 @@ bool UCozyEstateSubsystem::CanPlaceFacility(const FGuid& FacilityId, FIntPoint C
 			return false;
 		}
 	}
+    FVector EntryMin = Min; EntryMin.Z = Support.Position.Z;
+    if (!GetWorld()->GetSubsystem<UCozySurfaceNavigation>()->HasAccessibleEdge(EntryMin, FVector2D(Size.X, Size.Y) * Config.CellSize, Def->GreyboxHeight, FacilityId))
+    {
+        OutReason = LOCTEXT("PlaceNoAccess", "시설 가장자리로 이어지는 이동 경로가 없습니다");
+        return false;
+    }
+
 	return true;
 }
 
@@ -1031,22 +1272,20 @@ bool UCozyEstateSubsystem::BeginPlacement(const FGuid& FacilityId)
 	PlacementRotation = Facility->Rotation;
 	bPlacementFromStorage = Facility->bStored;
 	PlacementCoord = Facility->GridCoord;
-	if (bPlacementFromStorage)
+	FCozySurfaceHit InitialSurface;
+	CozySurface::GroundAt(GetWorld(), ComputeFacilityLocation(PlacementCoord, GetFootprint(FacilityId, PlacementRotation)), InitialSurface);
+	PlacementSurfaceId = Facility->bHasSurfacePlacement ? Facility->SurfaceId : InitialSurface.SurfaceId;
+	if (bPlacementFromStorage) FindFreeSpot(FacilityId, PlacementRotation, PlacementCoord);
+	// 미리보기는 독립 액터. 확정 전 실제 시설·충돌·작업은 원래 자리에 남는다.
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	PlacementActor = World->SpawnActor<ACozyFacilityActor>(ACozyFacilityActor::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, Params);
+	if (PlacementActor)
 	{
-		// 빈 자리에 임시 상자 (확정 전에는 상태를 바꾸지 않음)
-		FindFreeSpot(FacilityId, PlacementRotation, PlacementCoord);
-		FActorSpawnParameters Params;
-		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		PlacementActor = World->SpawnActor<ACozyFacilityActor>(ACozyFacilityActor::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, Params);
-		if (PlacementActor)
-		{
-			PlacementActor->InitFacility(FacilityId, *Def, Config.CellSize);
-		}
+		PlacementActor->InitFacility(FacilityId, *Def, Config.CellSize);
+		PlacementActor->SetActorEnableCollision(false);
 	}
-	else
-	{
-		PlacementActor = FindFacilityActor(FacilityId);
-	}
+
 	if (!PlacementActor)
 	{
 		PlacementId.Invalidate();
@@ -1066,7 +1305,7 @@ void UCozyEstateSubsystem::UpdatePlacement(FIntPoint Coord, int32 Rotation)
 	PlacementRotation = ((Rotation % 4) + 4) % 4;
 	const FIntPoint Size = GetFootprint(PlacementId, PlacementRotation);
 	PlacementCoord = FIntPoint(FMath::Clamp(Coord.X, 0, FMath::Max(0, Config.GridSize.X - Size.X)), FMath::Clamp(Coord.Y, 0, FMath::Max(0, Config.GridSize.Y - Size.Y)));
-	PlacementActor->SetActorLocationAndRotation(ComputeFacilityLocation(PlacementCoord, Size), FRotator(0.f, 90.f * PlacementRotation, 0.f));
+	PlacementActor->SetActorLocationAndRotation(ComputeFacilityLocation(PlacementCoord, Size, &PlacementSurfaceId), FRotator(0.f, 90.f * PlacementRotation, 0.f));
 	FText Reason;
 	PlacementActor->SetPlacementPreview(true, CanPlaceFacility(PlacementId, PlacementCoord, PlacementRotation, Reason));
 }
@@ -1091,22 +1330,28 @@ bool UCozyEstateSubsystem::ConfirmPlacement(FText& OutMessage)
 	const FIntPoint From = Facility->GridCoord;
 	Facility->GridCoord = PlacementCoord;
 	Facility->Rotation = PlacementRotation;
+	FCozySurfaceHit Support;
+	FText SupportReason;
+	const FIntPoint Footprint = GetFootprint(PlacementId, PlacementRotation);
+	const FVector FootprintMin = Config.GridOrigin + FVector(PlacementCoord.X * Config.CellSize, PlacementCoord.Y * Config.CellSize, 0);
+	if (CozySurface::CheckFootprint(GetWorld(), FootprintMin, FVector2D(Footprint.X, Footprint.Y) * Config.CellSize, Config.CellSize * .5f, Support, SupportReason, &PlacementSurfaceId))
+	{
+		Facility->SurfaceId = Support.SurfaceId; Facility->SurfaceHeight = Support.Position.Z; Facility->bHasSurfacePlacement = true;
+	}
 	const bool bFromStorage = bPlacementFromStorage;
+	if (PlacementActor) PlacementActor->Destroy();
 	if (bFromStorage)
 	{
-		// 임시 상자를 지우고 정식 시설 액터로
 		Facility->bStored = false;
-		if (PlacementActor)
-		{
-			PlacementActor->Destroy();
-		}
-		PlacementActor = nullptr;
 		SpawnFacilityActor(*Facility);
 	}
-	else if (PlacementActor)
+	else if (ACozyFacilityActor* Actual = FindFacilityActor(PlacementId))
 	{
-		PlacementActor->SetPlacementPreview(false, true);
+		FVector Location = ComputeFacilityLocation(PlacementCoord, GetFootprint(PlacementId, PlacementRotation));
+		Location.Z = Facility->SurfaceHeight;
+		Actual->SetActorLocationAndRotation(Location, FRotator(0, PlacementRotation * 90.f, 0));
 	}
+
 	PlacementActor = nullptr;
 	PlacementId.Invalidate();
 	OutMessage = bFromStorage
@@ -1124,22 +1369,8 @@ void UCozyEstateSubsystem::CancelPlacement()
 	{
 		return;
 	}
-	if (bPlacementFromStorage)
-	{
-		if (PlacementActor)
-		{
-			PlacementActor->Destroy();
-		}
-	}
-	else if (const FCozyFacilityState* Facility = FindFacility(PlacementId))
-	{
-		if (PlacementActor)
-		{
-			const FIntPoint Size = GetFootprint(PlacementId, Facility->Rotation);
-			PlacementActor->SetActorLocationAndRotation(ComputeFacilityLocation(Facility->GridCoord, Size), FRotator(0.f, 90.f * Facility->Rotation, 0.f));
-			PlacementActor->SetPlacementPreview(false, true);
-		}
-	}
+	if (PlacementActor) PlacementActor->Destroy();
+
 	PlacementActor = nullptr;
 	PlacementId.Invalidate();
 	NotifyChanged(true);
@@ -1853,6 +2084,8 @@ void UCozyEstateSubsystem::SetNightOverride(ECozyNightOverride NewOverride)
 
 void UCozyEstateSubsystem::Tick(float DeltaTime)
 {
+	PollSave();
+	if (bStarted && bGroundRestorePending) RestoreGroundReferences();
 	if (!bStarted)
 	{
 		return;

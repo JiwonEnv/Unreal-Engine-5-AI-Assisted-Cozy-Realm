@@ -43,17 +43,24 @@ public:
 	 */
 	UFUNCTION(Exec)
 	void CozySetResource(FName ItemId, int32 Amount);
+	/** 0 종료 / 1 브러시 / 2 타일. 제작 검증용 입력 진입점. */
+	UFUNCTION(Exec) void CozyGroundMode(int32 Mode);
 
 protected:
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void PlayerTick(float DeltaTime) override;
+	virtual bool InputKey(const FInputKeyEventArgs& Params) override;
+	virtual void FlushPressedKeys() override;
 
 	/** 영지 화면 UI 클래스 (재화 표시 · 기능 아이콘 · 전용 창 · 디버그 메뉴) */
 	UPROPERTY(EditAnywhere, Category = "UI")
 	TSubclassOf<UCozyHudWidget> HudClass;
 
 private:
+	bool bGroundLeftControl = false;
+	bool bGroundRightControl = false;
 
 	/** 왼쪽 클릭: 시설이면 선택하고 기능 아이콘을, 빈 곳이면 선택 해제 */
 	void HandleWorldClick();
@@ -77,4 +84,18 @@ private:
 	void TickPlacement();
 	bool bPlacementMode = false;
 	bool bDraggingPlacement = false;
+	void TickGroundEditing();
+	void FinishGroundStroke();
+	int32 GroundMode = 0;
+	int32 GroundStyle = 1;
+	int32 GroundRotation = 0;
+	float BrushRadius = 120.f;
+	FVector LastBrushPosition = FVector::ZeroVector;
+	TWeakObjectPtr<class UCozySurfaceComponent> StrokeSurface;
+	TWeakObjectPtr<class UCozySurfaceComponent> LastPaintSurface;
+	bool bFloorPreview = false;
+	FVector FloorPreviewPosition = FVector::ZeroVector;
+	FGuid FloorPreviewSurface;
+	FGuid MovingFloorId;
+	FString LastRecoveryNotice;
 };

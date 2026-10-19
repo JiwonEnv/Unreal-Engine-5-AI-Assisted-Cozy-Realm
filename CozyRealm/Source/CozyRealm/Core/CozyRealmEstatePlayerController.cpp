@@ -1,4 +1,5 @@
 #include "Core/CozyRealmEstatePlayerController.h"
+#include "Environment/CozySurfaceComponent.h"
 #include "Facilities/CozyFacilityActor.h"
 #include "UI/CozyHudWidget.h"
 #include "Estate/CozyEstateSubsystem.h"
@@ -137,7 +138,9 @@ void ACozyRealmEstatePlayerController::TickHero(bool bCompact)
 		FVector RayDirection;
 		if (Estate && DeprojectMousePositionToWorld(RayOrigin, RayDirection) && !FMath::IsNearlyZero(RayDirection.Z))
 		{
-			const FVector Ground = RayOrigin + RayDirection * ((Estate->GetGroundZ() - RayOrigin.Z) / RayDirection.Z);
+			FCozySurfaceHit Surface;
+			if (!CozySurface::Trace(GetWorld(), RayOrigin, RayOrigin + RayDirection * 100000.f, Surface)) return;
+			const FVector Ground = Surface.Position;
 			const bool bMoving = Hero->MoveToLocation(Ground);
 			UE_LOG(LogCozyRealm, Log, TEXT("[주인공] 오른쪽 클릭 땅 → 이동 %s (%.0f, %.0f)"), bMoving ? TEXT("시작") : TEXT("불가"), Ground.X, Ground.Y);
 		}
@@ -166,9 +169,20 @@ void ACozyRealmEstatePlayerController::TickHero(bool bCompact)
 void ACozyRealmEstatePlayerController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
+	if (const UCozyEstateSubsystem* Estate = GetWorld()->GetSubsystem<UCozyEstateSubsystem>())
+	{
+		const FString& Notice = Estate->GetRecoveryNotice();
+		if (Hud && !Notice.IsEmpty() && Notice != LastRecoveryNotice) { Hud->ShowToast(FText::FromString(Notice)); LastRecoveryNotice = Notice; }
+	}
 
 	// 작은 창 모드: 영지를 보며 수확만 (시설 메뉴 · 창 · 배치는 크게 보기 후)
 	const bool bCompact = Hud && Hud->IsCompactMode();
+	if (!bCompact && WasInputKeyJustPressed(EKeys::G)) CozyGroundMode((GroundMode + 1) % 3);
+	if (GroundMode != 0)
+	{
+		if (bCompact || WasInputKeyJustPressed(EKeys::Escape)) CozyGroundMode(0);
+		else { TickGroundEditing(); return; }
+	}
 	if (!bCompact && WasInputKeyJustPressed(EKeys::B))
 	{
 		SetPlacementMode(!bPlacementMode);
@@ -372,7 +386,7 @@ void ACozyRealmEstatePlayerController::TickPlacement()
 	{
 		FHitResult Hit;
 		ACozyFacilityActor* Clicked = GetHitResultUnderCursor(ECC_Visibility, false, Hit) ? Cast<ACozyFacilityActor>(Hit.GetActor()) : nullptr;
-		if (Clicked && Estate->IsPlacing() && Clicked == Estate->GetPlacementActor())
+		if (Estate->IsPlacing() && (!Clicked || Clicked->GetFacilityId() == Estate->GetPlacementId()))
 		{
 			bDraggingPlacement = true;
 		}
@@ -391,17 +405,19 @@ void ACozyRealmEstatePlayerController::TickPlacement()
 	}
 	if (bDraggingPlacement && Estate->IsPlacing())
 	{
-		// 커서 광선이 영지 바닥 평면과 만나는 칸 → 시설 가운데가 그 칸에 오게
+		// 실제 지면을 가리킨 칸 → 시설 가운데가 그 칸에 오게
 		FVector RayOrigin;
 		FVector RayDirection;
 		if (DeprojectMousePositionToWorld(RayOrigin, RayDirection) && !FMath::IsNearlyZero(RayDirection.Z))
 		{
-			const float T = (Estate->GetGroundZ() - RayOrigin.Z) / RayDirection.Z;
-			const FIntPoint Cell = Estate->WorldToCell(RayOrigin + RayDirection * T);
+			FCozySurfaceHit Surface;
+			if (!CozySurface::Trace(GetWorld(), RayOrigin, RayOrigin + RayDirection * 100000.f, Surface)) return;
+			const FIntPoint Cell = Estate->WorldToCell(Surface.Position);
 			const FIntPoint Size = Estate->GetFootprint(Estate->GetPlacementId(), Estate->GetPlacementRotation());
 			const FIntPoint Coord(Cell.X - (Size.X - 1) / 2, Cell.Y - (Size.Y - 1) / 2);
-			if (Coord != Estate->GetPlacementCoord())
+			if (Coord != Estate->GetPlacementCoord() || Surface.SurfaceId != Estate->GetPlacementSurface())
 			{
+				Estate->SetPlacementSurface(Surface.SurfaceId);
 				Estate->UpdatePlacement(Coord, Estate->GetPlacementRotation());
 			}
 		}

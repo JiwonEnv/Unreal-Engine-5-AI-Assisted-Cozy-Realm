@@ -33,6 +33,8 @@ public:
 	/** 이 액터가 만들고 관리하는 랜드스케이프 (지형 새로 만들기로 생김) */
 	UPROPERTY(EditAnywhere, Category = "1 지형", meta = (DisplayName = "Landscape (랜드스케이프)"))
 	TObjectPtr<ALandscape> Landscape;
+	/** 고정 지형을 수정해 배치 가능 영역이 달라지면 증가시킨다. */
+	UPROPERTY(EditAnywhere, Category = "1 지형", meta=(ClampMin="1")) int32 TerrainRevision = 1;
 
 	/** 평평한 땅 절반 크기 (cm) · 영지가 가장 넓어질 때의 절반 + 여유 · 지금 영지 절반은 1200 */
 	UPROPERTY(EditAnywhere, Category = "2 모양", meta = (DisplayName = "Flat Half Size (평평한 땅 절반 크기)", ClampMin = "500"))
