@@ -1,5 +1,6 @@
 #include "Hero/CozyHeroCharacter.h"
 #include "Environment/CozySurfaceNavigation.h"
+#include "Environment/CozySurfaceComponent.h"
 #include "Estate/CozyEstateSubsystem.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -148,6 +149,7 @@ void ACozyHeroCharacter::ApplyConfig()
 	const float Radius = FMath::Clamp(Config.Height * Config.HeadRatio * 0.5f, 8.f, Half);
 	GetCapsuleComponent()->SetCapsuleSize(Radius, Half);
 	Shape.Apply(Config, Config.Height, -Half);
+	VisualDrop = 0.f;
 
 	const UCozyEstateSubsystem* Estate = GetWorld() ? GetWorld()->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
 	const float Cell = Estate ? Estate->GetCellSize() : 200.f;
@@ -361,6 +363,24 @@ void ACozyHeroCharacter::FollowPath(float SpeedScale)
 	}
 }
 
+void ACozyHeroCharacter::UpdateVisualDrop(float DeltaSeconds)
+{
+	// 캐릭터 이동은 바닥에서 약 2cm 띄워 두고, 경사에서는 캡슐 아래 둥근 면이 경사에 비스듬히 닿아 가운데가 더 뜬다.
+	// 충돌·길찾기는 그대로 두고 보이는 몸만 그만큼 내린다 (Claude 후속 2026-10-20 · 측정: 평지 2.1cm · 경사로 5.9cm).
+	float Target = 0.f;
+	if (GetCharacterMovement()->IsMovingOnGround())
+	{
+		const FVector Feet = GetActorLocation() - FVector(0, 0, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+		FCozySurfaceHit Ground;
+		if (CozySurface::GroundAt(GetWorld(), Feet, Ground)) Target = FMath::Clamp(float(Feet.Z - Ground.Position.Z), 0.f, 15.f);
+	}
+	const float Next = FMath::FInterpTo(VisualDrop, Target, DeltaSeconds, 12.f);
+	if (FMath::IsNearlyEqual(Next, VisualDrop, 0.01f)) return;
+	for (UStaticMeshComponent* Part : { Shape.Body.Get(), Shape.Head.Get(), Shape.Nose.Get() })
+		if (Part) Part->AddRelativeLocation(FVector(0, 0, VisualDrop - Next));
+	VisualDrop = Next;
+}
+
 void ACozyHeroCharacter::KeepInsideEstate()
 {
 	const UCozyEstateSubsystem* Estate = GetWorld()->GetSubsystem<UCozyEstateSubsystem>();
@@ -396,6 +416,7 @@ void ACozyHeroCharacter::Tick(float DeltaSeconds)
 		SetActorLocation(Free + FVector(0, 0, GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + 2), false, nullptr, ETeleportType::TeleportPhysics);
 		PathPoints.Reset();
 	}
+	UpdateVisualDrop(DeltaSeconds);
 	if (bFrozen)
 	{
 		return;

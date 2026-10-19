@@ -8,6 +8,8 @@
 #include "Misc/Parse.h"
 #include "InputKeyEventArgs.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
 #include "HAL/IConsoleManager.h"
 #include "EngineUtils.h"
 #include "CozyRealm.h"
@@ -170,17 +172,21 @@ void ACozyRealmEstatePlayerController::DrawSurfaceDebug(const FCozySurfaceHit* I
 		if (!Surface) continue;
 		const FColor Color = Colors[Index++ % UE_ARRAY_COUNT(Colors)];
 		const FTransform T = It->GetActorTransform();
-		const FVector A = T.TransformPosition(FVector(Surface->PaintMin.X, Surface->PaintMin.Y, 0));
-		const FVector B = T.TransformPosition(FVector(Surface->PaintMax.X, Surface->PaintMin.Y, 0));
-		const FVector C = T.TransformPosition(FVector(Surface->PaintMax.X, Surface->PaintMax.Y, 0));
-		const FVector D = T.TransformPosition(FVector(Surface->PaintMin.X, Surface->PaintMax.Y, 0));
+		// 메시 표면은 윗면 높이(로컬 경계 상자 위)에 테두리를 그린다
+		const UStaticMeshComponent* Mesh = It->FindComponentByClass<UStaticMeshComponent>();
+		const double Top = Mesh && Mesh->GetStaticMesh() ? Mesh->GetStaticMesh()->GetBoundingBox().Max.Z : 0.0;
+		const FVector A = T.TransformPosition(FVector(Surface->PaintMin.X, Surface->PaintMin.Y, Top));
+		const FVector B = T.TransformPosition(FVector(Surface->PaintMax.X, Surface->PaintMin.Y, Top));
+		const FVector C = T.TransformPosition(FVector(Surface->PaintMax.X, Surface->PaintMax.Y, Top));
+		const FVector D = T.TransformPosition(FVector(Surface->PaintMin.X, Surface->PaintMax.Y, Top));
 		// 메시 상판은 로컬 Z가 0이 아닐 수 있어 실제 지면 높이에 맞춘 중심에 이름을 단다.
 		FCozySurfaceHit Center;
 		const FVector Mid = (A + C) * .5;
 		const FVector Label = CozySurface::GroundAt(World, Mid, Center, &Surface->SurfaceId) ? Center.Position : Mid;
 		DrawDebugLine(World, A, B, Color, false, -1, 0, 3); DrawDebugLine(World, B, C, Color, false, -1, 0, 3);
 		DrawDebugLine(World, C, D, Color, false, -1, 0, 3); DrawDebugLine(World, D, A, Color, false, -1, 0, 3);
-		DrawDebugString(World, Label + FVector(0, 0, 40), FString::Printf(TEXT("Surface %s"), *Surface->SurfaceId.ToString().Left(8)), nullptr, Color, 0.f, true, 1.2f);
+		const FString Id = Surface->SurfaceId.ToString();
+		DrawDebugString(World, Label + FVector(0, 0, 40), FString::Printf(TEXT("Surface %s..%s"), *Id.Left(4), *Id.Right(4)), nullptr, Color, 0.f, true, 1.2f);
 	}
 	FCozySurfaceHit Hit;
 	FVector Origin, Direction;
@@ -189,8 +195,9 @@ void ACozyRealmEstatePlayerController::DrawSurfaceDebug(const FCozySurfaceHit* I
 	if (bHit)
 	{
 		const float Slope = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(Hit.Normal.Z, -1.f, 1.f)));
-		DrawDebugString(World, Hit.Position + FVector(0, 0, 60), FString::Printf(TEXT("Cursor: %s  slope %.0f deg  z %.0f"),
-			Hit.Rules.IsValid() ? *Hit.SurfaceId.ToString().Left(8) : TEXT("Landscape"), Slope, Hit.Position.Z), nullptr, FColor::White, 0.f, true, 1.2f);
+		const FString Id = Hit.SurfaceId.ToString();
+		DrawDebugString(World, Hit.Position + FVector(0, 0, 60), FString::Printf(TEXT("Cursor: surface %s..%s  slope %.0f deg  z %.0f"),
+			*Id.Left(4), *Id.Right(4), Slope, Hit.Position.Z), nullptr, FColor::White, 0.f, true, 1.2f);
 	}
 	if (Hero)
 	{
@@ -199,13 +206,14 @@ void ACozyRealmEstatePlayerController::DrawSurfaceDebug(const FCozySurfaceHit* I
 		if (CozySurface::GroundAt(World, Feet, Ground))
 		{
 			const float Gap = Feet.Z - Ground.Position.Z;
-			DrawDebugString(World, Hero->GetActorLocation() + FVector(0, 0, 140), FString::Printf(TEXT("Feet-ground %.1f cm"), Gap), nullptr, FMath::Abs(Gap) <= 5.f ? FColor::Green : FColor::Red, 0.f, true, 1.2f);
+			const float BodyGap = Gap - Hero->GetVisualDrop();
+			DrawDebugString(World, Hero->GetActorLocation() + FVector(0, 0, 140), FString::Printf(TEXT("Capsule-ground %.1f cm / Body-ground %.1f cm"), Gap, BodyGap), nullptr, FMath::Abs(BodyGap) <= 1.f ? FColor::Green : FColor::Red, 0.f, true, 1.2f);
 			static double LastLog = 0;
 			const double Now = World->GetTimeSeconds();
 			if (Now - LastLog >= .5)
 			{
 				LastLog = Now;
-				UE_LOG(LogCozyRealm, Log, TEXT("[표면 디버그] 주인공 발-지면 %.1fcm · 표면 %s · 경사 %.0f도 · 위치 (%.0f, %.0f, %.0f)"), Gap,
+				UE_LOG(LogCozyRealm, Log, TEXT("[표면 디버그] 주인공 캡슐-지면 %.1fcm · 보이는 몸-지면 %.1fcm · 표면 %s · 경사 %.0f도 · 위치 (%.0f, %.0f, %.0f)"), Gap, BodyGap,
 					Ground.Rules.IsValid() ? *Ground.SurfaceId.ToString().Left(8) : TEXT("Landscape"),
 					FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(Ground.Normal.Z, -1.f, 1.f))), Feet.X, Feet.Y, Feet.Z);
 			}
