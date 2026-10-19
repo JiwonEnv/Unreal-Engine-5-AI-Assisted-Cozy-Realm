@@ -8,6 +8,7 @@
 #include "Misc/FileHelper.h"
 #include "Engine/World.h"
 #include "RenderingThread.h"
+#include "UObject/UObjectGlobals.h"
 
 #if !UE_BUILD_SHIPPING
 static FAutoConsoleCommandWithWorld CozyTerrainStressCheck(
@@ -28,6 +29,15 @@ static FAutoConsoleCommandWithWorld CozyTerrainStressCheck(
 		const int32 BeforeTiles = Estate->GetState().FloorTiles.Num();
 		const FCozyPaintMask BeforePaint = Surface.Rules->GetPaintMask();
 		int32 Failed = 0; uint64 WarmMemory = 0; uint64 FinalMemory = 0;
+		// 측정 직전에 가비지 수집·할당자 캐시 반환을 해서, 해제했지만 할당자가 쥐고 있는 메모리와 실제로 남은 메모리를 구분한다.
+		auto MeasureMemory = []()
+		{
+			FlushRenderingCommands();
+			CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
+			FMemory::Trim();
+			return FPlatformMemory::GetStats().UsedPhysical;
+		};
+		TArray<double> Samples;
 		for (int32 I = 0; I < 200; ++I)
 		{
 			FText Reason;
@@ -40,15 +50,23 @@ static FAutoConsoleCommandWithWorld CozyTerrainStressCheck(
 			if (Estate->GetState().FloorTiles.Num() != BeforeTiles) ++Failed;
 			// 업로드 임시 버퍼가 쌓인 채 측정되지 않도록 시험에서만 렌더 명령을 비운다.
 			FlushRenderingCommands();
-			if (I == 49) WarmMemory = FPlatformMemory::GetStats().UsedPhysical;
+			if ((I + 1) % 50 == 0)
+			{
+				Estate->FlushPendingSave();
+				const uint64 Now = MeasureMemory();
+				Samples.Add(double(Now) / (1024 * 1024));
+				if (I == 49) WarmMemory = Now;
+			}
 		}
-		Estate->FlushPendingSave(); FlushRenderingCommands();
-		FinalMemory = FPlatformMemory::GetStats().UsedPhysical;
+		Estate->FlushPendingSave();
+		FinalMemory = MeasureMemory();
 		Surface.Rules->RestorePaint(BeforePaint); Estate->SaveEstate(TEXT("지형 반복 검사 종료")); Estate->FlushPendingSave();
 		const double DeltaMB = (double(FinalMemory) - double(WarmMemory)) / (1024 * 1024);
 		if (DeltaMB > 32) ++Failed;
-		const FString Report = FString::Printf(TEXT("설치·삭제·도색·Undo 200회 / 타일 개수 %d → %d\n50회 후 %.2fMiB / 200회 후 %.2fMiB / 차이 %.2fMiB\n실패 합계: %d\n주의: 단일 프로세스의 짧은 반복 검사이며 장기 누수 보장은 아님\n"),
-			BeforeTiles, Estate->GetState().FloorTiles.Num(), double(WarmMemory) / (1024 * 1024), double(FinalMemory) / (1024 * 1024), DeltaMB, Failed);
+		FString SampleText;
+		for (int32 S = 0; S < Samples.Num(); ++S) SampleText += FString::Printf(TEXT("%s%d회 %.2f"), S ? TEXT(" · ") : TEXT(""), (S + 1) * 50, Samples[S]);
+		const FString Report = FString::Printf(TEXT("설치·삭제·도색·Undo 200회 / 타일 개수 %d → %d\n50회 후 %.2fMiB / 200회 후 %.2fMiB / 차이 %.2fMiB (측정 전 가비지 수집·할당자 정리)\n구간별 MiB: %s\n실패 합계: %d\n주의: 단일 프로세스의 짧은 반복 검사이며 장기 누수 보장은 아님\n"),
+			BeforeTiles, Estate->GetState().FloorTiles.Num(), double(WarmMemory) / (1024 * 1024), double(FinalMemory) / (1024 * 1024), DeltaMB, *SampleText, Failed);
 		FFileHelper::SaveStringToFile(Report, *(Folder / TEXT("TerrainStressCheck.txt")));
 		UE_LOG(LogTemp, Display, TEXT("[지형 반복 검사]\n%s"), *Report);
 	}));

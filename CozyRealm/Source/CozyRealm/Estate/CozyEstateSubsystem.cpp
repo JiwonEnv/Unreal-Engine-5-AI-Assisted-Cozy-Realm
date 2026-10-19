@@ -250,11 +250,23 @@ bool UCozyEstateSubsystem::LoadEstateFromSave(FDateTime& OutSavedUtc)
 void UCozyEstateSubsystem::SanitizeLoadedState()
 {
 	int32 Removed = 0;
-	Removed += State.Facilities.RemoveAll([this](const FCozyFacilityState& Facility) { return !GetFacilityDef(Facility.DefinitionId); });
+	// 정의(데이터 테이블 행)가 없어진 시설은 지우지 않고 보관 상태로 남긴다 (ID·레벨·좌표 보존 · 정의가 돌아오면 다시 꺼낼 수 있게).
+	// 배치 주민은 나가야로 돌리고, 진행할 수 없는 작업만 정리한다.
+	TSet<FGuid> MissingFacilities;
+	for (FCozyFacilityState& Facility : State.Facilities)
+	{
+		if (!GetFacilityDef(Facility.DefinitionId))
+		{
+			if (!Facility.bStored) { Facility.bStored = true; ++Removed; }
+			Facility.AssignedResidents.Reset();
+			MissingFacilities.Add(Facility.InstanceId);
+			UE_LOG(LogCozyRealm, Warning, TEXT("불러오기: 정의가 없는 시설 %s(%s)을 보관 상태로 둠"), *Facility.DefinitionId.ToString(), *Facility.InstanceId.ToString());
+		}
+	}
 	Removed += State.Residents.RemoveAll([this](const FCozyResidentState& Resident) { return !GetResidentDef(Resident.DefinitionId); });
 	for (FCozyResidentState& Resident : State.Residents)
 	{
-		if (Resident.AssignedFacility.IsValid() && !FindFacility(Resident.AssignedFacility))
+		if (Resident.AssignedFacility.IsValid() && (!FindFacility(Resident.AssignedFacility) || MissingFacilities.Contains(Resident.AssignedFacility)))
 		{
 			Resident.AssignedFacility.Invalidate();
 			++Removed;
@@ -267,9 +279,9 @@ void UCozyEstateSubsystem::SanitizeLoadedState()
 			return !State.Residents.ContainsByPredicate([&ResidentId](const FCozyResidentState& Resident) { return Resident.InstanceId == ResidentId; });
 		});
 	}
-	Removed += State.Jobs.RemoveAll([this](const FCozyJobRecord& Job)
+	Removed += State.Jobs.RemoveAll([this, &MissingFacilities](const FCozyJobRecord& Job)
 	{
-		if (!FindFacility(Job.FacilityId))
+		if (!FindFacility(Job.FacilityId) || MissingFacilities.Contains(Job.FacilityId))
 		{
 			return true;
 		}
