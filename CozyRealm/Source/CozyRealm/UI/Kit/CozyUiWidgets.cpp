@@ -460,6 +460,15 @@ void UCozyUiElementWidget::UpdateCozyValue(const UCozyUiScreen& Screen)
 {
 	if (Entry.Value == ECozyUiValue::None)
 	{
+		// 값이 없는 동작 버튼(예: 배치 '보관'·'확정')도 상황이 바뀌면 켜짐·이유 툴팁을 다시 계산한다
+		// → 안 하면 창을 처음 연 순간의 상태가 남는다 (핵심 시설을 먼저 고르면 다른 시설도 보관 버튼이 계속 꺼짐)
+		if (Button && Entry.Action != ECozyUiAction::None)
+		{
+			FText Why;
+			const bool bCan = Screen.CanRunAction(Entry, Why);
+			Button->SetIsEnabled(bCan);
+			Button->SetToolTipText(!bCan && !Why.IsEmpty() ? Why : UCozyUiScreen::GetActionName(Entry.Action));
+		}
 		return;
 	}
 	const FCozyUiValueResult R = Screen.GetValue(Entry.Value, Entry.ValueParam);

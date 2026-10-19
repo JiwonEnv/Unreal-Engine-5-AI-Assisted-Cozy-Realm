@@ -1218,8 +1218,10 @@ bool UCozyEstateSubsystem::CanStoreFacility(const FGuid& FacilityId, FText& OutR
 	return true;
 }
 
-bool UCozyEstateSubsystem::StoreFacility(const FGuid& FacilityId, FText& OutMessage)
+bool UCozyEstateSubsystem::StoreFacility(const FGuid& InFacilityId, FText& OutMessage)
 {
+	// 배치 화면의 '보관' 버튼은 PlacementId를 참조로 넘긴다 → 아래 CancelPlacement가 그 값을 지우기 전에 복사해 둔다
+	const FGuid FacilityId = InFacilityId;
 	if (IsPlacing())
 	{
 		CancelPlacement();
