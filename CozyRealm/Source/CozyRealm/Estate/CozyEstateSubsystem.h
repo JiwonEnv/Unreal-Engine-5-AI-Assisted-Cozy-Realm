@@ -228,6 +228,16 @@ struct FCozyCollectResult
  *  영지 공통 서비스 (정리 6-2): 게임 데이터 · 영지 상태 · 재료·재화 · 작업 기록과 게임 시간.
  *  UI와 시설 액터는 이 서비스의 상태를 읽고 요청만 보낸다 (6-7).
  */
+/** 타이틀 화면이 보는 저장 상태 */
+UENUM()
+enum class ECozySaveProbe : uint8
+{
+	None,
+	Valid,
+	Recovered,
+	Invalid
+};
+
 UCLASS()
 class UCozyEstateSubsystem : public UTickableWorldSubsystem
 {
@@ -484,6 +494,18 @@ public:
 	/** 종료·검증처럼 디스크 반영 완료가 필요한 지점에서만 사용한다. */
 	void FlushPendingSave() { PollSave(true); }
 	bool HasSaveFile() const;
+	/** 영지를 시작했는지 (StartEstate 이후) · 타이틀처럼 영지를 시작하지 않은 맵에서는 저장하지 않는다 */
+	bool IsStarted() const { return bStarted; }
+	/**
+	 *  저장 파일을 읽기만 해서 상태를 알려준다 (파일을 만들거나 고치지 않음 · 타이틀 화면용).
+	 *  Valid = 이어하기 가능 · Recovered = 본 파일은 못 읽지만 직전 정상본으로 이어짐 · Invalid = 손상·미래 버전(덮어쓰지 않음)
+	 */
+	static ECozySaveProbe ProbeSaveFile(FDateTime& OutSavedUtc, FString& OutDetail);
+	/**
+	 *  새 게임: 지금 저장 파일들을 SaveGames/Backup_NewGame_<UTC> 폴더로 옮긴다 (삭제하지 않음).
+	 *  옮기지 못하면 false (아무것도 바꾸지 않은 상태로 둠).
+	 */
+	static bool ArchiveSaveForNewGame(FString& OutFolder, FString& OutError);
 	/** 마지막으로 저장한 실제 시각 (UTC) */
 	FDateTime GetLastSavedUtc() const { return LastSavedUtc; }
 	const FString& GetRecoveryNotice() const { return RecoveryNotice; }

@@ -506,7 +506,9 @@ bool UCozySettingsSubsystem::Run(ECozyUiAction Action, FName Param, APlayerContr
 		// 기존 저장 절차(SaveEstate)로 먼저 저장 · 실패하면 종료하지 않고 다시 시도/취소
 		UWorld* World = SettingsWorld.Get();
 		UCozyEstateSubsystem* Estate = World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
-		const bool bSaved = Estate && Estate->SaveEstate(TEXT("게임 종료 (설정 창)"));
+		// 타이틀처럼 영지를 시작하지 않은 화면에서는 저장할 것이 없으므로 바로 종료 (빈 상태로 저장을 덮어쓰지 않음)
+		const bool bEstateRunning = Estate && Estate->IsStarted();
+		const bool bSaved = !bEstateRunning || Estate->SaveEstate(TEXT("게임 종료 (설정 창)"));
 		if (!bSaved)
 		{
 			QuitState = EQuit::SaveFailed;

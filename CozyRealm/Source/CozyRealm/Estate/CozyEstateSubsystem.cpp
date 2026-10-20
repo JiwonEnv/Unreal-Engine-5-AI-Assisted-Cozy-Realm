@@ -75,9 +75,78 @@ bool UCozyEstateSubsystem::HasSaveFile() const
 	return UGameplayStatics::DoesSaveGameExist(CozyEstate::SaveSlotName, CozyEstate::SaveUserIndex);
 }
 
+ECozySaveProbe UCozyEstateSubsystem::ProbeSaveFile(FDateTime& OutSavedUtc, FString& OutDetail)
+{
+	// LoadEstateFromSave와 같은 판단을 하되 손상 사본·이관 사본·저장 쓰기를 하지 않는다.
+	const FString Previous = FString(CozyEstate::SaveSlotName) + TEXT("_previous");
+	const bool bMain = UGameplayStatics::DoesSaveGameExist(CozyEstate::SaveSlotName, CozyEstate::SaveUserIndex);
+	const bool bPrevious = UGameplayStatics::DoesSaveGameExist(Previous, CozyEstate::SaveUserIndex);
+	if (!bMain && !bPrevious) { OutDetail = TEXT("저장 없음"); return ECozySaveProbe::None; }
+	auto Read = [](const FString& Slot) { return Cast<UCozyEstateSaveGame>(UGameplayStatics::LoadGameFromSlot(Slot, CozyEstate::SaveUserIndex)); };
+	if (const UCozyEstateSaveGame* Save = bMain ? Read(CozyEstate::SaveSlotName) : nullptr)
+	{
+		if (Save->FileVersion > CozyEstate::CurrentSaveFileVersion)
+		{
+			OutDetail = FString::Printf(TEXT("저장 형식 %d은 이 버전(%d)보다 새로워 읽을 수 없습니다"), Save->FileVersion, CozyEstate::CurrentSaveFileVersion);
+			return ECozySaveProbe::Invalid;
+		}
+		OutSavedUtc = Save->SavedUtc; OutDetail = TEXT("정상");
+		return ECozySaveProbe::Valid;
+	}
+	if (const UCozyEstateSaveGame* Save = bPrevious ? Read(Previous) : nullptr)
+	{
+		if (Save->FileVersion <= CozyEstate::CurrentSaveFileVersion)
+		{
+			OutSavedUtc = Save->SavedUtc;
+			OutDetail = bMain ? TEXT("현재 저장본을 읽지 못해 직전 정상본으로 이어집니다") : TEXT("직전 정상본으로 이어집니다");
+			return ECozySaveProbe::Recovered;
+		}
+	}
+	OutDetail = bMain ? TEXT("저장 파일이 손상되었거나 읽을 수 없습니다") : TEXT("직전 저장본이 손상되었거나 읽을 수 없습니다");
+	return ECozySaveProbe::Invalid;
+}
+
+bool UCozyEstateSubsystem::ArchiveSaveForNewGame(FString& OutFolder, FString& OutError)
+{
+	IFileManager& Files = IFileManager::Get();
+	const FString Dir = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"));
+	const FString Base = CozyEstate::SaveSlotName;
+	TArray<FString> Names = { Base + TEXT(".sav"), Base + TEXT("_previous.sav"), Base + TEXT(".sav.pending") };
+	TArray<FString> Present;
+	for (const FString& Name : Names) if (Files.FileExists(*FPaths::Combine(Dir, Name))) Present.Add(Name);
+	if (Present.IsEmpty()) { OutFolder.Reset(); return true; }
+	OutFolder = FPaths::Combine(Dir, TEXT("Backup_NewGame_") + FDateTime::UtcNow().ToString(TEXT("%Y%m%d_%H%M%S")));
+	if (!Files.MakeDirectory(*OutFolder, true)) { OutError = TEXT("백업 폴더를 만들지 못했습니다"); return false; }
+	// 먼저 모두 복사해 확인한 뒤에만 원본을 옮긴다 → 중간에 실패해도 원본은 그대로
+	for (const FString& Name : Present)
+	{
+		if (Files.Copy(*FPaths::Combine(OutFolder, Name), *FPaths::Combine(Dir, Name)) != COPY_OK)
+		{
+			OutError = FString::Printf(TEXT("%s 백업 복사에 실패했습니다 · 원본은 그대로 두었습니다"), *Name);
+			return false;
+		}
+	}
+	for (const FString& Name : Present)
+	{
+		if (!Files.Delete(*FPaths::Combine(Dir, Name), false, true, true))
+		{
+			OutError = FString::Printf(TEXT("%s 를 옮기지 못했습니다 · 백업은 %s 에 있습니다"), *Name, *OutFolder);
+			return false;
+		}
+	}
+	UE_LOG(LogCozyRealm, Log, TEXT("새 게임: 기존 저장 %d개를 %s 로 옮김"), Present.Num(), *OutFolder);
+	return true;
+}
+
 bool UCozyEstateSubsystem::SaveEstate(const FString& Reason)
 {
 	if (bSaveBlockedByInvalidFile) return false;
+	// 영지를 시작하지 않은 맵(타이틀 등)에서는 빈 상태로 실제 저장을 덮어쓰지 않는다 (Claude 2026-10-21)
+	if (!bStarted)
+	{
+		UE_LOG(LogCozyRealm, Warning, TEXT("저장 건너뜀: 영지를 시작하지 않은 상태 (%s)"), *Reason);
+		return false;
+	}
 	State.SaveVersion = 2;
 	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
 	{
