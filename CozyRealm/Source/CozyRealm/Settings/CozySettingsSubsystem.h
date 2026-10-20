@@ -49,6 +49,12 @@ public:
 	/** 화면을 다시 그려야 할 때마다 1씩 오름 (시간 초과 복원 등 버튼 밖에서 바뀐 경우 포함) */
 	int32 GetRevision() const { return Revision; }
 
+	/**
+	 *  창 모드인데 해상도가 모니터만 하면 '최대화된 창'으로 (제목 줄·테두리·작업 표시줄이 보이게 · 그림은 남은 공간에 맞춤).
+	 *  모니터보다 작으면 그 크기의 일반 창. 게임 시작 · 레벨 시작 · 화면 설정 적용 뒤에 부른다 (실행 파일에서만).
+	 */
+	void ApplyWindowState(const UObject* WorldContext);
+
 	/** 저장된 음량을 지금 월드에 적용 (게임 시작 · 레벨 시작 때) */
 	void ApplySavedAudio(const UObject* WorldContext);
 
@@ -65,7 +71,7 @@ public:
 	// FTickableGameObject
 	virtual void Tick(float DeltaTime) override;
 	virtual TStatId GetStatId() const override { RETURN_QUICK_DECLARE_CYCLE_STAT(UCozySettingsSubsystem, STATGROUP_Tickables); }
-	virtual bool IsTickable() const override { return bConfirmActive || CompactMoveFrames > 0; }
+	virtual bool IsTickable() const override { return bConfirmActive || CompactMoveFrames > 0 || MaximizeFrames > 0 || WindowStateFrames > 0; }
 	virtual bool IsTickableWhenPaused() const override { return true; }
 	virtual ETickableTickType GetTickableTickType() const override { return IsTemplate() ? ETickableTickType::Never : ETickableTickType::Conditional; }
 
@@ -85,6 +91,17 @@ private:
 	};
 
 	TSharedPtr<class SWindow> GetGameWindow(const UWorld* World) const;
+	/** 창 모드 + 모니터 크기(세로는 작업 표시줄·제목 줄 높이만큼 여유)인지 */
+	static bool IsFullSizeWindow(EWindowMode::Type Mode, const FIntPoint& Resolution, const FIntPoint& Desktop);
+	/** 해상도를 바꾸기 전: 최대화돼 있으면 원래 크기로 풀어 둠 (최대화된 채로는 창 크기가 바뀌지 않음) */
+	void RestoreFromMaximize(const UWorld* World);
+	/** 최대화하면 엔진이 줄어든 창 크기를 해상도 설정에 써 넣음 → 몇 프레임 뒤 고른 값으로 되돌림 */
+	int32 MaximizeFrames = 0;
+	/** 레벨 시작 직후에는 창이 아직 자리를 잡기 전일 수 있어 몇 프레임 뒤에 다시 적용 */
+	int32 WindowStateFrames = 0;
+	void ApplyWindowStateNow(UWorld* World);
+	FIntPoint MaximizeResolution = FIntPoint::ZeroValue;
+	TWeakObjectPtr<UWorld> MaximizeWorld;
 	void PlaceCompactWindow();
 	void ApplyCompactTopmost(bool bTop);
 	void RestoreSettingsValues();

@@ -7,6 +7,7 @@
 #include "Engine/World.h"
 #include "Blueprint/UserWidget.h"
 #include "Estate/CozyEstateSubsystem.h"
+#include "Settings/CozySettingsSubsystem.h"
 #include "CozyRealm.h"
 
 ACozyTitleGameMode::ACozyTitleGameMode()
@@ -48,6 +49,12 @@ void ACozyTitlePlayerController::BeginPlay()
 		TitleCamera->GetCameraComponent()->SetFieldOfView(Config->CameraFOV);
 		TitleCamera->GetCameraComponent()->bConstrainAspectRatio = false;
 		SetViewTarget(TitleCamera);
+	}
+
+	if (UCozySettingsSubsystem* Settings = UCozySettingsSubsystem::Get(this))
+	{
+		Settings->ApplySavedAudio(this);
+		Settings->ApplyWindowState(this);
 	}
 
 	Title = CreateWidget<UCozyTitleWidget>(this, UCozyTitleWidget::StaticClass());

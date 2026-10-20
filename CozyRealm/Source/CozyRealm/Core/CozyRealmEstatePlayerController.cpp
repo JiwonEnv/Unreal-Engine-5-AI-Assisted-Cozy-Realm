@@ -44,6 +44,7 @@ void ACozyRealmEstatePlayerController::BeginPlay()
 		if (UCozySettingsSubsystem* Settings = UCozySettingsSubsystem::Get(this))
 		{
 			Settings->ApplySavedAudio(this);
+			Settings->ApplyWindowState(this);
 		}
 		SpawnHero();
 	}
