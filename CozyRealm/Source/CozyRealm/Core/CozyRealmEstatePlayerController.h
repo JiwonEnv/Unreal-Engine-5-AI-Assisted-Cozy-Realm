@@ -7,6 +7,7 @@
 class UCozyHudWidget;
 class ACozyFacilityActor;
 class ACozyHeroCharacter;
+struct FCozySurfaceHit;
 
 /**
  *  Player controller for the estate.
@@ -43,17 +44,33 @@ public:
 	 */
 	UFUNCTION(Exec)
 	void CozySetResource(FName ItemId, int32 Amount);
+	/** 0 종료 / 1 브러시 / 2 타일. 제작 검증용 입력 진입점. */
+	UFUNCTION(Exec) void CozyGroundMode(int32 Mode);
+
+	/** 브러시를 이 지점까지 끈다 (마우스 드래그 한 프레임과 같음) · 표면이 바뀌어도 한 드래그로 이어 칠함 */
+	void PaintBrushTo(const FCozySurfaceHit& Hit);
+	/** 지금 드래그를 끝내고 되돌리기 한 단위로 묶음 */
+	void FinishGroundStroke();
+	/** 마지막 드래그 한 번(여러 표면에 걸쳐도 함께)을 되돌림 / 다시 실행 */
+	bool UndoGroundPaint();
+	bool RedoGroundPaint();
+	void SetBrushForTest(float Radius, int32 Style) { BrushRadius = Radius; GroundStyle = Style; }
 
 protected:
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void PlayerTick(float DeltaTime) override;
+	virtual bool InputKey(const FInputKeyEventArgs& Params) override;
+	virtual void FlushPressedKeys() override;
 
 	/** 영지 화면 UI 클래스 (재화 표시 · 기능 아이콘 · 전용 창 · 디버그 메뉴) */
 	UPROPERTY(EditAnywhere, Category = "UI")
 	TSubclassOf<UCozyHudWidget> HudClass;
 
 private:
+	bool bGroundLeftControl = false;
+	bool bGroundRightControl = false;
 
 	/** 왼쪽 클릭: 시설이면 선택하고 기능 아이콘을, 빈 곳이면 선택 해제 */
 	void HandleWorldClick();
@@ -77,4 +94,27 @@ private:
 	void TickPlacement();
 	bool bPlacementMode = false;
 	bool bDraggingPlacement = false;
+	void TickGroundEditing();
+	/** 지금 칠하는 표면의 기록을 닫음 (드래그는 계속) */
+	void EndPaintSegment();
+	/** 표면 ID·주인공 발 높이 디버그 표시 (콘솔 Cozy.SurfaceDebug 1) */
+	void DrawSurfaceDebug(const struct FCozySurfaceHit* Hit) const;
+	int32 GroundMode = 0;
+	int32 GroundStyle = 1;
+	int32 GroundRotation = 0;
+	float BrushRadius = 120.f;
+	FVector LastBrushPosition = FVector::ZeroVector;
+	TWeakObjectPtr<class UCozySurfaceComponent> StrokeSurface;
+	/** 한 드래그 동안 기록이 생긴 표면들 (같은 표면이 여러 번 나올 수 있음) */
+	TArray<TWeakObjectPtr<class UCozySurfaceComponent>> DragSurfaces;
+	bool bPaintDragActive = false;
+	/** 드래그 중 마지막으로 찍은 표면 (벽면을 지나 기록이 닫혀도 이어 칠할 후보로 씀) */
+	TWeakObjectPtr<class UCozySurfaceComponent> LastStampSurface;
+	/** 드래그 단위 되돌리기 · 다시 실행 (각 표면 기록 16회와 같은 한도) */
+	TArray<TArray<TWeakObjectPtr<class UCozySurfaceComponent>>> PaintUndoGroups, PaintRedoGroups;
+	bool bFloorPreview = false;
+	FVector FloorPreviewPosition = FVector::ZeroVector;
+	FGuid FloorPreviewSurface;
+	FGuid MovingFloorId;
+	FString LastRecoveryNotice;
 };

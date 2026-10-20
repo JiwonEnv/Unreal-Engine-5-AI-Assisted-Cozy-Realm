@@ -1,6 +1,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Environment/CozyPaintMask.h"
+#include "Environment/CozyFloorTiles.h"
 #include "CozyEstateState.generated.h"
 
 /**
@@ -44,6 +46,9 @@ struct FCozyFacilityState
 	/** 놓인 칸 (왼쪽 아래 모서리) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Facility")
 	FIntPoint GridCoord = FIntPoint::ZeroValue;
+	UPROPERTY() FGuid SurfaceId;
+	UPROPERTY() float SurfaceHeight = 0;
+	UPROPERTY() bool bHasSurfacePlacement = false;
 
 	/** 90도 회전 횟수 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Facility")
@@ -178,6 +183,10 @@ struct FCozyEstateState
 	/** 저장 형식 버전 (6-6) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Estate")
 	int32 SaveVersion = 1;
+
+	UPROPERTY() TArray<FCozyPaintMask> PaintMasks;
+	UPROPERTY() TArray<FCozyFloorTile> FloorTiles;
+	UPROPERTY() int32 TerrainRevision = 0;
 
 	/** 누적 게임 시간 (초 · 디버그 배속 반영) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Estate")

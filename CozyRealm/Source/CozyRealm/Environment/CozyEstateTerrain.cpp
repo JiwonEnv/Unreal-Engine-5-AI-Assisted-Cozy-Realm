@@ -1,5 +1,11 @@
 #include "Environment/CozyEstateTerrain.h"
 #include "Environment/CozySeasonPreset.h"
+#include "Environment/CozySurfaceComponent.h"
+#include "Estate/CozyEstateSubsystem.h"
+#include "Environment/CozyGroundMesh.h"
+#include "Components/StaticMeshComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "EngineUtils.h"
 #include "CozyRealm.h"
 #include "Landscape.h"
 #include "LandscapeProxy.h"
@@ -57,6 +63,23 @@ void ACozyEstateTerrain::BeginPlay()
 	Super::BeginPlay();
 	// 게임 시작 때 지금 계절 값을 지형에 맞춘다 (에디터에서 고른 계절과 같으면 바뀌는 것 없음)
 	ApplySeason();
+	if (Landscape && !Landscape->FindComponentByClass<UCozySurfaceComponent>())
+	{
+		UCozySurfaceComponent* Surface = NewObject<UCozySurfaceComponent>(Landscape, TEXT("CozyLandscapeSurface"));
+		Surface->SurfaceId = FGuid(0xC02E0001, 0, 0, 1);
+		Surface->PaintDomainId = FGuid(0xC02E0001, 0, 0, 2);
+		const UCozyEstateSubsystem* Estate = GetWorld()->GetSubsystem<UCozyEstateSubsystem>();
+		if (Estate)
+		{
+			const FCozyEstateConfigRow& Grid = Estate->GetConfig();
+			const FTransform Transform = Landscape->GetActorTransform();
+			const FVector Min = Transform.InverseTransformPosition(Grid.GridOrigin);
+			const FVector Max = Transform.InverseTransformPosition(Grid.GridOrigin + FVector(Grid.GridSize.X * Grid.CellSize, Grid.GridSize.Y * Grid.CellSize, 0));
+			Surface->PaintMin = FVector2D(Min.X, Min.Y); Surface->PaintMax = FVector2D(Max.X, Max.Y);
+		}
+		Landscape->AddInstanceComponent(Surface);
+		Surface->RegisterComponent();
+	}
 }
 
 void ACozyEstateTerrain::SetSeason(UCozySeasonPreset* NewSeason)
@@ -101,6 +124,20 @@ void ACozyEstateTerrain::ApplySeason()
 		for (const FTextureParameterValue& Value : Season->TextureParameterValues)
 		{
 			Landscape->SetLandscapeMaterialTextureParameterValue(Value.ParameterInfo.Name, Value.ParameterValue);
+		}
+		for (TActorIterator<ACozyGroundMesh> It(GetWorld()); It; ++It)
+		{
+			UStaticMeshComponent* Mesh = It->GetStaticMeshComponent();
+			for (int32 Slot = 0; Slot < Mesh->GetNumMaterials(); ++Slot)
+			{
+				UMaterialInstanceDynamic* Material = Cast<UMaterialInstanceDynamic>(Mesh->GetMaterial(Slot));
+				if (!Material) Material = Mesh->CreateDynamicMaterialInstance(Slot);
+				if (!Material) continue;
+				Material->SetVectorParameterValue(TEXT("CozyTextureOrigin"), FLinearColor(Landscape->GetActorLocation()));
+				for (const FScalarParameterValue& Value : Season->ScalarParameterValues) Material->SetScalarParameterValue(Value.ParameterInfo.Name, Value.ParameterValue);
+				for (const FVectorParameterValue& Value : Season->VectorParameterValues) Material->SetVectorParameterValue(Value.ParameterInfo.Name, Value.ParameterValue);
+				for (const FTextureParameterValue& Value : Season->TextureParameterValues) Material->SetTextureParameterValue(Value.ParameterInfo.Name, Value.ParameterValue);
+			}
 		}
 		UE_LOG(LogCozyRealm, Log, TEXT("[지형] 계절 바꿈 (게임 중): %s"), *CurrentSeason->DisplayName.ToString());
 		return;

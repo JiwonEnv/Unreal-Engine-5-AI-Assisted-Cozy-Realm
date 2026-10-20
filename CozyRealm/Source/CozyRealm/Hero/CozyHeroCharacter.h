@@ -56,6 +56,9 @@ public:
 	/** E: 상호작용 거리 안의 가장 가까운 시설 (없으면 빈 ID) */
 	FGuid FindInteractFacility() const;
 
+	/** 보이는 몸을 캡슐보다 내린 높이 (경사로에서 떠 보이지 않게 · 충돌·이동은 그대로) */
+	float GetVisualDrop() const { return VisualDrop; }
+
 protected:
 
 	virtual void BeginPlay() override;
@@ -96,6 +99,9 @@ private:
 	bool bFrozen = false;
 	double LastInputTime = 0.0;
 	double WanderResumeTime = 0.0;
+	float VisualDrop = 0.f;
+	/** 캡슐 아래와 실제 지면 사이(평지 약 2cm · 30도 경사 약 6cm)만큼 보이는 몸만 내린다 */
+	void UpdateVisualDrop(float DeltaSeconds);
 };
 
 /** 비교용 인형 (크기 기준 시험 · 움직이지 않음 · 머리 위에 키 숫자) */

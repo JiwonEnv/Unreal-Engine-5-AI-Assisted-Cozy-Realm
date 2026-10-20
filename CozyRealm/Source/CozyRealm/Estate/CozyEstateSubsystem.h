@@ -4,6 +4,7 @@
 #include "Subsystems/WorldSubsystem.h"
 #include "Data/CozyRealmDataTypes.h"
 #include "Estate/CozyEstateState.h"
+#include "Estate/CozyEstateSaveIO.h"
 #include "CozyEstateSubsystem.generated.h"
 
 class UDataTable;
@@ -451,6 +452,8 @@ public:
 	bool IsPlacementFromStorage() const { return bPlacementFromStorage; }
 	FIntPoint GetPlacementCoord() const { return PlacementCoord; }
 	int32 GetPlacementRotation() const { return PlacementRotation; }
+	FGuid GetPlacementSurface() const { return PlacementSurfaceId; }
+	void SetPlacementSurface(FGuid Id) { PlacementSurfaceId = Id; }
 	ACozyFacilityActor* GetPlacementActor() const { return PlacementActor; }
 	/** 월드 위치 → 칸 (영지 밖이어도 계산) */
 	FIntPoint WorldToCell(const FVector& WorldLocation) const;
@@ -465,6 +468,12 @@ public:
 	FVector GetCellCenter(FIntPoint Cell) const;
 	/** 걸을 수 있는 칸: 영지 안 · 놓인 시설이 차지하지 않음 (보관한 시설은 제외) */
 	bool IsCellWalkable(FIntPoint Cell) const;
+	/** 고정 지형의 인접 칸 사이 경사·단차 검사 (절벽 직행 금지). */
+	bool CanWalkBetween(FIntPoint From, FIntPoint To) const;
+	/** 장식 타일 설치·교체·제거. 시설 점유와 별도로 관리한다. */
+	bool EditFloorTile(FVector Position, int32 Style, int32 Rotation, bool bErase, FText& Reason, const FGuid* Surface = nullptr, const FGuid& MovingId = FGuid());
+	bool StoreFloorTile(const FGuid& Id, FText& Reason);
+	const FCozyFloorTile* FindFloorTile(FVector Position, const FGuid& Surface) const;
 	/** 위치에서 가장 가까운 시설 (시설이 차지한 칸 테두리까지 거리가 Range 이하 · 없으면 빈 ID) */
 	FGuid FindNearestFacility(const FVector& Location, float Range) const;
 
@@ -472,9 +481,12 @@ public:
 
 	/** 지금 상태를 저장 (Reason은 로그용) */
 	bool SaveEstate(const FString& Reason);
+	/** 종료·검증처럼 디스크 반영 완료가 필요한 지점에서만 사용한다. */
+	void FlushPendingSave() { PollSave(true); }
 	bool HasSaveFile() const;
 	/** 마지막으로 저장한 실제 시각 (UTC) */
 	FDateTime GetLastSavedUtc() const { return LastSavedUtc; }
+	const FString& GetRecoveryNotice() const { return RecoveryNotice; }
 	/** 디버그: 저장 파일에서 다시 불러오기 (재접속과 같은 흐름) */
 	void DebugReloadFromSave();
 	/** 디버그: 저장 파일의 저장 시각을 Seconds만큼 과거로 (현재 상태는 그대로 · 방치 검증용) */
@@ -507,7 +519,7 @@ private:
 	/** 불러온 상태에서 데이터에 없는 시설·주민·작업·재료 참조를 정리 (정리 6-6 · 지운 개수를 로그) */
 	void SanitizeLoadedState();
 	/** 칸 좌표 · 크기 → 월드 위치 (실제 지면 높이) */
-	FVector ComputeFacilityLocation(FIntPoint Coord, FIntPoint Size) const;
+	FVector ComputeFacilityLocation(FIntPoint Coord, FIntPoint Size, const FGuid* Surface = nullptr) const;
 	ACozyFacilityActor* FindFacilityActor(const FGuid& FacilityId) const;
 	bool FindFreeSpot(const FGuid& FacilityId, int32 Rotation, FIntPoint& OutCoord) const;
 
@@ -602,14 +614,22 @@ private:
 	FDateTime LastSavedUtc;
 	double AutosaveAccumulator = 0.0;
 	bool bAutosavePaused = false;
+	bool bSaveBlockedByInvalidFile = false;
+	FCozyEstateSaveIO SaveWriter;
+	FString RecoveryNotice;
+	void PollSave(bool bWait = false);
+	void RestoreGroundReferences();
+	bool bGroundRestorePending = true;
 	FCozyOfflineReport OfflineReport;
 	bool bOfflineReportPending = false;
 
 	// 배치 미리보기 (확정 전에는 상태를 바꾸지 않음)
 	FGuid PlacementId;
+	FGuid PlacementSurfaceId;
 	FIntPoint PlacementCoord = FIntPoint::ZeroValue;
 	int32 PlacementRotation = 0;
 	bool bPlacementFromStorage = false;
 	UPROPERTY(Transient)
 	TObjectPtr<ACozyFacilityActor> PlacementActor;
+	UPROPERTY(Transient) TObjectPtr<class ACozyFloorTiles> FloorTileActor;
 };
