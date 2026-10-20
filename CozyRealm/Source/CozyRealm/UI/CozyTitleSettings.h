@@ -36,6 +36,10 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "2 배경 (Background)", meta = (DisplayName = "Camera FOV (카메라 화각)", ClampMin = "20", ClampMax = "120"))
 	float CameraFOV = 55.f;
 
+	/** 배경을 낮으로 보여 줄지 (끄면 게임 시계 그대로 · 밤에는 어두움) · 타이틀 화면에서만 · 저장하지 않음 */
+	UPROPERTY(Config, EditAnywhere, Category = "2 배경 (Background)", meta = (DisplayName = "Force Daytime (배경 항상 낮)"))
+	bool bForceDaytime = true;
+
 	/** 카메라가 천천히 좌우로 흔들리는 폭 (cm · 0이면 고정) */
 	UPROPERTY(Config, EditAnywhere, Category = "2 배경 (Background)", meta = (DisplayName = "Camera Drift (카메라 흔들림 폭)", ClampMin = "0"))
 	float CameraDrift = 120.f;

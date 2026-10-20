@@ -11,6 +11,8 @@
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
 #include "Components/Overlay.h"
+#include "Components/CanvasPanel.h"
+#include "Components/CanvasPanelSlot.h"
 #include "Components/OverlaySlot.h"
 #include "Components/ScrollBox.h"
 #include "Components/SizeBox.h"
@@ -123,6 +125,28 @@ void UCozyTitleWidget::BuildTree()
 	Shade->SetVisibility(ESlateVisibility::HitTestInvisible);
 	if (UOverlaySlot* S = Root->AddChildToOverlay(Shade)) { S->SetHorizontalAlignment(HAlign_Fill); S->SetVerticalAlignment(VAlign_Fill); }
 
+	// 1-1) 떨어지는 벚꽃잎 (글자 뒤 · 클릭 통과)
+	PetalLayer = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("PetalLayer"));
+	PetalLayer->SetVisibility(ESlateVisibility::HitTestInvisible);
+	if (UOverlaySlot* S = Root->AddChildToOverlay(PetalLayer)) { S->SetHorizontalAlignment(HAlign_Fill); S->SetVerticalAlignment(VAlign_Fill); }
+	if (AccentTexture)
+	{
+		FRandomStream Rand(20261021);
+		for (int32 I = 0; I < 16; ++I)
+		{
+			UImage* Petal = WidgetTree->ConstructWidget<UImage>();
+			Petal->SetBrushFromTexture(AccentTexture, false);
+			FPetal P;
+			P.Size = Rand.FRandRange(14.f, 30.f);
+			P.X = Rand.FRandRange(0.f, 1.f); P.Y = Rand.FRandRange(-0.1f, 1.f);
+			P.Speed = Rand.FRandRange(28.f, 60.f); P.Sway = Rand.FRandRange(18.f, 50.f);
+			P.Phase = Rand.FRandRange(0.f, 6.28f); P.Spin = Rand.FRandRange(-60.f, 60.f);
+			Petal->SetRenderOpacity(Rand.FRandRange(.55f, .9f));
+			if (UCanvasPanelSlot* S = PetalLayer->AddChildToCanvas(Petal)) { S->SetSize(FVector2D(P.Size)); S->SetAutoSize(false); }
+			Petals.Add(Petal); PetalState.Add(P);
+		}
+	}
+
 	// 2) 왼쪽 세로 줄: 로고 · 부제 · 버튼 패널 · 상태 글
 	UVerticalBox* Column = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("TitleColumn"));
 	if (UOverlaySlot* S = Root->AddChildToOverlay(Column)) { S->SetHorizontalAlignment(HAlign_Left); S->SetVerticalAlignment(VAlign_Center); S->SetPadding(FMargin(110.f, 40.f, 40.f, 40.f)); }
@@ -213,7 +237,7 @@ void UCozyTitleWidget::BuildTree()
 	ModalLayer->SetVisibility(ESlateVisibility::Collapsed);
 	if (UOverlaySlot* S = Root->AddChildToOverlay(ModalLayer)) { S->SetHorizontalAlignment(HAlign_Fill); S->SetVerticalAlignment(VAlign_Fill); }
 	USizeBox* ModalSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("ModalSize"));
-	ModalSize->SetWidthOverride(560.f);
+	ModalSize->SetWidthOverride(620.f);
 	ModalLayer->SetContent(ModalSize);
 	UBorder* Window = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("ModalWindow"));
 	if (const FSlateBrush* Brush = Theme ? Theme->FindImage(Config->WindowImage) : nullptr) Window->SetBrush(*Brush);
@@ -238,9 +262,9 @@ void UCozyTitleWidget::BuildTree()
 	for (int32 I = 0; I < 2; ++I)
 	{
 		UTextBlock* Label = nullptr;
-		UButton* Button = MakeButton(Config->ButtonStyle, Label, FText::GetEmpty(), 24.f);
+		UButton* Button = MakeButton(Config->ButtonStyle, Label, FText::GetEmpty(), 23.f);
 		USizeBox* Size = WidgetTree->ConstructWidget<USizeBox>();
-		Size->SetWidthOverride(210.f); Size->SetHeightOverride(56.f);
+		Size->SetWidthOverride(250.f); Size->SetHeightOverride(56.f);
 		Size->SetContent(Button);
 		if (UHorizontalBoxSlot* S = ModalButtonRow->AddChildToHorizontalBox(Size)) S->SetPadding(FMargin(10.f, 0.f));
 		ModalButtons.Add(Button); ModalLabels.Add(Label);
@@ -369,10 +393,27 @@ void UCozyTitleWidget::OnButtonClicked0() { ClickMain(0); }
 void UCozyTitleWidget::OnButtonClicked1() { ClickMain(1); }
 void UCozyTitleWidget::OnButtonClicked2() { ClickMain(2); }
 void UCozyTitleWidget::OnButtonClicked3() { ClickMain(3); }
-void UCozyTitleWidget::OnButtonHovered0() { if (Modal == EModal::None) SetSelected(0); }
-void UCozyTitleWidget::OnButtonHovered1() { if (Modal == EModal::None) SetSelected(1); }
-void UCozyTitleWidget::OnButtonHovered2() { if (Modal == EModal::None) SetSelected(2); }
-void UCozyTitleWidget::OnButtonHovered3() { if (Modal == EModal::None) SetSelected(3); }
+void UCozyTitleWidget::HoverSelect(int32 Index) { if (Modal == EModal::None && bMouseMoved) SetSelected(Index); }
+void UCozyTitleWidget::OnButtonHovered0() { HoverSelect(0); }
+void UCozyTitleWidget::OnButtonHovered1() { HoverSelect(1); }
+void UCozyTitleWidget::OnButtonHovered2() { HoverSelect(2); }
+void UCozyTitleWidget::OnButtonHovered3() { HoverSelect(3); }
+
+FReply UCozyTitleWidget::NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	const FVector2D Pos = InMouseEvent.GetScreenSpacePosition();
+	if (!bMouseMoved)
+	{
+		if (FirstMouse.X < 0.f) FirstMouse = Pos;
+		else if (FVector2D::Distance(FirstMouse, Pos) > 3.f)
+		{
+			bMouseMoved = true;
+			// 움직이기 시작한 순간 이미 올라가 있던 버튼을 선택
+			for (int32 I = 0; I < Buttons.Num(); ++I) if (Buttons[I].Button->IsHovered()) { HoverSelect(I); break; }
+		}
+	}
+	return Super::NativeOnMouseMove(InGeometry, InMouseEvent);
+}
 
 void UCozyTitleWidget::ActivateSelected()
 {
@@ -586,9 +627,30 @@ void UCozyTitleWidget::ActivateModal(FName Id)
 	}
 }
 
+void UCozyTitleWidget::TickPetals(float DeltaTime)
+{
+	if (!PetalLayer) return;
+	const FVector2D Area = PetalLayer->GetCachedGeometry().GetLocalSize();
+	if (Area.X < 10.f || Area.Y < 10.f) return;
+	const float Time = float(FPlatformTime::Seconds());
+	for (int32 I = 0; I < Petals.Num(); ++I)
+	{
+		FPetal& P = PetalState[I];
+		// 위에서 아래로 천천히 · 바람에 좌우로 흔들리며 오른쪽으로 조금씩 흘러감
+		P.Y += P.Speed * DeltaTime / Area.Y;
+		P.X += 8.f * DeltaTime / Area.X;
+		if (P.Y > 1.05f) { P.Y = -0.05f; P.X = FMath::Frac(P.X + .37f); }
+		if (P.X > 1.02f) P.X -= 1.04f;
+		const float X = P.X * Area.X + P.Sway * FMath::Sin(Time * .7f + P.Phase);
+		if (UCanvasPanelSlot* S = Cast<UCanvasPanelSlot>(Petals[I]->Slot)) S->SetPosition(FVector2D(X, P.Y * Area.Y));
+		Petals[I]->SetRenderTransformAngle(FMath::Fmod(Time * P.Spin + P.Phase * 57.f, 360.f));
+	}
+}
+
 void UCozyTitleWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	TickPetals(InDeltaTime);
 	// 배경(실제 영지 풍경)이 보이면 종이 바탕을 천천히 걷는다
 	const ACozyTitlePlayerController* Controller = Cast<ACozyTitlePlayerController>(GetOwningPlayer());
 	if (CoverAlpha > 0.f && Controller && Controller->IsBackgroundVisible())

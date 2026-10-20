@@ -150,6 +150,11 @@ def main():
     elif cmd == 'stop':
         out = ws.req('StopRecord')
         print('녹화 중지 · 파일=%s' % out.get('outputPath'))
+    elif cmd == 'shot':
+        # 게임 창 캡처 소스만 그림으로 저장 (화면 위에 다른 창·알림이 떠 있어도 게임 화면만 찍힘 · 2026-10-21)
+        path = os.path.abspath(sys.argv[2])
+        ws.req('SaveSourceScreenshot', {'sourceName': SOURCE, 'imageFormat': 'png', 'imageFilePath': path})
+        print('찍음: %s' % path)
     elif cmd == 'restore':
         p = os.path.join(STATE, 'obs_prev_scene.txt')
         if os.path.exists(p):

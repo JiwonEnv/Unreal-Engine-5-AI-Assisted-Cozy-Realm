@@ -52,6 +52,7 @@ protected:
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 
 private:
 	enum class EModal : uint8 { None, NewGameConfirm, QuitConfirm, LoadError, Loading, EnterFailed };
@@ -100,6 +101,12 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> GradientTexture;
 
 	UPROPERTY(Transient) TObjectPtr<UImage> PaperCover;
+	/** 떨어지는 벚꽃잎 (기존 벚꽃 아이콘을 작게 · 그림 추가 없음) */
+	UPROPERTY(Transient) TObjectPtr<class UCanvasPanel> PetalLayer;
+	UPROPERTY(Transient) TArray<TObjectPtr<UImage>> Petals;
+	struct FPetal { float X = 0.f, Y = 0.f, Speed = 40.f, Sway = 20.f, Phase = 0.f, Spin = 30.f, Size = 24.f; };
+	TArray<FPetal> PetalState;
+	void TickPetals(float DeltaTime);
 	UPROPERTY(Transient) TObjectPtr<UVerticalBox> ButtonList;
 	UPROPERTY(Transient) TObjectPtr<UTextBlock> StatusText;
 	UPROPERTY(Transient) TObjectPtr<UTextBlock> VersionText;
@@ -125,6 +132,10 @@ private:
 	FDateTime SavedUtc;
 	FString SaveDetail;
 	bool bEntering = false;
+	/** 화면이 뜬 뒤 마우스를 실제로 움직였는지 · 그 전에는 커서가 버튼 위에 있어도 기본 선택(이어하기/새 게임)을 바꾸지 않음 */
+	bool bMouseMoved = false;
+	FVector2D FirstMouse = FVector2D(-1.f, -1.f);
+	void HoverSelect(int32 Index);
 	double EnterStartTime = 0.0;
 	float CoverAlpha = 1.f;
 	FText LoadingBase;

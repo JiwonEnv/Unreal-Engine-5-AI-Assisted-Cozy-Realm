@@ -6,6 +6,7 @@
 #include "Engine/LevelStreamingDynamic.h"
 #include "Engine/World.h"
 #include "Blueprint/UserWidget.h"
+#include "Estate/CozyEstateSubsystem.h"
 #include "CozyRealm.h"
 
 ACozyTitleGameMode::ACozyTitleGameMode()
@@ -26,6 +27,9 @@ void ACozyTitlePlayerController::BeginPlay()
 	if (!IsLocalController()) return;
 	const UCozyTitleSettings* Config = UCozyTitleSettings::Get();
 	StartTime = GetWorld()->GetTimeSeconds();
+	// 타이틀 월드에서만 낮으로 보이게 (영지에 들어가면 게임 시계 그대로 · 저장하지 않음)
+	if (Config->bForceDaytime)
+		if (UCozyEstateSubsystem* Estate = GetWorld()->GetSubsystem<UCozyEstateSubsystem>()) Estate->SetNightOverride(ECozyNightOverride::ForceDay);
 
 	// 배경: 실제 영지 맵을 풍경만 불러온다 (이 맵의 게임 모드가 영지를 시작하지 않으므로 시설·저장·정산 없음)
 	if (!Config->BackgroundLevel.IsNull())
