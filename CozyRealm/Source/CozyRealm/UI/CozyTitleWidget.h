@@ -35,7 +35,7 @@ struct FCozyTitleButton
 /**
  *  타이틀 화면 (로고 · 배경 · 세로 버튼: 이어하기 / 새 게임 / 설정 / 게임 종료 · 구석에 버전).
  *  WBP 없이 코드로 만든다 · 모양은 기본 UI 테마(글꼴 주아 · 버튼 · 패널 · 창 이미지)와 프로젝트 설정 'Cozy Title'을 따른다.
- *  조작: 마우스 · 위/아래(W/S) · Enter/Space · Esc. 확인 창에서는 왼쪽/오른쪽(A/D).
+ *  조작: 마우스 · 위/아래(W/S) · Enter/Space · Esc(게임 종료 확인 · 설정 창이 열려 있으면 닫기). 확인 창에서는 왼쪽/오른쪽(A/D) · Esc 취소.
  */
 UCLASS()
 class UCozyTitleWidget : public UUserWidget

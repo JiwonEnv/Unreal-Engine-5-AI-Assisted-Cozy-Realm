@@ -716,6 +716,7 @@ FReply UCozyTitleWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKey
 	if (bUp) { SetSelected(Selected - 1); return FReply::Handled(); }
 	if (bDown) { SetSelected(Selected + 1); return FReply::Handled(); }
 	if (bAccept) { ActivateSelected(); return FReply::Handled(); }
+	// Esc: 게임 종료 확인 (설정 창 열기는 영지에서만 · 🙋 2026-10-21 사용자 결정)
 	if (bBack) { Activate(CozyTitle::Quit); return FReply::Handled(); }
 	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
 }
