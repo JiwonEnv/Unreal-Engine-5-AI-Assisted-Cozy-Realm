@@ -182,7 +182,8 @@ void UCozyHudWidget::BuildLayout()
 		DebugSlot->SetZOrder(6);
 		DebugSlot->SetAnchors(FAnchors(1.f, 0.f));
 		DebugSlot->SetAlignment(FVector2D(1.f, 0.f));
-		DebugSlot->SetPosition(FVector2D(-12.f, 56.f));
+		// 위쪽 HUD 버튼 줄 아래에서 시작 (56이면 큰 화면에서 제목 줄이 버튼에 가렸음)
+		DebugSlot->SetPosition(FVector2D(-12.f, CozyHud::HudTopSafe));
 		DebugSlot->SetAutoSize(true);
 	}
 	DebugPanel->SetVisibility(ESlateVisibility::Collapsed);
@@ -240,7 +241,8 @@ void UCozyHudWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 
 	if (DebugSize)
 	{
-		const float DebugMax = FMath::Max(240.f, MyGeometry.GetLocalSize().Y - 110.f);
+		// HUD 아래부터 화면 끝 12px 전까지 (패널 안쪽 위아래 여백 포함)
+		const float DebugMax = FMath::Max(240.f, MyGeometry.GetLocalSize().Y - CozyHud::HudTopSafe - 12.f - DebugPanel->GetPadding().GetTotalSpaceAlong<Orient_Vertical>());
 		if (MyGeometry.GetLocalSize().Y > 1.f && !FMath::IsNearlyEqual(DebugSize->GetMaxDesiredHeight(), DebugMax, 1.f))
 		{
 			DebugSize->SetMaxDesiredHeight(DebugMax);
