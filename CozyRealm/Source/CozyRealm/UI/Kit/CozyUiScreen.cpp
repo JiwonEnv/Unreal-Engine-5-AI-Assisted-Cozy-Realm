@@ -1742,6 +1742,13 @@ void UCozyUiScreen::RunAction(const FCozyUiElementEntry& Entry)
 	ACozyRealmEstatePlayerController* Controller = Cast<ACozyRealmEstatePlayerController>(GetOwningPlayer());
 	UCozyHudWidget* Hud = Controller ? Controller->GetHud() : nullptr;
 	UCozyEstateSubsystem* Estate = GetWorld() ? GetWorld()->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
+	// 영지 HUD가 없는 곳(타이틀 화면)에 띄운 창: 닫기만 띄운 쪽에 맡긴다 (Claude 2026-10-21)
+	if (!Hud && Entry.Action == ECozyUiAction::CloseWindow)
+	{
+		UE_LOG(LogCozyRealm, Log, TEXT("[UI] 버튼: %s → 창 닫기 (HUD 밖)"), *Entry.Id.ToString());
+		OnCloseRequested.Broadcast(this);
+		return;
+	}
 	if (!Controller || !Hud || !Estate)
 	{
 		return;

@@ -194,6 +194,8 @@ TArray<FIntPoint> UCozySettingsSubsystem::GetResolutionOptions(EWindowMode::Type
 				Options.Add(Each);
 			}
 		}
+		// 맨 끝: 모니터 크기 = 최대화된 창 (제목 줄·작업 표시줄이 보이고 그림은 남은 공간에 맞춤)
+		Options.AddUnique(Desktop);
 	}
 	// 지금 값이 목록에 없으면 넣어 둠 (창 크기를 손으로 바꾼 경우 등)
 	const FIntPoint Current = ReadAppliedDisplay().Resolution;
@@ -280,6 +282,8 @@ FCozyUiValueResult UCozySettingsSubsystem::GetUiValue(ECozyUiValue Value, FName 
 	case ECozyUiValue::SettingsResolutionNote:
 		R.Text = bBorderless
 			? FText::Format(LOCTEXT("ResLocked", "테두리 없는 창은 모니터 해상도({0})를 그대로 씁니다. 해상도를 고르려면 전체 화면이나 창 모드를 고르세요."), ResolutionName(DesktopResolution))
+			: IsFullSizeWindow(PendingDisplay.Mode, PendingDisplay.Resolution, DesktopResolution)
+			? LOCTEXT("ResMaximized", "창 모드에서 모니터 크기를 고르면 최대화된 창으로 띄웁니다 (제목 줄·작업 표시줄이 보이고 그림은 남은 공간에 맞춤).")
 			: FText::GetEmpty();
 		R.StateColor = ECozyUiColor::InkMuted;
 		break;
@@ -506,7 +510,9 @@ bool UCozySettingsSubsystem::Run(ECozyUiAction Action, FName Param, APlayerContr
 		// 기존 저장 절차(SaveEstate)로 먼저 저장 · 실패하면 종료하지 않고 다시 시도/취소
 		UWorld* World = SettingsWorld.Get();
 		UCozyEstateSubsystem* Estate = World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
-		const bool bSaved = Estate && Estate->SaveEstate(TEXT("게임 종료 (설정 창)"));
+		// 타이틀처럼 영지를 시작하지 않은 화면에서는 저장할 것이 없으므로 바로 종료 (빈 상태로 저장을 덮어쓰지 않음)
+		const bool bEstateRunning = Estate && Estate->IsStarted();
+		const bool bSaved = !bEstateRunning || Estate->SaveEstate(TEXT("게임 종료 (설정 창)"));
 		if (!bSaved)
 		{
 			QuitState = EQuit::SaveFailed;
@@ -587,9 +593,11 @@ void UCozySettingsSubsystem::ApplyDisplay()
 	}
 	// 화면 모드·해상도: 적용하고 15초 동안 유지 확인 · 확인 전에는 저장하지 않음 (그 사이 꺼져도 이전 설정이 남음)
 	ConfirmBefore = Before;
+	RestoreFromMaximize(SettingsWorld.Get());
 	Settings->SetFullscreenMode(Want.Mode);
 	Settings->SetScreenResolution(Want.Resolution);
 	Settings->ApplyResolutionSettings(false);
+	ApplyWindowState(SettingsWorld.Get());
 	bConfirmActive = true;
 	ConfirmRemaining = ConfirmSeconds;
 	PendingDisplay = ReadAppliedDisplay();
@@ -616,10 +624,12 @@ void UCozySettingsSubsystem::FinishConfirm(bool bKeep, bool bTimedOut)
 		Touch(LOCTEXT("DisplayKept", "화면 설정을 유지하고 저장했습니다"));
 		return;
 	}
+	RestoreFromMaximize(SettingsWorld.Get());
 	Settings->SetFullscreenMode(ConfirmBefore.Mode);
 	Settings->SetScreenResolution(ConfirmBefore.Resolution);
 	Settings->ApplyResolutionSettings(false);
 	Settings->ConfirmVideoMode();
+	ApplyWindowState(SettingsWorld.Get());
 	Settings->SaveSettings();
 	UE_LOG(LogCozyRealm, Log, TEXT("[설정] 화면 설정 되돌림 (%s) → %s %dx%d"), bTimedOut ? TEXT("15초 초과") : TEXT("거절"),
 		*ModeName(ConfirmBefore.Mode).ToString(), ConfirmBefore.Resolution.X, ConfirmBefore.Resolution.Y);
@@ -676,6 +686,55 @@ TSharedPtr<SWindow> UCozySettingsSubsystem::GetGameWindow(const UWorld* World) c
 	return Viewport ? Viewport->GetWindow() : nullptr;
 }
 
+bool UCozySettingsSubsystem::IsFullSizeWindow(EWindowMode::Type Mode, const FIntPoint& Resolution, const FIntPoint& Desktop)
+{
+	return Mode == EWindowMode::Windowed && Desktop.X > 0 && Resolution.X >= Desktop.X && Resolution.Y >= Desktop.Y - 160;
+}
+
+void UCozySettingsSubsystem::RestoreFromMaximize(const UWorld* World)
+{
+	if (GIsEditor) return;
+	TSharedPtr<SWindow> Window = GetGameWindow(World);
+	if (Window.IsValid() && Window->IsWindowMaximized())
+	{
+		Window->Restore();
+		UE_LOG(LogCozyRealm, Log, TEXT("[설정] 최대화된 창을 풀고 해상도 변경"));
+	}
+}
+
+void UCozySettingsSubsystem::ApplyWindowState(const UObject* WorldContext)
+{
+	UWorld* World = WorldContext ? WorldContext->GetWorld() : nullptr;
+	ApplyWindowStateNow(World);
+	// 시작 직후 엔진이 창 크기를 한 번 더 맞추는 경우가 있어 몇 프레임 뒤에도 다시 확인
+	MaximizeWorld = World;
+	WindowStateFrames = 10;
+}
+
+void UCozySettingsSubsystem::ApplyWindowStateNow(UWorld* World)
+{
+	// 에디터 플레이는 에디터가 창을 관리하므로 건드리지 않음 · 작은 창 중에도 그대로
+	UCozyGameUserSettings* Settings = UCozyGameUserSettings::Get();
+	if (GIsEditor || bCompact || !World || !Settings) return;
+	TSharedPtr<SWindow> Window = GetGameWindow(World);
+	const EWindowMode::Type Mode = Settings->GetFullscreenMode();
+	const FIntPoint Resolution = Settings->GetScreenResolution();
+	const FIntPoint Desktop = Settings->GetDesktopResolution();
+	UE_LOG(LogCozyRealm, Log, TEXT("[설정] 창 상태 확인: 모드 %d · 해상도 %dx%d · 모니터 %dx%d · 창 %s · 최대화 %d"), int32(Mode), Resolution.X, Resolution.Y, Desktop.X, Desktop.Y,
+		Window.IsValid() ? TEXT("있음") : TEXT("없음"), Window.IsValid() && Window->IsWindowMaximized() ? 1 : 0);
+	if (!Window.IsValid()) return;
+	if (IsFullSizeWindow(Mode, Resolution, Desktop))
+	{
+		// 모니터만 한 창은 제목 줄이 화면 밖으로 밀려나므로 최대화된 창으로 보여 줌 (Claude 2026-10-21)
+		if (Window->IsWindowMaximized()) return;
+		Window->Maximize();
+		MaximizeResolution = Resolution;
+		MaximizeWorld = World;
+		MaximizeFrames = 6;
+		UE_LOG(LogCozyRealm, Log, TEXT("[설정] 창 모드 %dx%d = 모니터 크기 → 최대화된 창 (제목 줄 보임)"), Resolution.X, Resolution.Y);
+	}
+}
+
 bool UCozySettingsSubsystem::ToggleCompact(APlayerController* Controller, FText& OutReason)
 {
 	UWorld* World = Controller ? Controller->GetWorld() : nullptr;
@@ -713,7 +772,17 @@ bool UCozySettingsSubsystem::ToggleCompact(APlayerController* Controller, FText&
 		if (!bEditorWindow)
 		{
 			// 전체 화면 · 테두리 없는 창이어도 창 모드 작은 창으로 (r.setres와 같은 방법 · 다음 프레임에 적용)
-			FSystemResolution::RequestResolutionChange(CompactWidth, CompactHeight, EWindowMode::Windowed);
+			MaximizeFrames = 0;
+			WindowStateFrames = 0;
+			if (Window->IsWindowMaximized())
+			{
+				Window->Restore();
+				CompactRequestFrames = 3;
+			}
+			else
+			{
+				FSystemResolution::RequestResolutionChange(CompactWidth, CompactHeight, EWindowMode::Windowed);
+			}
 		}
 		else
 		{
@@ -734,13 +803,15 @@ bool UCozySettingsSubsystem::ToggleCompact(APlayerController* Controller, FText&
 		{
 			Settings->ApplyResolutionSettings(false);
 			Settings->ConfirmVideoMode();
+			ApplyWindowState(World);
 		}
 		else
 		{
 			Window->Resize(SavedClientSize);
 		}
 		bMoveToCorner = false;
-		CompactMoveFrames = SavedMode == EWindowMode::Windowed ? 6 : 0;
+		// 최대화된 창으로 돌아가면 위치를 옮기지 않음
+		CompactMoveFrames = SavedMode == EWindowMode::Windowed && MaximizeFrames == 0 ? 6 : 0;
 		UE_LOG(LogCozyRealm, Log, TEXT("[작은 창] 끔 → %s %dx%d"), *ModeName(SavedMode).ToString(), SavedResolution.X, SavedResolution.Y);
 	}
 
@@ -875,6 +946,29 @@ void UCozySettingsSubsystem::ApplyAudioToWorld(const UObject* WorldContext, floa
 
 void UCozySettingsSubsystem::Tick(float DeltaTime)
 {
+	if (CompactRequestFrames > 0 && --CompactRequestFrames == 0 && bCompact)
+	{
+		FSystemResolution::RequestResolutionChange(CompactWidth, CompactHeight, EWindowMode::Windowed);
+		CompactMoveFrames = 8;
+		UE_LOG(LogCozyRealm, Log, TEXT("[작은 창] 최대화를 푼 뒤 %dx%d 요청"), CompactWidth, CompactHeight);
+	}
+	if (WindowStateFrames > 0 && --WindowStateFrames == 0)
+	{
+		ApplyWindowStateNow(MaximizeWorld.Get());
+	}
+	// 최대화 뒤: 엔진이 줄어든 창 크기를 해상도 설정에 써 넣은 것을 고른 값으로 되돌림 (다음 실행도 모니터 크기 → 최대화)
+	if (MaximizeFrames > 0 && --MaximizeFrames == 0)
+	{
+		UCozyGameUserSettings* Settings = UCozyGameUserSettings::Get();
+		if (Settings && !bCompact && Settings->GetFullscreenMode() == EWindowMode::Windowed && Settings->GetScreenResolution() != MaximizeResolution)
+		{
+			Settings->SetScreenResolution(MaximizeResolution);
+			if (!bConfirmActive) { Settings->ConfirmVideoMode(); Settings->SaveSettings(); }
+			PendingDisplay = ReadAppliedDisplay();
+			UE_LOG(LogCozyRealm, Log, TEXT("[설정] 최대화 뒤 해상도 설정을 %dx%d로 유지"), MaximizeResolution.X, MaximizeResolution.Y);
+			Touch();
+		}
+	}
 	// 작은 창 위치: 크기 변경이 적용된 뒤(몇 프레임) 구석으로 · 마지막 프레임에 한 번 더
 	if (CompactMoveFrames > 0)
 	{

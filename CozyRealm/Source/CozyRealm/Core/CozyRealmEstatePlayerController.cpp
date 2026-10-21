@@ -44,6 +44,7 @@ void ACozyRealmEstatePlayerController::BeginPlay()
 		if (UCozySettingsSubsystem* Settings = UCozySettingsSubsystem::Get(this))
 		{
 			Settings->ApplySavedAudio(this);
+			Settings->ApplyWindowState(this);
 		}
 		SpawnHero();
 	}
@@ -276,13 +277,18 @@ void ACozyRealmEstatePlayerController::PlayerTick(float DeltaTime)
 		const bool bCanceledDialog = Settings && Settings->CancelDialog();
 		if (!bCanceledDialog)
 		{
+			// 순서: 열린 창 닫기 → 시설 선택 풀기 → 아무것도 없으면 설정 창 열기 (🙋 2026-10-21 사용자 요청)
 			if (Hud->IsWindowOpen())
 			{
 				Hud->CloseWindow();
 			}
-			else
+			else if (SelectedFacility.IsValid())
 			{
 				ClearSelection();
+			}
+			else
+			{
+				Hud->ToggleSettingsWindow();
 			}
 		}
 	}

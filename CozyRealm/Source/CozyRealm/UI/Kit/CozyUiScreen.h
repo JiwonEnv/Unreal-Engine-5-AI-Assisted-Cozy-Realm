@@ -43,6 +43,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Cozy UI")
 	void SetPreviewState(ECozyUiPreviewState NewState);
 
+	/** 영지 HUD 밖(타이틀 화면 등)에 띄웠을 때 '창 닫기' 버튼을 누르면 알림 · 띄운 쪽이 직접 닫는다 */
+	DECLARE_MULTICAST_DELEGATE_OneParam(FOnCozyScreenCloseRequested, UCozyUiScreen*);
+	FOnCozyScreenCloseRequested OnCloseRequested;
+
 	/** 테마·설정을 모든 부품에 다시 적용 */
 	UFUNCTION(BlueprintCallable, Category = "Cozy UI")
 	void RefreshTheme();

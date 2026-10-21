@@ -68,6 +68,43 @@ namespace CozyEstate
 	static const TCHAR* SaveSlotName = TEXT("CozyRealm_Slot1");
 	static constexpr int32 SaveUserIndex = 0;
 	static constexpr int32 CurrentSaveFileVersion = 2;
+
+	/**
+	 *  언리얼 저장 머리글('GVAS')로 시작하는 파일인지 · 아니면 읽지 않는다.
+	 *  엉뚱한 바이트로 채워진 파일을 그대로 역직렬화하면 엔진이 이름 길이 검사에서 강제 종료한다 (2026-10-21 타이틀 검증에서 발견).
+	 */
+	static bool HasSaveHeader(const FString& Slot)
+	{
+		TArray<uint8> Bytes;
+		if (!UGameplayStatics::LoadDataFromSlot(Bytes, Slot, SaveUserIndex)) return false;
+		const bool bOk = Bytes.Num() > 64 && Bytes[0] == 'G' && Bytes[1] == 'V' && Bytes[2] == 'A' && Bytes[3] == 'S';
+		if (!bOk) UE_LOG(LogCozyRealm, Warning, TEXT("저장 파일 %s: 언리얼 저장 형식이 아니라 읽지 않음 (%d바이트)"), *Slot, Bytes.Num());
+		return bOk;
+	}
+
+	/**
+	 *  저장 파일을 읽어 끝까지 온전한지 확인한 뒤 돌려준다 (못 읽거나 덜 들어 있으면 nullptr).
+	 *  엔진의 LoadGameFromSlot은 중간에 잘린 파일도 읽기 오류 없이 반쯤 채운 상태로 돌려주므로,
+	 *  현재 형식이면 다시 직렬화한 크기가 파일 크기와 같은지로 잘림을 걸러 낸다 (2026-10-21 타이틀 검증에서 발견).
+	 */
+	static UCozyEstateSaveGame* ReadCompleteSave(const FString& Slot)
+	{
+		if (!HasSaveHeader(Slot)) return nullptr;
+		TArray<uint8> Bytes;
+		if (!UGameplayStatics::LoadDataFromSlot(Bytes, Slot, SaveUserIndex)) return nullptr;
+		UCozyEstateSaveGame* Save = Cast<UCozyEstateSaveGame>(UGameplayStatics::LoadGameFromMemory(Bytes));
+		if (!Save) return nullptr;
+		if (Save->FileVersion == CurrentSaveFileVersion)
+		{
+			TArray<uint8> Again;
+			if (!UGameplayStatics::SaveGameToMemory(Save, Again) || Again.Num() != Bytes.Num())
+			{
+				UE_LOG(LogCozyRealm, Warning, TEXT("저장 파일 %s: 내용이 덜 들어 있어 읽지 않음 (파일 %d바이트 · 읽은 내용 %d바이트)"), *Slot, Bytes.Num(), Again.Num());
+				return nullptr;
+			}
+		}
+		return Save;
+	}
 }
 
 bool UCozyEstateSubsystem::HasSaveFile() const
@@ -75,9 +112,78 @@ bool UCozyEstateSubsystem::HasSaveFile() const
 	return UGameplayStatics::DoesSaveGameExist(CozyEstate::SaveSlotName, CozyEstate::SaveUserIndex);
 }
 
+ECozySaveProbe UCozyEstateSubsystem::ProbeSaveFile(FDateTime& OutSavedUtc, FString& OutDetail)
+{
+	// LoadEstateFromSave와 같은 판단을 하되 손상 사본·이관 사본·저장 쓰기를 하지 않는다.
+	const FString Previous = FString(CozyEstate::SaveSlotName) + TEXT("_previous");
+	const bool bMain = UGameplayStatics::DoesSaveGameExist(CozyEstate::SaveSlotName, CozyEstate::SaveUserIndex);
+	const bool bPrevious = UGameplayStatics::DoesSaveGameExist(Previous, CozyEstate::SaveUserIndex);
+	if (!bMain && !bPrevious) { OutDetail = TEXT("저장 없음"); return ECozySaveProbe::None; }
+	auto Read = [](const FString& Slot) { return CozyEstate::ReadCompleteSave(Slot); };
+	if (const UCozyEstateSaveGame* Save = bMain ? Read(CozyEstate::SaveSlotName) : nullptr)
+	{
+		if (Save->FileVersion > CozyEstate::CurrentSaveFileVersion)
+		{
+			OutDetail = FString::Printf(TEXT("저장 형식 %d은 이 버전(%d)보다 새로워 읽을 수 없습니다"), Save->FileVersion, CozyEstate::CurrentSaveFileVersion);
+			return ECozySaveProbe::Invalid;
+		}
+		OutSavedUtc = Save->SavedUtc; OutDetail = TEXT("정상");
+		return ECozySaveProbe::Valid;
+	}
+	if (const UCozyEstateSaveGame* Save = bPrevious ? Read(Previous) : nullptr)
+	{
+		if (Save->FileVersion <= CozyEstate::CurrentSaveFileVersion)
+		{
+			OutSavedUtc = Save->SavedUtc;
+			OutDetail = bMain ? TEXT("현재 저장본을 읽지 못해 직전 정상본으로 이어집니다") : TEXT("직전 정상본으로 이어집니다");
+			return ECozySaveProbe::Recovered;
+		}
+	}
+	OutDetail = bMain ? TEXT("저장 파일이 손상되었거나 읽을 수 없습니다") : TEXT("직전 저장본이 손상되었거나 읽을 수 없습니다");
+	return ECozySaveProbe::Invalid;
+}
+
+bool UCozyEstateSubsystem::ArchiveSaveForNewGame(FString& OutFolder, FString& OutError)
+{
+	IFileManager& Files = IFileManager::Get();
+	const FString Dir = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"));
+	const FString Base = CozyEstate::SaveSlotName;
+	TArray<FString> Names = { Base + TEXT(".sav"), Base + TEXT("_previous.sav"), Base + TEXT(".sav.pending") };
+	TArray<FString> Present;
+	for (const FString& Name : Names) if (Files.FileExists(*FPaths::Combine(Dir, Name))) Present.Add(Name);
+	if (Present.IsEmpty()) { OutFolder.Reset(); return true; }
+	OutFolder = FPaths::Combine(Dir, TEXT("Backup_NewGame_") + FDateTime::UtcNow().ToString(TEXT("%Y%m%d_%H%M%S")));
+	if (!Files.MakeDirectory(*OutFolder, true)) { OutError = TEXT("백업 폴더를 만들지 못했습니다"); return false; }
+	// 먼저 모두 복사해 확인한 뒤에만 원본을 옮긴다 → 중간에 실패해도 원본은 그대로
+	for (const FString& Name : Present)
+	{
+		if (Files.Copy(*FPaths::Combine(OutFolder, Name), *FPaths::Combine(Dir, Name)) != COPY_OK)
+		{
+			OutError = FString::Printf(TEXT("%s 백업 복사에 실패했습니다 · 원본은 그대로 두었습니다"), *Name);
+			return false;
+		}
+	}
+	for (const FString& Name : Present)
+	{
+		if (!Files.Delete(*FPaths::Combine(Dir, Name), false, true, true))
+		{
+			OutError = FString::Printf(TEXT("%s 를 옮기지 못했습니다 · 백업은 %s 에 있습니다"), *Name, *OutFolder);
+			return false;
+		}
+	}
+	UE_LOG(LogCozyRealm, Log, TEXT("새 게임: 기존 저장 %d개를 %s 로 옮김"), Present.Num(), *OutFolder);
+	return true;
+}
+
 bool UCozyEstateSubsystem::SaveEstate(const FString& Reason)
 {
 	if (bSaveBlockedByInvalidFile) return false;
+	// 영지를 시작하지 않은 맵(타이틀 등)에서는 빈 상태로 실제 저장을 덮어쓰지 않는다 (Claude 2026-10-21)
+	if (!bStarted)
+	{
+		UE_LOG(LogCozyRealm, Warning, TEXT("저장 건너뜀: 영지를 시작하지 않은 상태 (%s)"), *Reason);
+		return false;
+	}
 	State.SaveVersion = 2;
 	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
 	{
@@ -198,7 +304,7 @@ bool UCozyEstateSubsystem::LoadEstateFromSave(FDateTime& OutSavedUtc)
 	{
 		return false;
 	}
-	UCozyEstateSaveGame* Save = Cast<UCozyEstateSaveGame>(UGameplayStatics::LoadGameFromSlot(CozyEstate::SaveSlotName, CozyEstate::SaveUserIndex));
+	UCozyEstateSaveGame* Save = CozyEstate::ReadCompleteSave(CozyEstate::SaveSlotName);
     FString LoadedSlot = CozyEstate::SaveSlotName;
     if (!Save)
     {
@@ -214,7 +320,7 @@ bool UCozyEstateSubsystem::LoadEstateFromSave(FDateTime& OutSavedUtc)
             }
         }
         LoadedSlot += TEXT("_previous");
-        Save = Cast<UCozyEstateSaveGame>(UGameplayStatics::LoadGameFromSlot(LoadedSlot, CozyEstate::SaveUserIndex));
+        Save = CozyEstate::ReadCompleteSave(LoadedSlot);
         if (Save) RecoveryNotice = TEXT("현재 저장본을 읽지 못해 직전 정상 저장본으로 복구했습니다.");
     }
     if (!Save || Save->FileVersion > CozyEstate::CurrentSaveFileVersion)
