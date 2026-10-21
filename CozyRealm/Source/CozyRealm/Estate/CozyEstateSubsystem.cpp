@@ -70,28 +70,19 @@ namespace CozyEstate
 	static constexpr int32 CurrentSaveFileVersion = 2;
 
 	/**
-	 *  언리얼 저장 머리글('GVAS')로 시작하는 파일인지 · 아니면 읽지 않는다.
-	 *  엉뚱한 바이트로 채워진 파일을 그대로 역직렬화하면 엔진이 이름 길이 검사에서 강제 종료한다 (2026-10-21 타이틀 검증에서 발견).
-	 */
-	static bool HasSaveHeader(const FString& Slot)
-	{
-		TArray<uint8> Bytes;
-		if (!UGameplayStatics::LoadDataFromSlot(Bytes, Slot, SaveUserIndex)) return false;
-		const bool bOk = Bytes.Num() > 64 && Bytes[0] == 'G' && Bytes[1] == 'V' && Bytes[2] == 'A' && Bytes[3] == 'S';
-		if (!bOk) UE_LOG(LogCozyRealm, Warning, TEXT("저장 파일 %s: 언리얼 저장 형식이 아니라 읽지 않음 (%d바이트)"), *Slot, Bytes.Num());
-		return bOk;
-	}
-
-	/**
-	 *  저장 파일을 읽어 끝까지 온전한지 확인한 뒤 돌려준다 (못 읽거나 덜 들어 있으면 nullptr).
-	 *  엔진의 LoadGameFromSlot은 중간에 잘린 파일도 읽기 오류 없이 반쯤 채운 상태로 돌려주므로,
-	 *  현재 형식이면 다시 직렬화한 크기가 파일 크기와 같은지로 잘림을 걸러 낸다 (2026-10-21 타이틀 검증에서 발견).
+	 *  저장 파일을 읽어 끝까지 온전한지 확인한 뒤 돌려준다 (못 읽거나 덜 들어 있으면 nullptr · 2026-10-21 타이틀 검증에서 발견한 두 경우).
+	 *  - 언리얼 저장 머리글('GVAS')이 없으면 읽지 않음: 엉뚱한 바이트를 그대로 역직렬화하면 엔진이 이름 길이 검사에서 강제 종료한다.
+	 *  - 엔진은 중간에 잘린 파일도 오류 없이 반쯤 채워 돌려주므로, 현재 형식이면 다시 직렬화한 크기가 파일 크기와 같은지 본다.
 	 */
 	static UCozyEstateSaveGame* ReadCompleteSave(const FString& Slot)
 	{
-		if (!HasSaveHeader(Slot)) return nullptr;
 		TArray<uint8> Bytes;
 		if (!UGameplayStatics::LoadDataFromSlot(Bytes, Slot, SaveUserIndex)) return nullptr;
+		if (Bytes.Num() <= 64 || FMemory::Memcmp(Bytes.GetData(), "GVAS", 4) != 0)
+		{
+			UE_LOG(LogCozyRealm, Warning, TEXT("저장 파일 %s: 언리얼 저장 형식이 아니라 읽지 않음 (%d바이트)"), *Slot, Bytes.Num());
+			return nullptr;
+		}
 		UCozyEstateSaveGame* Save = Cast<UCozyEstateSaveGame>(UGameplayStatics::LoadGameFromMemory(Bytes));
 		if (!Save) return nullptr;
 		if (Save->FileVersion == CurrentSaveFileVersion)
@@ -119,8 +110,7 @@ ECozySaveProbe UCozyEstateSubsystem::ProbeSaveFile(FDateTime& OutSavedUtc, FStri
 	const bool bMain = UGameplayStatics::DoesSaveGameExist(CozyEstate::SaveSlotName, CozyEstate::SaveUserIndex);
 	const bool bPrevious = UGameplayStatics::DoesSaveGameExist(Previous, CozyEstate::SaveUserIndex);
 	if (!bMain && !bPrevious) { OutDetail = TEXT("저장 없음"); return ECozySaveProbe::None; }
-	auto Read = [](const FString& Slot) { return CozyEstate::ReadCompleteSave(Slot); };
-	if (const UCozyEstateSaveGame* Save = bMain ? Read(CozyEstate::SaveSlotName) : nullptr)
+	if (const UCozyEstateSaveGame* Save = bMain ? CozyEstate::ReadCompleteSave(CozyEstate::SaveSlotName) : nullptr)
 	{
 		if (Save->FileVersion > CozyEstate::CurrentSaveFileVersion)
 		{
@@ -130,7 +120,7 @@ ECozySaveProbe UCozyEstateSubsystem::ProbeSaveFile(FDateTime& OutSavedUtc, FStri
 		OutSavedUtc = Save->SavedUtc; OutDetail = TEXT("정상");
 		return ECozySaveProbe::Valid;
 	}
-	if (const UCozyEstateSaveGame* Save = bPrevious ? Read(Previous) : nullptr)
+	if (const UCozyEstateSaveGame* Save = bPrevious ? CozyEstate::ReadCompleteSave(Previous) : nullptr)
 	{
 		if (Save->FileVersion <= CozyEstate::CurrentSaveFileVersion)
 		{

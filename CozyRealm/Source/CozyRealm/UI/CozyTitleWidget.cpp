@@ -16,7 +16,6 @@
 #include "Components/OverlaySlot.h"
 #include "Components/ScrollBox.h"
 #include "Components/SizeBox.h"
-#include "Components/Spacer.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
@@ -347,16 +346,14 @@ void UCozyTitleWidget::RebuildButtons()
 		if (UVerticalBoxSlot* S = ButtonList->AddChildToVerticalBox(Entry.Row)) S->SetPadding(FMargin(0.f, I == 0 ? 0.f : 12.f, 0.f, 0.f));
 		Buttons.Add(Entry);
 	}
+	// 버튼 칸마다 OnButtonClicked0~3 · OnButtonHovered0~3 (동적 델리게이트는 인자 없는 UFUNCTION만 받음)
 	for (int32 I = 0; I < Buttons.Num(); ++I)
 	{
-		switch (I)
-		{
-		case 0: Buttons[I].Button->OnClicked.AddDynamic(this, &UCozyTitleWidget::OnButtonClicked0); Buttons[I].Button->OnHovered.AddDynamic(this, &UCozyTitleWidget::OnButtonHovered0); break;
-		case 1: Buttons[I].Button->OnClicked.AddDynamic(this, &UCozyTitleWidget::OnButtonClicked1); Buttons[I].Button->OnHovered.AddDynamic(this, &UCozyTitleWidget::OnButtonHovered1); break;
-		case 2: Buttons[I].Button->OnClicked.AddDynamic(this, &UCozyTitleWidget::OnButtonClicked2); Buttons[I].Button->OnHovered.AddDynamic(this, &UCozyTitleWidget::OnButtonHovered2); break;
-		case 3: Buttons[I].Button->OnClicked.AddDynamic(this, &UCozyTitleWidget::OnButtonClicked3); Buttons[I].Button->OnHovered.AddDynamic(this, &UCozyTitleWidget::OnButtonHovered3); break;
-		default: break;
-		}
+		FScriptDelegate Click, Hover;
+		Click.BindUFunction(this, *FString::Printf(TEXT("OnButtonClicked%d"), I));
+		Hover.BindUFunction(this, *FString::Printf(TEXT("OnButtonHovered%d"), I));
+		Buttons[I].Button->OnClicked.Add(Click);
+		Buttons[I].Button->OnHovered.Add(Hover);
 	}
 	SetSelected(0);
 }
