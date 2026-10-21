@@ -156,14 +156,14 @@ void ACozyFacilityActor::SetSelected(bool bInSelected)
 	}
 }
 
-void ACozyFacilityActor::SetPlacementPreview(bool bActive, bool bValid)
+void ACozyFacilityActor::SetPlacementPreview(bool bValid)
 {
 	if (AuraMaterial)
 	{
-		const FLinearColor Color = !bActive ? AuraColor : (bValid ? FLinearColor(0.15f, 0.85f, 0.3f) : FLinearColor(0.95f, 0.15f, 0.12f));
+		const FLinearColor Color = bValid ? FLinearColor(0.15f, 0.85f, 0.3f) : FLinearColor(0.95f, 0.15f, 0.12f);
 		AuraMaterial->SetVectorParameterValue(CozyFacility::ColorParam, Color);
 	}
-	AuraMesh->SetVisibility(bActive);
+	AuraMesh->SetVisibility(true);
 	for (UStaticMeshComponent* Edge : OutlineEdges)
 	{
 		Edge->SetVisibility(false);

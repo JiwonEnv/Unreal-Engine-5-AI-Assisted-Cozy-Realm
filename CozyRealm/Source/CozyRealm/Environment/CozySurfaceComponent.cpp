@@ -38,10 +38,10 @@ bool UCozySurfaceComponent::PaintAt(FVector WorldPosition, float Radius, int32 L
 	const FVector Scale = GetOwner()->GetActorScale3D().GetAbs();
 	const FVector2D Extent = (PaintMax - PaintMin) * FVector2D(Scale.X, Scale.Y);
 	if (Extent.X <= 0 || Extent.Y <= 0) return false;
-	const bool Changed = PaintMask.Stamp(UV, FVector2D(Radius / Extent.X, Radius / Extent.Y), Layer, Strength);
+	const FVector2D RadiusUV(Radius / Extent.X, Radius / Extent.Y);
+	const bool Changed = PaintMask.Stamp(UV, RadiusUV, Layer, Strength);
 	if (Changed)
 	{
-		const FVector2D RadiusUV(Radius / Extent.X, Radius / Extent.Y);
 		const int32 N = PaintMask.Resolution;
 		const FIntRect Area(
 			FMath::Clamp(FMath::FloorToInt((UV.X - RadiusUV.X) * N), 0, N - 1),
@@ -173,7 +173,7 @@ bool CozySurface::Trace(const UWorld* World, const FVector& Start, const FVector
 		if (RequiredSurface && Id != *RequiredSurface) continue;
 		Out.Position = Hit.ImpactPoint;
 		Out.Normal = Hit.ImpactNormal;
-		Out.SurfaceId = Rules ? Rules->SurfaceId : FGuid();
+		Out.SurfaceId = Id;
 		Out.Rules = Rules;
 		return true;
 	}

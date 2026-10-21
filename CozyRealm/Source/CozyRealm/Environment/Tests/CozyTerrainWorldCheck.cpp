@@ -3,11 +3,10 @@
 #include "Environment/CozySurfaceNavigation.h"
 #include "Estate/CozyEstateSubsystem.h"
 #include "Engine/World.h"
-#include "Misc/CommandLine.h"
-#include "Misc/Parse.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "HAL/PlatformTime.h"
+#include "Environment/Tests/CozyTerrainTestUtils.h"
 
 #if !UE_BUILD_SHIPPING
 // 격리된 검증 실행에서만 사용한다. 일반 플레이 저장에는 접근하지 않는다.
@@ -15,19 +14,13 @@ static FAutoConsoleCommandWithWorld CozyTerrainWorldCheck(
 	TEXT("Cozy.TerrainVerify"), TEXT("검증 맵의 실제 충돌·이동·도색·바닥 저장 흐름 검사"),
 	FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World)
 	{
-		const FString Saved = FPaths::ProjectSavedDir();
-		if (!World || !World->IsGameWorld() || !FParse::Param(FCommandLine::Get(), TEXT("CozyTerrainTest")) || !World->GetMapName().Contains(TEXT("L_TerrainValidation"))
-			|| !(Saved.Contains(TEXT("TerrainPlayUser")) || Saved.Contains(TEXT("TerrainPackageUser")))) return;
+		if (!CozyTerrainTest::IsAllowed(World)) return;
 		auto* Estate = World->GetSubsystem<UCozyEstateSubsystem>();
 		auto* Nav = World->GetSubsystem<UCozySurfaceNavigation>();
 		if (!Estate || !Nav) return;
 		Estate->Tick(0.f);
 		FString Report; int32 Failed = 0;
-		auto Check = [&](bool Passed, const TCHAR* Name)
-		{
-			Report += FString::Printf(TEXT("%s: %s\n"), Passed ? TEXT("통과") : TEXT("실패"), Name);
-			if (!Passed) ++Failed;
-		};
+		auto Check = CozyTerrainTest::MakeCheck(Report, Failed);
 		const FGuid LandscapeId(0xC02E0001, 0, 0, 1), HillId(0x10000000, 0, 0, 1), UpperId(0x10000000, 0, 0, 3);
 		Check(!Estate->GetState().Facilities.ContainsByPredicate([](const FCozyFacilityState& F) { return !F.bStored && !F.bHasSurfacePlacement; }), TEXT("이전 평지 시설에 공통 표면 참조 부여"));
 		FCozySurfaceHit Lower, Upper, Hill; FText Reason;

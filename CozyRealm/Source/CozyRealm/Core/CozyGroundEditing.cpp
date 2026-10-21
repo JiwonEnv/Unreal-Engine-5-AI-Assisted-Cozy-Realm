@@ -7,7 +7,6 @@
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
 #include "InputKeyEventArgs.h"
-#include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "HAL/IConsoleManager.h"
@@ -51,7 +50,7 @@ void ACozyRealmEstatePlayerController::CozyGroundMode(int32 Mode)
 	FinishGroundStroke();
 	SetPlacementMode(false);
 	GroundMode = FMath::Clamp(Mode, 0, 2);
-	bFloorPreview = false; MovingFloorId.Invalidate();
+	CancelFloorPreview();
 	if (Hero) Hero->SetFrozen(GroundMode != 0);
 	if (Hud) Hud->ShowToast(FText::FromString(GroundMode == 1
 		? TEXT("지면 브러시 · 1~3 색 · 0 지우개 · [ ] 크기 · Ctrl+Z/Y · G 타일 · Esc 종료")
@@ -162,7 +161,14 @@ void ACozyRealmEstatePlayerController::PaintBrushTo(const FCozySurfaceHit& Hit)
 	}
 }
 
-void ACozyRealmEstatePlayerController::DrawSurfaceDebug(const FCozySurfaceHit* InHit) const
+bool ACozyRealmEstatePlayerController::TraceSurfaceUnderCursor(FCozySurfaceHit& Out, bool bSkipFlatRay) const
+{
+	FVector Origin, Direction;
+	return DeprojectMousePositionToWorld(Origin, Direction) && !(bSkipFlatRay && FMath::IsNearlyZero(Direction.Z))
+		&& CozySurface::Trace(GetWorld(), Origin, Origin + Direction * 100000.f, Out);
+}
+
+void ACozyRealmEstatePlayerController::DrawSurfaceDebug() const
 {
 #if ENABLE_DRAW_DEBUG
 	if (CVarCozySurfaceDebug.GetValueOnGameThread() <= 0) return;
@@ -192,19 +198,16 @@ void ACozyRealmEstatePlayerController::DrawSurfaceDebug(const FCozySurfaceHit* I
 		DrawDebugString(World, Label + FVector(0, 0, 40), FString::Printf(TEXT("Surface %s..%s"), *Id.Left(4), *Id.Right(4)), nullptr, Color, 0.f, true, 1.2f);
 	}
 	FCozySurfaceHit Hit;
-	FVector Origin, Direction;
-	if (InHit) Hit = *InHit;
-	const bool bHit = InHit || (DeprojectMousePositionToWorld(Origin, Direction) && CozySurface::Trace(World, Origin, Origin + Direction * 100000.f, Hit));
-	if (bHit)
+	if (TraceSurfaceUnderCursor(Hit))
 	{
-		const float Slope = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(Hit.Normal.Z, -1.f, 1.f)));
+		const float Slope = CozySurface::SlopeDegrees(Hit.Normal);
 		const FString Id = Hit.SurfaceId.ToString();
 		DrawDebugString(World, Hit.Position + FVector(0, 0, 60), FString::Printf(TEXT("Cursor: surface %s..%s  slope %.0f deg  z %.0f"),
 			*Id.Left(4), *Id.Right(4), Slope, Hit.Position.Z), nullptr, FColor::White, 0.f, true, 1.2f);
 	}
 	if (Hero)
 	{
-		const FVector Feet = Hero->GetActorLocation() - FVector(0, 0, Hero->GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+		const FVector Feet = Hero->GetFeetLocation();
 		FCozySurfaceHit Ground;
 		if (CozySurface::GroundAt(World, Feet, Ground))
 		{
@@ -218,7 +221,7 @@ void ACozyRealmEstatePlayerController::DrawSurfaceDebug(const FCozySurfaceHit* I
 				LastLog = Now;
 				UE_LOG(LogCozyRealm, Log, TEXT("[표면 디버그] 주인공 캡슐-지면 %.1fcm · 보이는 몸-지면 %.1fcm · 표면 %s · 경사 %.0f도 · 위치 (%.0f, %.0f, %.0f)"), Gap, BodyGap,
 					Ground.Rules.IsValid() ? *Ground.SurfaceId.ToString().Left(8) : TEXT("Landscape"),
-					FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(Ground.Normal.Z, -1.f, 1.f))), Feet.X, Feet.Y, Feet.Z);
+					CozySurface::SlopeDegrees(Ground.Normal), Feet.X, Feet.Y, Feet.Z);
 			}
 		}
 	}
@@ -236,9 +239,8 @@ void ACozyRealmEstatePlayerController::TickGroundEditing()
 	if (WasInputKeyJustPressed(EKeys::LeftBracket)) BrushRadius = FMath::Max(40.f, BrushRadius - 40.f);
 	if (WasInputKeyJustPressed(EKeys::RightBracket)) BrushRadius = FMath::Min(400.f, BrushRadius + 40.f);
 	if (!IsInputKeyDown(EKeys::LeftMouseButton)) FinishGroundStroke();
-	FVector Origin, Direction;
 	FCozySurfaceHit Hit;
-	if (!DeprojectMousePositionToWorld(Origin, Direction) || !CozySurface::Trace(GetWorld(), Origin, Origin + Direction * 100000.f, Hit))
+	if (!TraceSurfaceUnderCursor(Hit))
 	{
 		EndPaintSegment(); return;
 	}
@@ -247,12 +249,12 @@ void ACozyRealmEstatePlayerController::TickGroundEditing()
     {
         UCozyEstateSubsystem* Estate = GetWorld()->GetSubsystem<UCozyEstateSubsystem>();
         FText Reason;
-        if (WasInputKeyJustPressed(EKeys::RightMouseButton)) { bFloorPreview = false; MovingFloorId.Invalidate(); }
+        if (WasInputKeyJustPressed(EKeys::RightMouseButton)) CancelFloorPreview();
         const FCozyFloorTile* Hovered = Estate->FindFloorTile(Hit.Position, Hit.SurfaceId);
         if (Hovered && WasInputKeyJustPressed(EKeys::H))
         {
             Estate->StoreFloorTile(Hovered->InstanceId, Reason);
-            bFloorPreview = false; MovingFloorId.Invalidate();
+            CancelFloorPreview();
         }
         if (Hovered && WasInputKeyJustPressed(EKeys::V))
         {
@@ -271,13 +273,12 @@ void ACozyRealmEstatePlayerController::TickGroundEditing()
             if (IsInputKeyDown(EKeys::LeftShift))
             {
                 Estate->EditFloorTile(Hit.Position, 0, 0, true, Reason, &Hit.SurfaceId);
-                bFloorPreview = false; MovingFloorId.Invalidate();
+                CancelFloorPreview();
             }
             else bFloorPreview = true;
         }
         if (bFloorPreview)
         {
-            FloorPreviewPosition = Hit.Position; FloorPreviewSurface = Hit.SurfaceId;
             const auto& Config = Estate->GetConfig();
             const FIntPoint Cell = Estate->WorldToCell(Hit.Position);
             const FVector Min = Config.GridOrigin + FVector(Cell.X * Config.CellSize, Cell.Y * Config.CellSize, 0);
@@ -289,8 +290,8 @@ void ACozyRealmEstatePlayerController::TickGroundEditing()
             DrawDebugBox(GetWorld(), Center + FVector(0, 0, 4), FVector(Config.CellSize * .49, Config.CellSize * .49, 3), FQuat(FRotator(0, GroundRotation * 90, 0)), Valid ? FColor::Green : FColor::Red, false, -1, 0, 4);
             if (WasInputKeyJustPressed(EKeys::Enter))
             {
-                if (Estate->EditFloorTile(FloorPreviewPosition, FMath::Clamp(GroundStyle - 1, 0, 2), GroundRotation, false, Reason, &FloorPreviewSurface, MovingFloorId))
-                { bFloorPreview = false; MovingFloorId.Invalidate(); }
+                if (Estate->EditFloorTile(Hit.Position, FMath::Clamp(GroundStyle - 1, 0, 2), GroundRotation, false, Reason, &Hit.SurfaceId, MovingFloorId))
+                    CancelFloorPreview();
             }
         }
         if (Hud && !Reason.IsEmpty()) Hud->ShowToast(Reason);
@@ -298,6 +299,7 @@ void ACozyRealmEstatePlayerController::TickGroundEditing()
     }
 
 	// 한 프레임 안에 누름·뗌이 끝난 짧은 클릭도 첫 도장을 남긴다.
-	if (GroundMode != 1 || (!IsInputKeyDown(EKeys::LeftMouseButton) && !WasInputKeyJustPressed(EKeys::LeftMouseButton))) return;
+	// GroundMode는 여기서 항상 1 (0이면 이 함수를 부르지 않고 2는 위에서 끝남)
+	if (!IsInputKeyDown(EKeys::LeftMouseButton) && !WasInputKeyJustPressed(EKeys::LeftMouseButton)) return;
 	PaintBrushTo(Hit);
 }

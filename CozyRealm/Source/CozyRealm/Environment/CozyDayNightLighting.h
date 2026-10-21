@@ -29,9 +29,6 @@ public:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
 
-	/** 지금 밤 정도 (0 = 낮 · 1 = 밤) */
-	float GetNightAlpha() const { return NightAlpha; }
-
 	/** 해 (비우면 레벨의 첫 Directional Light) */
 	UPROPERTY(EditAnywhere, Category = "1 연결", meta = (DisplayName = "Sun (해)"))
 	TObjectPtr<ADirectionalLight> Sun;

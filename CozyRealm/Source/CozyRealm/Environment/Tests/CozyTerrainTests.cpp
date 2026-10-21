@@ -6,7 +6,6 @@
 #include "Estate/CozyEstateSaveIO.h"
 #include "Misc/Paths.h"
 #include "Misc/FileHelper.h"
-#include "HAL/FileManager.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCozyPaintInvariantTest, "CozyRealm.Terrain.PaintNormalizationUndoAndSave", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

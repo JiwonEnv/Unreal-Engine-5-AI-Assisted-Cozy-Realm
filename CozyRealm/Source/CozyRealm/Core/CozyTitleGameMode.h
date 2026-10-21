@@ -33,7 +33,6 @@ public:
 
 	/** 배경 맵이 화면에 보이기 시작했는지 (타이틀 화면이 종이 바탕을 걷어낼 때 씀) */
 	bool IsBackgroundVisible() const;
-	bool HasBackground() const { return bBackgroundRequested; }
 
 protected:
 	virtual void BeginPlay() override;
@@ -49,6 +48,5 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<ULevelStreamingDynamic> Background;
 
-	bool bBackgroundRequested = false;
 	double StartTime = 0.0;
 };

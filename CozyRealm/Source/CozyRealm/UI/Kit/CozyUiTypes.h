@@ -790,7 +790,7 @@ struct FCozyUiElementEntry
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "6 동작", meta = (DisplayName = "Action (클릭 동작)"))
 	ECozyUiAction Action = ECozyUiAction::None;
 
-	/** 동작 매개변수 (지금은 쓰지 않음) */
+	/** 동작 매개변수 (재료·레시피·작물 ID · 시설·주민 고유 ID · 'Slot0' · 설정 탭·모드 이름 등 · 반복 목록 안에서는 @Row가 줄 ID로 바뀜) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "6 동작", meta = (DisplayName = "Action Param (동작 매개변수)"))
 	FName ActionParam;
 

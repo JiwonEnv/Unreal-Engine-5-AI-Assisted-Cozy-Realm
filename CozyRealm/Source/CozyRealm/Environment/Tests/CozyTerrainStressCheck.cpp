@@ -2,23 +2,20 @@
 #include "HAL/PlatformMemory.h"
 #include "Environment/CozySurfaceComponent.h"
 #include "Estate/CozyEstateSubsystem.h"
-#include "Misc/CommandLine.h"
-#include "Misc/Parse.h"
 #include "Misc/Paths.h"
 #include "Misc/FileHelper.h"
 #include "Engine/World.h"
 #include "RenderingThread.h"
 #include "UObject/UObjectGlobals.h"
+#include "Environment/Tests/CozyTerrainTestUtils.h"
 
 #if !UE_BUILD_SHIPPING
 static FAutoConsoleCommandWithWorld CozyTerrainStressCheck(
 	TEXT("Cozy.TerrainStressVerify"), TEXT("격리된 검증 맵에서 타일 설치·삭제와 도색·Undo 200회 검사"),
 	FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World)
 	{
+		if (!CozyTerrainTest::IsAllowed(World)) return;
 		const FString Folder = FPaths::ProjectSavedDir();
-		if (!World || !World->IsGameWorld() || !World->GetMapName().Contains(TEXT("L_TerrainValidation"))
-			|| !FParse::Param(FCommandLine::Get(), TEXT("CozyTerrainTest"))
-			|| !(Folder.Contains(TEXT("TerrainPlayUser")) || Folder.Contains(TEXT("TerrainPackageUser")))) return;
 		auto* Estate = World->GetSubsystem<UCozyEstateSubsystem>();
 		if (!Estate) return;
 		Estate->Tick(0.f);

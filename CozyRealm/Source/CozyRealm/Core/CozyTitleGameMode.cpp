@@ -37,8 +37,7 @@ void ACozyTitlePlayerController::BeginPlay()
 	{
 		bool bOk = false;
 		Background = ULevelStreamingDynamic::LoadLevelInstanceBySoftObjectPtr(GetWorld(), Config->BackgroundLevel, FVector::ZeroVector, FRotator::ZeroRotator, bOk);
-		bBackgroundRequested = bOk && Background;
-		UE_LOG(LogCozyRealm, Log, TEXT("[타이틀] 배경 맵 불러오기 %s: %s"), bBackgroundRequested ? TEXT("시작") : TEXT("실패"), *Config->BackgroundLevel.ToString());
+		UE_LOG(LogCozyRealm, Log, TEXT("[타이틀] 배경 맵 불러오기 %s: %s"), bOk && Background ? TEXT("시작") : TEXT("실패"), *Config->BackgroundLevel.ToString());
 	}
 
 	FActorSpawnParameters Params;

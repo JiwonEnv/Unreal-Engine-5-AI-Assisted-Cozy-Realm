@@ -2,26 +2,17 @@
 #include "Environment/CozySurfaceComponent.h"
 #include "Estate/CozyEstateSubsystem.h"
 #include "Core/CozyRealmEstatePlayerController.h"
-#include "Misc/CommandLine.h"
-#include "Misc/Parse.h"
 #include "Misc/Paths.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Crc.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "Environment/Tests/CozyTerrainTestUtils.h"
 
 // 브러시 실제 입력 경로(PaintBrushTo)로 빠른 드래그·표면 경계·드래그 단위 되돌리기·재실행 후 일치를 검사한다. (Claude 후속 2026-10-20)
 #if !UE_BUILD_SHIPPING
 namespace CozyPaintCheck
 {
-	static bool IsAllowed(UWorld* World)
-	{
-		const FString Folder = FPaths::ProjectSavedDir();
-		return World && World->IsGameWorld() && World->GetMapName().Contains(TEXT("L_TerrainValidation"))
-			&& FParse::Param(FCommandLine::Get(), TEXT("CozyTerrainTest"))
-			&& (Folder.Contains(TEXT("TerrainPlayUser")) || Folder.Contains(TEXT("TerrainPackageUser")));
-	}
-
 	/** 위에서 내려다봤을 때 보이는 표면 (화면에서 마우스가 닿는 곳과 같음) */
 	static bool TopHit(UWorld* World, double X, double Y, FCozySurfaceHit& Out)
 	{
@@ -74,7 +65,7 @@ static FAutoConsoleCommandWithWorld CozyTerrainPaintCheck(
 	FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World)
 	{
 		using namespace CozyPaintCheck;
-		if (!IsAllowed(World)) return;
+		if (!CozyTerrainTest::IsAllowed(World)) return;
 		auto* Estate = World->GetSubsystem<UCozyEstateSubsystem>();
 		auto* Controller = Cast<ACozyRealmEstatePlayerController>(World->GetFirstPlayerController());
 		if (!Estate || !Controller) return;
@@ -143,7 +134,7 @@ static FAutoConsoleCommandWithWorld CozyTerrainPaintCheck(
 			FCozySurfaceHit Hit;
 			if (!TopHit(World, X, 0, Hit) || !Hit.Rules.IsValid()) { ++Skipped; continue; }
 			UCozySurfaceComponent* Surface = Hit.Rules.Get();
-			if (Surface != Last) { Boundaries += FString::Printf(TEXT(" %.0fcm(경사 %.0f도)"), X, FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(Hit.Normal.Z, -1.f, 1.f)))); Last = Surface; }
+			if (Surface != Last) { Boundaries += FString::Printf(TEXT(" %.0fcm(경사 %.0f도)"), X, CozySurface::SlopeDegrees(Hit.Normal)); Last = Surface; }
 			// 칠할 수 없는 면(벽·급경사)은 빈틈 계산에서 뺀다
 			if (!Surface->bAllowPainting || Hit.Normal.Z < .85f) { ++Skipped; continue; }
 			++Samples; Touched.Add(Surface);
@@ -170,7 +161,7 @@ static FAutoConsoleCommandWithWorld CozyTerrainPaintReloadCheck(
 	FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World)
 	{
 		using namespace CozyPaintCheck;
-		if (!IsAllowed(World)) return;
+		if (!CozyTerrainTest::IsAllowed(World)) return;
 		FString Saved;
 		const FString Folder = FPaths::ProjectSavedDir();
 		int32 Failed = 0, Matched = 0;

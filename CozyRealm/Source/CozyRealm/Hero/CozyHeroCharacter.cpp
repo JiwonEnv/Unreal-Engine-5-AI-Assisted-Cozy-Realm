@@ -119,17 +119,29 @@ void ACozyHeroCharacter::SetSettings(UCozyHeroSettings* InSettings)
 	}
 	ApplyConfig();
 	// 시작 칸이 시설에 덮여 있으면 먼저 빈 칸으로 옮긴 뒤 비교용 인형을 그 옆에 세움
-	if (const UCozyEstateSubsystem* Estate = GetWorld() ? GetWorld()->GetSubsystem<UCozyEstateSubsystem>() : nullptr)
+	if (GetWorld() && GetWorld()->GetSubsystem<UCozyEstateSubsystem>())
 	{
-		FVector Free;
-		UCozySurfaceNavigation* Navigation = GetWorld()->GetSubsystem<UCozySurfaceNavigation>();
-		const FVector Feet = GetActorLocation() - FVector(0, 0, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
-		if (!Navigation->IsFree(Feet) && Navigation->FindNearestFree(Feet, Free))
-		{
-			SetActorLocation(Free + FVector(0, 0, GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + 2), false, nullptr, ETeleportType::TeleportPhysics);
-		}
+		TeleportOutOfFacility();
 	}
 	SpawnCompareDolls();
+}
+
+FVector ACozyHeroCharacter::GetFeetLocation() const
+{
+	return GetActorLocation() - FVector(0, 0, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+}
+
+bool ACozyHeroCharacter::TeleportOutOfFacility()
+{
+	FVector Free;
+	UCozySurfaceNavigation* Navigation = GetWorld()->GetSubsystem<UCozySurfaceNavigation>();
+	const FVector Feet = GetFeetLocation();
+	if (!Navigation->IsFree(Feet) && Navigation->FindNearestFree(Feet, Free))
+	{
+		SetActorLocation(Free + FVector(0, 0, GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + 2), false, nullptr, ETeleportType::TeleportPhysics);
+		return true;
+	}
+	return false;
 }
 
 void ACozyHeroCharacter::HandleSettingsChanged(const UCozyHeroSettings* Changed)
@@ -260,9 +272,8 @@ bool ACozyHeroCharacter::MoveToLocation(const FVector& Target)
 	}
 	NotifyPlayerInput();
 	TArray<FVector> Points;
-    UCozySurfaceNavigation* Navigation = GetWorld()->GetSubsystem<UCozySurfaceNavigation>();
-    const FVector Feet = GetActorLocation() - FVector(0, 0, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
-    if (!Navigation || !Navigation->IsFree(Target) || !Navigation->FindPath(Feet, Target, Points)) return false;
+	UCozySurfaceNavigation* Navigation = GetWorld()->GetSubsystem<UCozySurfaceNavigation>();
+	if (!Navigation || !Navigation->IsFree(Target) || !Navigation->FindPath(GetFeetLocation(), Target, Points)) return false;
 
 	PathPoints = MoveTemp(Points);
 	bWandering = false;
@@ -275,47 +286,11 @@ FGuid ACozyHeroCharacter::FindInteractFacility() const
 	return Estate ? Estate->FindNearestFacility(GetActorLocation(), Config.InteractRangeCells * Estate->GetCellSize()) : FGuid();
 }
 
-bool ACozyHeroCharacter::FindNearestWalkable(FIntPoint Cell, FIntPoint& OutCell) const
+bool ACozyHeroCharacter::FindPath(FIntPoint Goal, TArray<FVector>& OutPoints) const
 {
 	const UCozyEstateSubsystem* Estate = GetWorld()->GetSubsystem<UCozyEstateSubsystem>();
-	const FIntPoint Size = Estate->GetGridSize();
-	Cell = FIntPoint(FMath::Clamp(Cell.X, 0, Size.X - 1), FMath::Clamp(Cell.Y, 0, Size.Y - 1));
-	const int32 MaxRing = FMath::Max(Size.X, Size.Y);
-	for (int32 Ring = 0; Ring <= MaxRing; ++Ring)
-	{
-		float BestDistance = TNumericLimits<float>::Max();
-		bool bFound = false;
-		for (int32 Y = Cell.Y - Ring; Y <= Cell.Y + Ring; ++Y)
-		{
-			for (int32 X = Cell.X - Ring; X <= Cell.X + Ring; ++X)
-			{
-				if (FMath::Max(FMath::Abs(X - Cell.X), FMath::Abs(Y - Cell.Y)) != Ring || !Estate->IsCellWalkable(FIntPoint(X, Y)))
-				{
-					continue;
-				}
-				const float Distance = FVector2D(X - Cell.X, Y - Cell.Y).SizeSquared();
-				if (Distance < BestDistance)
-				{
-					BestDistance = Distance;
-					OutCell = FIntPoint(X, Y);
-					bFound = true;
-				}
-			}
-		}
-		if (bFound)
-		{
-			return true;
-		}
-	}
-	return false;
-}
-
-bool ACozyHeroCharacter::FindPath(FIntPoint Start, FIntPoint Goal, TArray<FVector>& OutPoints) const
-{
-    const UCozyEstateSubsystem* Estate = GetWorld()->GetSubsystem<UCozyEstateSubsystem>();
-    UCozySurfaceNavigation* Navigation = GetWorld()->GetSubsystem<UCozySurfaceNavigation>();
-    const FVector Feet = GetActorLocation() - FVector(0, 0, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
-    return Navigation && Navigation->FindPath(Feet, Estate->GetCellCenter(Goal), OutPoints);
+	UCozySurfaceNavigation* Navigation = GetWorld()->GetSubsystem<UCozySurfaceNavigation>();
+	return Navigation && Navigation->FindPath(GetFeetLocation(), Estate->GetCellCenter(Goal), OutPoints);
 }
 
 void ACozyHeroCharacter::StartWander()
@@ -327,8 +302,8 @@ void ACozyHeroCharacter::StartWander()
 	{
 		const FIntPoint Target(Here.X + FMath::RandRange(-Radius, Radius), Here.Y + FMath::RandRange(-Radius, Radius));
 		TArray<FVector> Points;
-		FIntPoint Start;
-		if (Target != Here && Estate->IsCellWalkable(Target) && FindNearestWalkable(Here, Start) && FindPath(Start, Target, Points))
+		// 걸을 수 있는 칸이면 출발 칸은 따로 찾지 않고 지금 발 위치에서 길을 찾는다
+		if (Target != Here && Estate->IsCellWalkable(Target) && FindPath(Target, Points))
 		{
 			PathPoints = MoveTemp(Points);
 			bWandering = true;
@@ -338,7 +313,7 @@ void ACozyHeroCharacter::StartWander()
 	WanderResumeTime = GetWorld()->GetTimeSeconds() + 1.0;
 }
 
-void ACozyHeroCharacter::FollowPath(float SpeedScale)
+void ACozyHeroCharacter::FollowPath()
 {
 	// 이동 중 새로 놓인 시설이 다음 지점을 막으면 기존 경로를 폐기한다.
 	if (!PathPoints.IsEmpty() && !GetWorld()->GetSubsystem<UCozySurfaceNavigation>()->IsFree(PathPoints[0]))
@@ -350,7 +325,7 @@ void ACozyHeroCharacter::FollowPath(float SpeedScale)
 		const FVector ToTarget = FVector(PathPoints[0].X - GetActorLocation().X, PathPoints[0].Y - GetActorLocation().Y, 0.f);
 		if (ToTarget.Size() > CozyHero::WaypointTolerance)
 		{
-			AddMovementInput(ToTarget.GetSafeNormal(), SpeedScale);
+			AddMovementInput(ToTarget.GetSafeNormal(), 1.f);
 			return;
 		}
 		PathPoints.RemoveAt(0);
@@ -370,7 +345,7 @@ void ACozyHeroCharacter::UpdateVisualDrop(float DeltaSeconds)
 	float Target = 0.f;
 	if (GetCharacterMovement()->IsMovingOnGround())
 	{
-		const FVector Feet = GetActorLocation() - FVector(0, 0, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+		const FVector Feet = GetFeetLocation();
 		FCozySurfaceHit Ground;
 		if (CozySurface::GroundAt(GetWorld(), Feet, Ground)) Target = FMath::Clamp(float(Feet.Z - Ground.Position.Z), 0.f, 15.f);
 	}
@@ -408,12 +383,8 @@ void ACozyHeroCharacter::Tick(float DeltaSeconds)
 	UCharacterMovementComponent* Move = GetCharacterMovement();
 
 	// 시설이 옮겨져 주인공 자리를 덮으면 가장 가까운 빈 칸으로
-	FVector Free;
-	UCozySurfaceNavigation* Navigation = GetWorld()->GetSubsystem<UCozySurfaceNavigation>();
-	const FVector Feet = GetActorLocation() - FVector(0, 0, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
-	if (!bFrozen && !Navigation->IsFree(Feet) && Navigation->FindNearestFree(Feet, Free))
+	if (!bFrozen && TeleportOutOfFacility())
 	{
-		SetActorLocation(Free + FVector(0, 0, GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + 2), false, nullptr, ETeleportType::TeleportPhysics);
 		PathPoints.Reset();
 	}
 	UpdateVisualDrop(DeltaSeconds);
@@ -432,7 +403,7 @@ void ACozyHeroCharacter::Tick(float DeltaSeconds)
 	else if (PathPoints.Num() > 0)
 	{
 		Move->MaxWalkSpeed = Config.WalkSpeedCells * Cell * (bWandering ? Config.WanderSpeedRatio : 1.f);
-		FollowPath(1.f);
+		FollowPath();
 	}
 	else if (Config.IdleWanderSeconds > 0.f && Now - LastInputTime >= Config.IdleWanderSeconds && Now >= WanderResumeTime)
 	{

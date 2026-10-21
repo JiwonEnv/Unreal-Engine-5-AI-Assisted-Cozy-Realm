@@ -42,7 +42,6 @@ public:
 	ACozyHeroCharacter();
 
 	void SetSettings(UCozyHeroSettings* InSettings);
-	const FCozyHeroConfig& GetConfig() const { return Config; }
 
 	/** 키보드 이동 방향 (월드 · 길이 0~1) · 매 프레임 컨트롤러가 넣음 · 0이면 멈춤 */
 	void SetKeyboardInput(const FVector& WorldDirection, bool bRun);
@@ -58,6 +57,8 @@ public:
 
 	/** 보이는 몸을 캡슐보다 내린 높이 (경사로에서 떠 보이지 않게 · 충돌·이동은 그대로) */
 	float GetVisualDrop() const { return VisualDrop; }
+	/** 캡슐 아래 끝 (발바닥 높이) */
+	FVector GetFeetLocation() const;
 
 protected:
 
@@ -72,12 +73,12 @@ private:
 	void SpawnCompareDolls();
 	void DestroyCompareDolls();
 
-	/** 칸 격자 A* (8방향 · 모서리 끼어 지나가기 없음) · 결과는 월드 경유점 */
-	bool FindPath(FIntPoint Start, FIntPoint Goal, TArray<FVector>& OutPoints) const;
-	/** 걸을 수 있는 칸 중 Cell에서 가장 가까운 칸 */
-	bool FindNearestWalkable(FIntPoint Cell, FIntPoint& OutCell) const;
+	/** 지금 발 위치에서 Goal 칸 가운데까지 표면 길찾기 · 결과는 월드 경유점 */
+	bool FindPath(FIntPoint Goal, TArray<FVector>& OutPoints) const;
+	/** 발밑이 시설에 덮여 있으면 가장 가까운 빈 곳으로 순간 이동 · 옮겼으면 true */
+	bool TeleportOutOfFacility();
 	void StartWander();
-	void FollowPath(float SpeedScale);
+	void FollowPath();
 	void KeepInsideEstate();
 
 	UPROPERTY(Transient)

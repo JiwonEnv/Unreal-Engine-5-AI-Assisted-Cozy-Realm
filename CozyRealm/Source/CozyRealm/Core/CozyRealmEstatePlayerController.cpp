@@ -170,7 +170,7 @@ void ACozyRealmEstatePlayerController::TickHero(bool bCompact)
 void ACozyRealmEstatePlayerController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
-	DrawSurfaceDebug(nullptr);
+	DrawSurfaceDebug();
 	if (const UCozyEstateSubsystem* Estate = GetWorld()->GetSubsystem<UCozyEstateSubsystem>())
 	{
 		const FString& Notice = Estate->GetRecoveryNotice();
@@ -199,7 +199,7 @@ void ACozyRealmEstatePlayerController::PlayerTick(float DeltaTime)
 		HandleWorldClick();
 	}
 	TickHero(bCompact);
-	if (WasInputKeyJustPressed(EKeys::F1) && Hud && !Hud->IsCompactMode())
+	if (WasInputKeyJustPressed(EKeys::F1) && Hud && !bCompact)
 	{
 		Hud->ToggleDebugPanel();
 	}
@@ -413,12 +413,9 @@ void ACozyRealmEstatePlayerController::TickPlacement()
 	if (bDraggingPlacement && Estate->IsPlacing())
 	{
 		// 실제 지면을 가리킨 칸 → 시설 가운데가 그 칸에 오게
-		FVector RayOrigin;
-		FVector RayDirection;
-		if (DeprojectMousePositionToWorld(RayOrigin, RayDirection) && !FMath::IsNearlyZero(RayDirection.Z))
+		FCozySurfaceHit Surface;
+		if (TraceSurfaceUnderCursor(Surface, true))
 		{
-			FCozySurfaceHit Surface;
-			if (!CozySurface::Trace(GetWorld(), RayOrigin, RayOrigin + RayDirection * 100000.f, Surface)) return;
 			const FIntPoint Cell = Estate->WorldToCell(Surface.Position);
 			const FIntPoint Size = Estate->GetFootprint(Estate->GetPlacementId(), Estate->GetPlacementRotation());
 			const FIntPoint Coord(Cell.X - (Size.X - 1) / 2, Cell.Y - (Size.Y - 1) / 2);

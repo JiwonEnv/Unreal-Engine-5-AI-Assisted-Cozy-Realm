@@ -49,6 +49,27 @@ namespace
 	{
 		return FText::AsNumber(FMath::RoundToInt(Value));
 	}
+
+	/** 표시 형식 채우기 · {0} 현재 · {1} 최대 · {2} 퍼센트 · {3} 남은 시간 · {4} 값 글자 */
+	FText FormatValue(const FText& Format, const FCozyUiValueResult& R)
+	{
+		FFormatOrderedArguments Args;
+		Args.Add(FormatNumber(R.Current));
+		Args.Add(FormatNumber(R.Max));
+		Args.Add(FText::Format(LOCTEXT("Pct2", "{0}%"), FText::AsNumber(FMath::RoundToInt(R.Ratio() * 100.f))));
+		Args.Add(CozyUiFormat::Duration(R.RemainingSeconds));
+		Args.Add(R.Text);
+		return FText::Format(Format, Args);
+	}
+
+	/** 지금 동작할 수 있는지로 위젯을 켜고 끄고, 할 수 없으면 이유를 · 할 수 있으면 IdleToolTip을 툴팁으로 */
+	void ApplyActionState(UWidget& Widget, const UCozyUiScreen& Screen, const FCozyUiElementEntry& Entry, const FText& IdleToolTip)
+	{
+		FText Why;
+		const bool bCan = Screen.CanRunAction(Entry, Why);
+		Widget.SetIsEnabled(bCan);
+		Widget.SetToolTipText(!bCan && !Why.IsEmpty() ? Why : IdleToolTip);
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -86,13 +107,7 @@ void UCozyUiText::UpdateCozyValue(const UCozyUiScreen& Screen)
 	{
 		return;
 	}
-	FFormatOrderedArguments Args;
-	Args.Add(FormatNumber(R.Current));
-	Args.Add(FormatNumber(R.Max));
-	Args.Add(FText::Format(LOCTEXT("Pct", "{0}%"), FText::AsNumber(FMath::RoundToInt(R.Ratio() * 100.f))));
-	Args.Add(CozyUiFormat::Duration(R.RemainingSeconds));
-	Args.Add(R.Text);
-	SetText(FText::Format(Format, Args));
+	SetText(FormatValue(Format, R));
 }
 
 // ---------------------------------------------------------------------------
@@ -214,17 +229,6 @@ namespace
 		default: return VAlign_Fill;
 		}
 	}
-
-	FText FormatValue(const FText& Format, const FCozyUiValueResult& R)
-	{
-		FFormatOrderedArguments Args;
-		Args.Add(FormatNumber(R.Current));
-		Args.Add(FormatNumber(R.Max));
-		Args.Add(FText::Format(LOCTEXT("Pct2", "{0}%"), FText::AsNumber(FMath::RoundToInt(R.Ratio() * 100.f))));
-		Args.Add(CozyUiFormat::Duration(R.RemainingSeconds));
-		Args.Add(R.Text);
-		return FText::Format(Format, Args);
-	}
 }
 
 // ---------------------------------------------------------------------------
@@ -285,11 +289,8 @@ void UCozyUiElementWidget::ApplyCozyTheme(const UCozyUiScreen& Screen)
 		{
 			Button->SetStyle(*Style);
 		}
-		// 지금 할 수 없는 동작이면 버튼을 끄고 이유를 툴팁으로 (예: 수령할 것이 없음 · 잠긴 작물)
-		FText Why;
-		const bool bCan = Screen.CanRunAction(Entry, Why);
-		Button->SetIsEnabled(bCan);
-		Button->SetToolTipText(!bCan && !Why.IsEmpty() ? Why : (Entry.Action == ECozyUiAction::None ? FText::GetEmpty() : UCozyUiScreen::GetActionName(Entry.Action)));
+		// 지금 할 수 없는 동작이면 버튼을 끄고 이유를 툴팁으로 (예: 수령할 것이 없음 · 잠긴 작물) · 동작 없는 버튼은 툴팁 없음
+		ApplyActionState(*Button, Screen, Entry, Entry.Action == ECozyUiAction::None ? FText::GetEmpty() : UCozyUiScreen::GetActionName(Entry.Action));
 	}
 	if (Background)
 	{
@@ -321,6 +322,8 @@ void UCozyUiElementWidget::ApplyCozyTheme(const UCozyUiScreen& Screen)
 	// 이미지: 칸 크기는 고정, 이미지는 칸 안에 맞춤 방법대로 (비율이 다른 이미지로 바꿔도 줄이 흐트러지지 않음)
 	const FSlateBrush* ImageBrush = Screen.FindImage(Entry.Image);
 	const FVector2D Box = Entry.ImageBox.IsNearlyZero() ? Theme->Metrics.IconSize : Entry.ImageBox;
+	// 이미지 이름은 있는데 테마에 없으면 Hidden (칸 유지 · 목록 줄의 정렬 유지) · 이름이 없으면 Collapsed
+	const ESlateVisibility ImageVisibility = ImageBrush ? ESlateVisibility::HitTestInvisible : (Entry.Image.IsNone() ? ESlateVisibility::Collapsed : ESlateVisibility::Hidden);
 	if (Icon)
 	{
 		if (ImageBrush)
@@ -331,8 +334,8 @@ void UCozyUiElementWidget::ApplyCozyTheme(const UCozyUiScreen& Screen)
 			Icon->SetBrush(Copy);
 			Icon->SetColorAndOpacity(Entry.ImageTint == ECozyUiColor::None ? FLinearColor::White : Screen.GetColor(Entry.ImageTint));
 		}
-		// 이미지 이름은 있는데 테마에 없으면 Hidden (칸 유지) · SizeBox는 안쪽이 Collapsed면 크기 0이 되어 줄이 밀림
-		Icon->SetVisibility(ImageBrush ? ESlateVisibility::HitTestInvisible : (Entry.Image.IsNone() ? ESlateVisibility::Collapsed : ESlateVisibility::Hidden));
+		// SizeBox는 안쪽이 Collapsed면 크기 0이 되어 줄이 밀림 → 이름만 있고 그림이 없으면 Hidden
+		Icon->SetVisibility(ImageVisibility);
 		if (USizeBoxSlot* IconSlot = Cast<USizeBoxSlot>(Icon->Slot))
 		{
 			const bool bFill = Entry.ImageFit == ECozyUiImageFit::Stretch;
@@ -352,8 +355,7 @@ void UCozyUiElementWidget::ApplyCozyTheme(const UCozyUiScreen& Screen)
 			IconBox->SetWidthOverride(Box.X);
 			IconBox->SetHeightOverride(Box.Y);
 		}
-		// 이미지 이름은 있는데 테마에 그 이미지가 없으면 칸은 남겨 둔다 (목록 줄의 정렬 유지)
-		IconBox->SetVisibility(ImageBrush ? ESlateVisibility::HitTestInvisible : (Entry.Image.IsNone() ? ESlateVisibility::Collapsed : ESlateVisibility::Hidden));
+		IconBox->SetVisibility(ImageVisibility);
 	}
 
 	if (Label)
@@ -464,10 +466,7 @@ void UCozyUiElementWidget::UpdateCozyValue(const UCozyUiScreen& Screen)
 		// → 안 하면 창을 처음 연 순간의 상태가 남는다 (핵심 시설을 먼저 고르면 다른 시설도 보관 버튼이 계속 꺼짐)
 		if (Button && Entry.Action != ECozyUiAction::None)
 		{
-			FText Why;
-			const bool bCan = Screen.CanRunAction(Entry, Why);
-			Button->SetIsEnabled(bCan);
-			Button->SetToolTipText(!bCan && !Why.IsEmpty() ? Why : UCozyUiScreen::GetActionName(Entry.Action));
+			ApplyActionState(*Button, Screen, Entry, UCozyUiScreen::GetActionName(Entry.Action));
 		}
 		return;
 	}
@@ -568,10 +567,7 @@ void UCozyUiSlider::ApplyCozyTheme(const UCozyUiScreen& Screen)
 	{
 		SliderWidget->SetSliderBarColor(Screen.GetColor(ECozyUiColor::Border));
 		SliderWidget->SetSliderHandleColor(Screen.GetColor(ECozyUiColor::Point));
-		FText Why;
-		const bool bCan = Screen.CanRunAction(Data, Why);
-		SliderWidget->SetIsEnabled(bCan);
-		SliderWidget->SetToolTipText(!bCan && !Why.IsEmpty() ? Why : UCozyUiScreen::GetActionName(Data.Action));
+		ApplyActionState(*SliderWidget, Screen, Data, UCozyUiScreen::GetActionName(Data.Action));
 	}
 }
 
@@ -678,20 +674,23 @@ void UCozyUiArea::ApplyCozyTheme(const UCozyUiScreen& Screen)
 		}
 	}
 	// 영역 상자 정렬·여백은 매번 적용 (창을 닫았다 다시 열면 슬레이트 상자가 다시 만들어지며 기본값으로 돌아가는 경우가 있음)
+	// 아래에서 요소를 새로 만들 때 Host->SetContent가 만드는 새 칸도 이 값을 그대로 이어받는다 (UBorder::OnSlotAdded)
+	// 묶음 위치: 붙여서 놓을 때만 영역 안에서 앞·가운데·뒤 · 같은 크기·균등 간격·줄바꿈은 영역을 꽉 채움
+	const bool bHorizontal = Layout.Flow != ECozyUiFlow::Vertical;
 	{
-		const bool bHorizontalFlow = Layout.Flow != ECozyUiFlow::Vertical;
-		const bool bAnyFillNow = Entries.ContainsByPredicate([](const FCozyUiElementEntry& Each) { return Each.bVisible && Each.SizeMode == ECozyUiSizeMode::Fill; });
-		const bool bFillMainNow = Layout.Spread == ECozyUiSpread::EqualGap || Layout.Flow == ECozyUiFlow::Wrap || bAnyFillNow
+		// 남은 공간 채우기 요소가 있으면 영역을 꽉 채워야 그 요소가 남은 폭을 받는다
+		const bool bAnyFill = Entries.ContainsByPredicate([](const FCozyUiElementEntry& Each) { return Each.bVisible && Each.SizeMode == ECozyUiSizeMode::Fill; });
+		const bool bFillMain = Layout.Spread == ECozyUiSpread::EqualGap || Layout.Flow == ECozyUiFlow::Wrap || bAnyFill
 			|| (Layout.Spread == ECozyUiSpread::EqualSize && Layout.PackAlign == ECozyUiAlign::Fill);
 		Host->SetPadding(Layout.Padding);
-		if (bHorizontalFlow)
+		if (bHorizontal)
 		{
-			Host->SetHorizontalAlignment(bFillMainNow ? HAlign_Fill : ToHAlign(Layout.PackAlign));
+			Host->SetHorizontalAlignment(bFillMain ? HAlign_Fill : ToHAlign(Layout.PackAlign));
 			Host->SetVerticalAlignment(ToVAlign(Layout.ItemAlign));
 		}
 		else
 		{
-			Host->SetVerticalAlignment(bFillMainNow ? VAlign_Fill : ToVAlign(Layout.PackAlign));
+			Host->SetVerticalAlignment(bFillMain ? VAlign_Fill : ToVAlign(Layout.PackAlign));
 			Host->SetHorizontalAlignment(ToHAlign(Layout.ItemAlign));
 		}
 	}
@@ -713,7 +712,6 @@ void UCozyUiArea::ApplyCozyTheme(const UCozyUiScreen& Screen)
 	}
 	BuiltSignature = Signature;
 	Spawned.Reset();
-	Host->SetPadding(Layout.Padding);
 
 	// 정렬 상자: 가로 · 세로 · 줄바꿈
 	UPanelWidget* Box = nullptr;
@@ -772,23 +770,6 @@ void UCozyUiArea::ApplyCozyTheme(const UCozyUiScreen& Screen)
 	else
 	{
 		Host->SetContent(Box);
-	}
-
-	// 묶음 위치: 붙여서 놓을 때만 영역 안에서 앞·가운데·뒤 · 같은 크기·균등 간격·줄바꿈은 영역을 꽉 채움
-	const bool bHorizontal = Layout.Flow != ECozyUiFlow::Vertical;
-	// 남은 공간 채우기 요소가 있으면 영역을 꽉 채워야 그 요소가 남은 폭을 받는다
-	const bool bAnyFill = Entries.ContainsByPredicate([](const FCozyUiElementEntry& Each) { return Each.bVisible && Each.SizeMode == ECozyUiSizeMode::Fill; });
-	const bool bFillMain = Layout.Spread == ECozyUiSpread::EqualGap || Layout.Flow == ECozyUiFlow::Wrap || bAnyFill
-		|| (Layout.Spread == ECozyUiSpread::EqualSize && Layout.PackAlign == ECozyUiAlign::Fill);
-	if (bHorizontal)
-	{
-		Host->SetHorizontalAlignment(bFillMain ? HAlign_Fill : ToHAlign(Layout.PackAlign));
-		Host->SetVerticalAlignment(ToVAlign(Layout.ItemAlign));
-	}
-	else
-	{
-		Host->SetVerticalAlignment(bFillMain ? VAlign_Fill : ToVAlign(Layout.PackAlign));
-		Host->SetHorizontalAlignment(ToHAlign(Layout.ItemAlign));
 	}
 
 	for (int32 EntryIndex = 0; EntryIndex < Entries.Num(); ++EntryIndex)
