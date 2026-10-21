@@ -62,6 +62,8 @@ protected:
 
 private:
 
+	/** 설정 에셋의 값 (에셋이 없으면 코드 기본값) */
+	FCozyRealmCameraConfig GetActiveConfig() const;
 	/** Updates boom and camera only; the actor location is left alone */
 	void ApplyCameraConfig(const FCozyRealmCameraConfig& Config);
 	void BindToSettings();

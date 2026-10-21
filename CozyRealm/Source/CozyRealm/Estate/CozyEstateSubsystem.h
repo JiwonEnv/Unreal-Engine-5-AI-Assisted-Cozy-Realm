@@ -140,7 +140,6 @@ struct FCozyUpgradeQuote
 	int32 FromLevel = 0;
 	int32 ToLevel = 0;
 	double Seconds = 0.0;
-	int32 RequiredShrineLevel = 0;
 	struct FAmount { FName ItemId; int32 Amount = 0; int32 Have = 0; };
 	/** 시작 비용 */
 	TArray<FAmount> Costs;
@@ -153,7 +152,7 @@ struct FCozyUpgradeQuote
 	/** 이 단계가 끝나면 해금되는 시설 이름 */
 	TArray<FText> UnlockFacilityNames;
 	/** 조건 하나 (UI의 ✅ 표시와 '이동' 버튼용) · FacilityId가 있으면 그 시설로 이동할 수 있음 */
-	struct FCondition { FText Label; bool bMet = false; FName FacilityId; int32 Required = 0; int32 Current = 0; };
+	struct FCondition { FText Label; bool bMet = false; FName FacilityId; int32 Current = 0; };
 	/** 신사 상한 · 선행 시설 조건 (데이터 순서) */
 	TArray<FCondition> Conditions;
 	/** 관리 시설이면 완료 후 모든 밭의 속도 배율 (0이면 해당 없음 · D39) */
@@ -218,7 +217,6 @@ struct FCozyFieldManagementView
 /** 수령 결과 (UI가 메시지로 보여 줌) */
 struct FCozyCollectResult
 {
-	bool bSuccess = false;
 	int32 Moved = 0;
 	int32 Remaining = 0;
 	FText Message;
@@ -250,8 +248,8 @@ public:
 	/** CSV 데이터를 읽고 새 게임 상태를 만든 뒤 시설 액터를 놓는다 (게임 모드가 호출) */
 	void StartEstate();
 
-	/** 데이터를 다시 검사해 로그에 경고를 남긴다 (디버그 메뉴) · 문제 개수를 돌려줌 */
-	int32 ValidateData() const;
+	/** 데이터를 다시 검사해 로그에 경고를 남긴다 (디버그 메뉴) · 문제 개수는 로그 끝줄에 */
+	void ValidateData() const;
 	/** 진행 검사 (7-6): 성장 단계를 레벨·조건만 따라가며 끝까지 도달할 수 있는지 · 단계 빈칸·중복·상한·달성 불가·순환 */
 	void ValidateProgression(TFunctionRef<void(const FString&)> Warn) const;
 
@@ -281,8 +279,6 @@ public:
 	// --- 재료·재화 ---
 
 	int32 GetAmount(FName ItemId) const;
-	/** 지금 Amount만큼 보관할 수 있는가 (재료는 창고 한도 · 재화는 항상 가능) */
-	bool CanStore(FName ItemId, int32 Amount) const;
 	/** 보관 가능한 만큼만 더하고 실제로 더한 개수를 돌려줌 */
 	int32 AddResource(FName ItemId, int32 Amount);
 
@@ -298,9 +294,6 @@ public:
 	FCozyCollectResult CollectUnclaimed(const FGuid& FacilityId);
 	/** Space 전부 수확: 모든 자동 생산 시설의 미수령분을 같은 수령 규칙으로 (D27) · 결과 한 줄 */
 	FText CollectAllProduction();
-
-	/** 시설의 미수령 생산물 수량 */
-	int32 GetUnclaimedTotal(const FGuid& FacilityId) const;
 
 	/** 시설의 미수령 보관 상태 (품목 · 수량 · 한도 · 확보 공간 · 창고 상태) */
 	FCozyUnclaimedView GetUnclaimedView(const FGuid& FacilityId) const;
@@ -338,7 +331,6 @@ public:
 	void SetShowTestRecipes(bool bShow);
 	/** UI 미리보기 중 자동 저장 멈춤 (미리보기는 게임 상태를 바꾸지 않지만, 확인하는 동안 저장 파일도 건드리지 않게) */
 	void SetAutosavePaused(bool bPaused) { bAutosavePaused = bPaused; }
-	bool IsAutosavePaused() const { return bAutosavePaused; }
 
 	// --- 공통 성장 · 업그레이드 (후신소 · D9·D25·D36~D40) ---
 
@@ -467,8 +459,6 @@ public:
 	ACozyFacilityActor* GetPlacementActor() const { return PlacementActor; }
 	/** 월드 위치 → 칸 (영지 밖이어도 계산) */
 	FIntPoint WorldToCell(const FVector& WorldLocation) const;
-	/** 영지 바닥 높이 (커서 광선과 만나는 평면) */
-	float GetGroundZ() const { return Config.GridOrigin.Z; }
 
 	// --- 주인공 이동 (4주차 기능 1) ---
 
@@ -478,8 +468,6 @@ public:
 	FVector GetCellCenter(FIntPoint Cell) const;
 	/** 걸을 수 있는 칸: 영지 안 · 놓인 시설이 차지하지 않음 (보관한 시설은 제외) */
 	bool IsCellWalkable(FIntPoint Cell) const;
-	/** 고정 지형의 인접 칸 사이 경사·단차 검사 (절벽 직행 금지). */
-	bool CanWalkBetween(FIntPoint From, FIntPoint To) const;
 	/** 장식 타일 설치·교체·제거. 시설 점유와 별도로 관리한다. */
 	bool EditFloorTile(FVector Position, int32 Style, int32 Rotation, bool bErase, FText& Reason, const FGuid* Surface = nullptr, const FGuid& MovingId = FGuid());
 	bool StoreFloorTile(const FGuid& Id, FText& Reason);
@@ -506,8 +494,6 @@ public:
 	 *  옮기지 못하면 false (아무것도 바꾸지 않은 상태로 둠).
 	 */
 	static bool ArchiveSaveForNewGame(FString& OutFolder, FString& OutError);
-	/** 마지막으로 저장한 실제 시각 (UTC) */
-	FDateTime GetLastSavedUtc() const { return LastSavedUtc; }
 	const FString& GetRecoveryNotice() const { return RecoveryNotice; }
 	/** 디버그: 저장 파일에서 다시 불러오기 (재접속과 같은 흐름) */
 	void DebugReloadFromSave();
@@ -538,11 +524,21 @@ private:
 	bool LoadAllData(FString& OutErrors);
 	/** 저장 파일을 읽어 State에 넣는다 · 없거나 읽을 수 없으면 false (상태는 그대로) */
 	bool LoadEstateFromSave(FDateTime& OutSavedUtc);
+	/** 저장 파일에서 불러오고, 못 불러오면 새 게임 상태를 만든 뒤 시설 액터를 놓는다 (시작 · 다시 불러오기 공통) · 불러왔으면 true */
+	bool LoadOrBuildState(FDateTime& OutSavedUtc);
 	/** 불러온 상태에서 데이터에 없는 시설·주민·작업·재료 참조를 정리 (정리 6-6 · 지운 개수를 로그) */
 	void SanitizeLoadedState();
 	/** 칸 좌표 · 크기 → 월드 위치 (실제 지면 높이) */
 	FVector ComputeFacilityLocation(FIntPoint Coord, FIntPoint Size, const FGuid* Surface = nullptr) const;
 	ACozyFacilityActor* FindFacilityActor(const FGuid& FacilityId) const;
+	/** 시설 액터를 목록에서 빼고 없앤다 (보관 · 지형 복구) */
+	void DestroyFacilityActor(const FGuid& FacilityId);
+	/** 칸이 영지 안인가 */
+	bool IsCellInGrid(FIntPoint Cell) const;
+	/** 칸의 최소 모서리 월드 위치 (높이는 영지 원점 높이) */
+	FVector GetCellMin(FIntPoint Cell) const;
+	/** 바닥 타일 액터가 없으면 만들고 지금 타일 목록으로 다시 그린다 */
+	void RebuildFloorTileActor();
 	bool FindFreeSpot(const FGuid& FacilityId, int32 Rotation, FIntPoint& OutCoord) const;
 
 	/** 꺼 둔 시간만큼 접속 중과 같은 규칙으로 1초씩 진행 (최대 12시간) + 방치 재화 · 정산 직후 반드시 저장 */
@@ -557,6 +553,8 @@ private:
 	void StepJobs();
 	void StepProduction(FCozyFacilityState& Facility, const FCozyFacilityRow& Def);
 	double GetProductionDuration(const FCozyFacilityState& Facility, const FCozyCropRow& Crop, const FCozyFacilityRow& Def) const;
+	/** 지금 속도로 생산 주기 작업을 새로 등록하고 시설의 진행 작업으로 정한다 (StartAt = 주기 시작 시각) */
+	const FCozyJobRecord& AddProductionJob(FCozyFacilityState& Facility, const FCozyCropRow& Crop, const FCozyFacilityRow& Def, double StartAt);
 	bool IsFacilityWorking(const FCozyFacilityState& Facility, const FCozyFacilityRow& Def) const;
 
 	/** 🙋 필요 인원이 부족해지면 진행 중인 생산 주기를 취소하고 진행도를 초기화 (이미 지급한 생산물은 유지 · D26) */
@@ -576,7 +574,12 @@ private:
 	/** 미수령분에 더한다 (품목이 비어 있으면 이 품목으로 정함) */
 	void AddUnclaimed(FCozyFacilityState& Facility, FName ItemId, int32 Amount);
 	FText GetItemName(FName ItemId) const;
+	/** 작물·시설 정의 이름 (정의가 없으면 ID 그대로) */
+	FText GetCropName(FName CropId) const;
+	FText GetFacilityDefName(FName DefinitionId) const;
 
+	/** 성장 설정표의 행 (ID로) */
+	const FCozyGrowthRow* GetGrowthDef(FName RowId) const;
 	/** 성장 설정표에서 이 시설 정의·레벨의 다음 단계 행 */
 	const FCozyGrowthRow* FindGrowthRow(FName DefinitionId, int32 FromLevel, FName* OutRowId = nullptr) const;
 	/** 생산·가공 속도 배율 · 관리 시설이 정해진 시설은 관리 시설 단계의 효과 (D39) */

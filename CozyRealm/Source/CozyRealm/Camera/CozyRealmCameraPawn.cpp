@@ -30,9 +30,14 @@ ACozyRealmCameraPawn::ACozyRealmCameraPawn()
 	ApplyCameraConfig(FCozyRealmCameraConfig());
 }
 
+FCozyRealmCameraConfig ACozyRealmCameraPawn::GetActiveConfig() const
+{
+	return Settings ? Settings->Config : FCozyRealmCameraConfig();
+}
+
 void ACozyRealmCameraPawn::ApplySettings()
 {
-	const FCozyRealmCameraConfig Config = Settings ? Settings->Config : FCozyRealmCameraConfig();
+	const FCozyRealmCameraConfig Config = GetActiveConfig();
 
 	// The pawn sits on the focus point so the boom rotates around it
 	SetActorLocation(Config.FocusLocation);
@@ -43,7 +48,7 @@ void ACozyRealmCameraPawn::ApplySettings()
 
 void ACozyRealmCameraPawn::Zoom(float Steps)
 {
-	const FCozyRealmCameraConfig Config = Settings ? Settings->Config : FCozyRealmCameraConfig();
+	const FCozyRealmCameraConfig Config = GetActiveConfig();
 	const float Factor = FMath::Pow(1.f - Config.ZoomStepRatio, Steps);
 	CurrentDistance = FMath::Clamp(CurrentDistance * Factor, FMath::Min(Config.MinDistance, Config.MaxDistance), FMath::Max(Config.MinDistance, Config.MaxDistance));
 	CameraBoom->TargetArmLength = CurrentDistance;
@@ -51,7 +56,7 @@ void ACozyRealmCameraPawn::Zoom(float Steps)
 
 void ACozyRealmCameraPawn::RotateByPixels(float DeltaX)
 {
-	const FCozyRealmCameraConfig Config = Settings ? Settings->Config : FCozyRealmCameraConfig();
+	const FCozyRealmCameraConfig Config = GetActiveConfig();
 	CurrentYaw = FRotator::NormalizeAxis(CurrentYaw + DeltaX * Config.RotateDegreesPerPixel);
 	CameraBoom->SetWorldRotation(FRotator(Config.Pitch, CurrentYaw, 0.f));
 }
@@ -59,7 +64,7 @@ void ACozyRealmCameraPawn::RotateByPixels(float DeltaX)
 void ACozyRealmCameraPawn::SetFollowTarget(AActor* Target)
 {
 	FollowTarget = Target;
-	const FCozyRealmCameraConfig Config = Settings ? Settings->Config : FCozyRealmCameraConfig();
+	const FCozyRealmCameraConfig Config = GetActiveConfig();
 	if (Target && Config.FollowSpeed > 0.f)
 	{
 		SetActorLocation(FVector(Target->GetActorLocation().X, Target->GetActorLocation().Y, Config.FocusLocation.Z));
@@ -70,7 +75,7 @@ void ACozyRealmCameraPawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	const AActor* Target = FollowTarget.Get();
-	const FCozyRealmCameraConfig Config = Settings ? Settings->Config : FCozyRealmCameraConfig();
+	const FCozyRealmCameraConfig Config = GetActiveConfig();
 	if (!Target || Config.FollowSpeed <= 0.f)
 	{
 		return;

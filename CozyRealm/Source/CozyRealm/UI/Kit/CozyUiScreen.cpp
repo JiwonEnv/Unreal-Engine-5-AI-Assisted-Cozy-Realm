@@ -20,10 +20,36 @@
 
 namespace CozyUiScreenUtil
 {
-	const UCozyHudWidget* FindHud(const UUserWidget* Widget)
+	UCozyHudWidget* FindHud(const UUserWidget* Widget)
 	{
 		const ACozyRealmEstatePlayerController* Controller = Widget ? Cast<ACozyRealmEstatePlayerController>(Widget->GetOwningPlayer()) : nullptr;
 		return Controller ? Controller->GetHud() : nullptr;
+	}
+
+	/** 줄 ID·동작 매개변수(주민 고유 ID 글자)로 주민 찾기 */
+	const FCozyResidentState* FindResident(const UCozyEstateSubsystem* Estate, FName Param)
+	{
+		FGuid ResidentId;
+		FGuid::Parse(Param.ToString(), ResidentId);
+		return Estate->GetState().Residents.FindByPredicate([&ResidentId](const FCozyResidentState& Each) { return Each.InstanceId == ResidentId; });
+	}
+
+	/** 재료 표시 이름 (정의가 없으면 ID 그대로) */
+	FText ItemName(const UCozyEstateSubsystem* Estate, FName ItemId)
+	{
+		const FCozyItemRow* Item = Estate->GetItemDef(ItemId);
+		return Item ? Item->DisplayName : FText::FromName(ItemId);
+	}
+
+	/** 글자 목록을 구분자로 잇기 (앞에 이은 글자가 아직 없으면 구분자 없이) */
+	FString JoinTexts(const TArray<FText>& Items, const TCHAR* Separator)
+	{
+		FString Out;
+		for (const FText& Item : Items)
+		{
+			Out += (Out.IsEmpty() ? TEXT("") : Separator) + Item.ToString();
+		}
+		return Out;
 	}
 
 	/** 가공 칸에 놓인 작업 (진행·일시 정지 · 대기 작업 제외) */
@@ -62,9 +88,7 @@ void UCozyUiScreen::NativePreConstruct()
 void UCozyUiScreen::NativeConstruct()
 {
 	Super::NativeConstruct();
-	BindAssetEvents();
-	RefreshTheme();
-	RefreshValues();
+	RefreshAll();
 }
 
 void UCozyUiScreen::NativeDestruct()
@@ -88,9 +112,7 @@ void UCozyUiScreen::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	if (bRefreshPending)
 	{
 		bRefreshPending = false;
-		BindAssetEvents();
-		RefreshTheme();
-		RefreshValues();
+		RefreshAll();
 	}
 	ValueTimer += InDeltaTime;
 	if (ValueTimer >= 0.25f)
@@ -129,6 +151,19 @@ void UCozyUiScreen::UnbindAssetEvents()
 	BoundConfig.Reset();
 }
 
+void UCozyUiScreen::RefreshAll()
+{
+	BindAssetEvents();
+	RefreshTheme();
+	RefreshValues();
+}
+
+UCozyEstateSubsystem* UCozyUiScreen::GetEstate() const
+{
+	const UWorld* World = GetWorld();
+	return World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
+}
+
 void UCozyUiScreen::HandleAssetChanged(const UObject* Asset)
 {
 	// 플레이 중에는 다음 프레임에 적용한다.
@@ -144,22 +179,13 @@ void UCozyUiScreen::HandleAssetChanged(const UObject* Asset)
 		return;
 	}
 	// 테마를 다른 에셋으로 바꿨을 수도 있으니 다시 연결
-	BindAssetEvents();
-	RefreshTheme();
-	RefreshValues();
+	RefreshAll();
 	UE_LOG(LogCozyRealm, Log, TEXT("[UI] 설정 변경 반영: %s → %s"), Asset ? *Asset->GetName() : TEXT("?"), *GetClass()->GetName());
 }
 
 void UCozyUiScreen::SetPreview(bool bEnable)
 {
 	bPreview = bEnable;
-	RefreshTheme();
-	RefreshValues();
-}
-
-void UCozyUiScreen::SetPreviewState(ECozyUiPreviewState NewState)
-{
-	PreviewState = NewState;
 	RefreshTheme();
 	RefreshValues();
 }
@@ -207,8 +233,7 @@ const FSlateBrush* UCozyUiScreen::FindImage(FName ImageKey) const
 	if (Key.StartsWith(TEXT("Facility.")))
 	{
 		FGuid FacilityId;
-		const UWorld* World = GetWorld();
-		const UCozyEstateSubsystem* Estate = World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
+		const UCozyEstateSubsystem* Estate = GetEstate();
 		if (Estate && FGuid::Parse(Key.Mid(9), FacilityId))
 		{
 			if (const FCozyFacilityState* Facility = Estate->FindFacility(FacilityId))
@@ -458,8 +483,7 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 		Sample.StateColor = ECozyUiColor::Ink;
 		return Sample;
 	}
-	const UWorld* World = GetWorld();
-	const UCozyEstateSubsystem* Estate = World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
+	const UCozyEstateSubsystem* Estate = GetEstate();
 	if (bPreview || !Estate || IsDesignTime())
 	{
 		return GetPreviewValue(Value);
@@ -608,11 +632,12 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 		if (const FCozyFacilityState* Facility = FindFirst(Param))
 		{
 			const FCozyFacilityRow* Def = Estate->GetFacilityDef(Facility->DefinitionId);
-			FString Names;
+			TArray<FText> ResidentNames;
 			for (const FGuid& ResidentId : Facility->AssignedResidents)
 			{
-				Names += (Names.IsEmpty() ? TEXT("") : TEXT(", ")) + Estate->GetResidentDisplayName(ResidentId).ToString();
+				ResidentNames.Add(Estate->GetResidentDisplayName(ResidentId));
 			}
+			const FString Names = CozyUiScreenUtil::JoinTexts(ResidentNames, TEXT(", "));
 			R.Current = Facility->AssignedResidents.Num();
 			R.Max = Def ? Def->MaxResidents : 0;
 			R.Text = Names.IsEmpty() ? LOCTEXT("NoResidents", "없음") : FText::FromString(Names);
@@ -635,14 +660,11 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 		if (const FCozyFacilityState* Facility = FindFirst(Param))
 		{
 			const FCozyProductionView View = Estate->GetProductionView(Facility->InstanceId);
-			FNumberFormattingOptions Fmt;
-			Fmt.MinimumFractionalDigits = 1;
-			Fmt.MaximumFractionalDigits = 2;
 			R.Current = View.SpeedMultiplier;
 			R.Text = !View.bHasGrowthSource ? FText::GetEmpty()
 				: View.GrowthSourceLevel > 0
-					? FText::Format(LOCTEXT("GrowthLine", "공통 관리 효과: 생산 속도 ×{0} ({1} Lv{2}) · 단계가 오르면 다음 주기부터 적용"), FText::AsNumber(View.SpeedMultiplier, &Fmt), View.GrowthSourceName, FText::AsNumber(View.GrowthSourceLevel))
-					: FText::Format(LOCTEXT("GrowthLineNone", "공통 관리 효과: 기본 속도 ×{0} ({1}|hpp(이,가) 아직 없습니다)"), FText::AsNumber(View.SpeedMultiplier, &Fmt), View.GrowthSourceName);
+					? FText::Format(LOCTEXT("GrowthLine", "공통 관리 효과: 생산 속도 ×{0} ({1} Lv{2}) · 단계가 오르면 다음 주기부터 적용"), CozyUiScreenUtil::Multiplier(View.SpeedMultiplier), View.GrowthSourceName, FText::AsNumber(View.GrowthSourceLevel))
+					: FText::Format(LOCTEXT("GrowthLineNone", "공통 관리 효과: 기본 속도 ×{0} ({1}|hpp(이,가) 아직 없습니다)"), CozyUiScreenUtil::Multiplier(View.SpeedMultiplier), View.GrowthSourceName);
 		}
 		break;
 	case ECozyUiValue::CurrentCrop:
@@ -669,21 +691,14 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 			const FCozyFieldManagementView View = Estate->GetFieldManagementView(Facility->InstanceId);
 			auto Join = [](const TArray<FText>& Items)
 			{
-				FString Out;
-				for (const FText& Item : Items)
-				{
-					Out += (Out.IsEmpty() ? TEXT("") : TEXT(", ")) + Item.ToString();
-				}
+				const FString Out = CozyUiScreenUtil::JoinTexts(Items, TEXT(", "));
 				return Out.IsEmpty() ? FString(TEXT("없음")) : Out;
 			};
-			FNumberFormattingOptions Fmt;
-			Fmt.MinimumFractionalDigits = 1;
-			Fmt.MaximumFractionalDigits = 2;
 			FString Text = FString::Printf(TEXT("관리 단계 Lv%d%s\n모든 밭 생산 속도 ×%s (관리하는 밭 %d개 · 새로 지은 밭도 같은 효과)\n고를 수 있는 작물: %s"),
 				View.Level, View.bUpgrading ? TEXT(" (업그레이드 중 · 밭은 지금 효과로 계속 생산)") : TEXT(""),
-				*FText::AsNumber(View.CurrentMultiplier, &Fmt).ToString(), View.ManagedFacilities, *Join(View.UnlockedCrops));
+				*CozyUiScreenUtil::Multiplier(View.CurrentMultiplier).ToString(), View.ManagedFacilities, *Join(View.UnlockedCrops));
 			Text += View.NextMultiplier > 0.f
-				? FString::Printf(TEXT("\n다음 단계: 속도 ×%s · 해금 작물 %s"), *FText::AsNumber(View.NextMultiplier, &Fmt).ToString(), *Join(View.NextUnlockCrops))
+				? FString::Printf(TEXT("\n다음 단계: 속도 ×%s · 해금 작물 %s"), *CozyUiScreenUtil::Multiplier(View.NextMultiplier).ToString(), *Join(View.NextUnlockCrops))
 				: FString(TEXT("\n다음 단계: 아직 없음"));
 			R.Current = View.Level;
 			R.Text = FText::FromString(Text);
@@ -708,9 +723,7 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 		break;
 	case ECozyUiValue::ResidentPlacement:
 	{
-		FGuid ResidentId;
-		FGuid::Parse(Param.ToString(), ResidentId);
-		const FCozyResidentState* Resident = Estate->GetState().Residents.FindByPredicate([&ResidentId](const FCozyResidentState& Each) { return Each.InstanceId == ResidentId; });
+		const FCozyResidentState* Resident = CozyUiScreenUtil::FindResident(Estate, Param);
 		R.Text = (Resident && Resident->AssignedFacility.IsValid())
 			? FText::Format(LOCTEXT("AssignedAt2", "배치: {0}"), Estate->GetFacilityDisplayName(Resident->AssignedFacility))
 			: LOCTEXT("Unassigned2", "미배치 (나가야)");
@@ -722,16 +735,16 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 		break;
 	case ECozyUiValue::Feedback:
 	{
-		const ACozyRealmEstatePlayerController* Controller = Cast<ACozyRealmEstatePlayerController>(GetOwningPlayer());
-		const FText Last = (Controller && Controller->GetHud()) ? Controller->GetHud()->GetLastFeedback() : FText::GetEmpty();
+		const UCozyHudWidget* Hud = CozyUiScreenUtil::FindHud(this);
+		const FText Last = Hud ? Hud->GetLastFeedback() : FText::GetEmpty();
 		R.Text = Last.IsEmpty() ? FText::GetEmpty() : FText::Format(LOCTEXT("JustDid2", "방금 한 일 — {0}"), Last);
 		break;
 	}
 	case ECozyUiValue::SaleLine:
 	{
 		const FCozyItemRow* Item = Estate->GetItemDef(Param);
-		const ACozyRealmEstatePlayerController* Controller = Cast<ACozyRealmEstatePlayerController>(GetOwningPlayer());
-		const bool bSelected = Controller && Controller->GetHud() && Controller->GetHud()->GetSellItem() == Param;
+		const UCozyHudWidget* Hud = CozyUiScreenUtil::FindHud(this);
+		const bool bSelected = Hud && Hud->GetSellItem() == Param;
 		R.Current = Estate->GetAmount(Param);
 		if (Item && Item->SellPrice > 0)
 		{
@@ -751,8 +764,7 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 	case ECozyUiValue::SaleSummary:
 	case ECozyUiValue::SaleBlock:
 	{
-		const ACozyRealmEstatePlayerController* Controller = Cast<ACozyRealmEstatePlayerController>(GetOwningPlayer());
-		const UCozyHudWidget* Hud = Controller ? Controller->GetHud() : nullptr;
+		const UCozyHudWidget* Hud = CozyUiScreenUtil::FindHud(this);
 		if (!Hud)
 		{
 			break;
@@ -788,10 +800,9 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 	case ECozyUiValue::RecipeOption:
 		if (const FCozyRecipeRow* Recipe = Estate->GetRecipeDef(Param))
 		{
-			const FCozyItemRow* Output = Estate->GetItemDef(Recipe->OutputItem);
 			const UCozyHudWidget* Hud = CozyUiScreenUtil::FindHud(this);
 			R.Text = FText::Format(Recipe->bTestOnly ? LOCTEXT("RecipeOptTest", "{0} ×{1} (테스트)") : LOCTEXT("RecipeOpt", "{0} ×{1}"),
-				Output ? Output->DisplayName : FText::FromName(Recipe->OutputItem), FText::AsNumber(Recipe->OutputAmount));
+				CozyUiScreenUtil::ItemName(Estate, Recipe->OutputItem), FText::AsNumber(Recipe->OutputAmount));
 			R.StateColor = (Hud && Hud->GetProcRecipe() == Param) ? ECozyUiColor::Point : ECozyUiColor::Ink;
 		}
 		break;
@@ -820,8 +831,7 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 				FString InputsText;
 				for (const TPair<FName, int32>& Input : Recipe->Inputs)
 				{
-					const FCozyItemRow* Item = Estate->GetItemDef(Input.Key);
-					InputsText += FString::Printf(TEXT("%s%s %d"), InputsText.IsEmpty() ? TEXT("") : TEXT(" + "), *(Item ? Item->DisplayName : FText::FromName(Input.Key)).ToString(), Input.Value);
+					InputsText += FString::Printf(TEXT("%s%s %d"), InputsText.IsEmpty() ? TEXT("") : TEXT(" + "), *CozyUiScreenUtil::ItemName(Estate, Input.Key).ToString(), Input.Value);
 				}
 				R.Text = FText::Format(LOCTEXT("ProcSel", "선택: {0} → {1} {2}개 · 1회 {3}"),
 					FText::FromString(InputsText), Quote.OutputName, FText::AsNumber(Quote.OutputPerRun), CozyUiFormat::Duration(Quote.SecondsPerRun));
@@ -851,8 +861,7 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 			FString InputsNeed;
 			for (const FCozyRecipeQuote::FInput& Input : Quote.Inputs)
 			{
-				const FCozyItemRow* Item = Estate->GetItemDef(Input.ItemId);
-				InputsNeed += FString::Printf(TEXT("%s%s %d개 (보유 %d개)"), InputsNeed.IsEmpty() ? TEXT("") : TEXT(", "), *(Item ? Item->DisplayName : FText::FromName(Input.ItemId)).ToString(), Input.Need, Input.Have);
+				InputsNeed += FString::Printf(TEXT("%s%s %d개 (보유 %d개)"), InputsNeed.IsEmpty() ? TEXT("") : TEXT(", "), *CozyUiScreenUtil::ItemName(Estate, Input.ItemId).ToString(), Input.Need, Input.Have);
 			}
 			R.Text = Recipe ? FText::Format(LOCTEXT("ProcSummary2", "필요 재료  {0}\n완료품  {1} {2}개\n예상 시간  {4}"),
 				FText::FromString(InputsNeed), Quote.OutputName, FText::AsNumber(Quote.TotalOutput), FText::AsNumber(Quote.OutputPerRun), CozyUiFormat::Duration(Quote.TotalSeconds)) : FText::GetEmpty();
@@ -1025,8 +1034,7 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 			FString Costs;
 			for (const FCozyUpgradeQuote::FAmount& Cost : Quote.Costs)
 			{
-				const FCozyItemRow* Item = Estate->GetItemDef(Cost.ItemId);
-				Costs += FString::Printf(TEXT("%s%s %d개 (보유 %d)"), Costs.IsEmpty() ? TEXT("") : TEXT(" · "), *(Item ? Item->DisplayName : FText::FromName(Cost.ItemId)).ToString(), Cost.Amount, Cost.Have);
+				Costs += FString::Printf(TEXT("%s%s %d개 (보유 %d)"), Costs.IsEmpty() ? TEXT("") : TEXT(" · "), *CozyUiScreenUtil::ItemName(Estate, Cost.ItemId).ToString(), Cost.Amount, Cost.Have);
 			}
 			Detail = FString::Printf(TEXT("비용: %s · 시간: %s"), Costs.IsEmpty() ? TEXT("없음") : *Costs, *CozyUiFormat::Duration(Quote.Seconds).ToString());
 			// 조건마다 충족 여부 (신사 상한 · 선행 시설 D41)
@@ -1042,12 +1050,7 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 			}
 			if (Quote.UnlockFacilityNames.Num() > 0)
 			{
-				FString Facilities;
-				for (const FText& Each : Quote.UnlockFacilityNames)
-				{
-					Facilities += (Facilities.IsEmpty() ? TEXT("") : TEXT(", ")) + Each.ToString();
-				}
-				Detail += FString::Printf(TEXT("\n해금 시설: %s"), *Facilities);
+				Detail += FString::Printf(TEXT("\n해금 시설: %s"), *CozyUiScreenUtil::JoinTexts(Quote.UnlockFacilityNames, TEXT(", ")));
 			}
 			if (Quote.NextFieldSpeedMultiplier > 0.f)
 			{
@@ -1055,26 +1058,16 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 			}
 			if (Quote.UnlockCropNames.Num() > 0)
 			{
-				FString Crops;
-				for (const FText& Crop : Quote.UnlockCropNames)
-				{
-					Crops += (Crops.IsEmpty() ? TEXT("") : TEXT(", ")) + Crop.ToString();
-				}
-				Detail += FString::Printf(TEXT("\n해금 작물: %s (각 밭의 작물 선택에 표시 · 자동으로 바뀌지 않음)"), *Crops);
+				Detail += FString::Printf(TEXT("\n해금 작물: %s (각 밭의 작물 선택에 표시 · 자동으로 바뀌지 않음)"), *CozyUiScreenUtil::JoinTexts(Quote.UnlockCropNames, TEXT(", ")));
 			}
 			// D36: 시작하면 종료될 가공과 반환될 재료
 			if (Quote.EndingJobs.Num() > 0)
 			{
-				FString Ending;
-				for (const FText& Line : Quote.EndingJobs)
-				{
-					Ending += (Ending.IsEmpty() ? TEXT("") : TEXT(" / ")) + Line.ToString();
-				}
+				const FString Ending = CozyUiScreenUtil::JoinTexts(Quote.EndingJobs, TEXT(" / "));
 				FString Refunds;
 				for (const FCozyUpgradeQuote::FAmount& Refund : Quote.Refunds)
 				{
-					const FCozyItemRow* Item = Estate->GetItemDef(Refund.ItemId);
-					Refunds += FString::Printf(TEXT("%s%s %d개"), Refunds.IsEmpty() ? TEXT("") : TEXT(", "), *(Item ? Item->DisplayName : FText::FromName(Refund.ItemId)).ToString(), Refund.Amount);
+					Refunds += FString::Printf(TEXT("%s%s %d개"), Refunds.IsEmpty() ? TEXT("") : TEXT(", "), *CozyUiScreenUtil::ItemName(Estate, Refund.ItemId).ToString(), Refund.Amount);
 				}
 				Detail += FString::Printf(TEXT("\n시작하면 진행 중인 가공이 종료됩니다: %s\n미완료 회차 재료 반환: %s · 완성된 가공품은 시설에 남습니다"), *Ending, Refunds.IsEmpty() ? TEXT("없음") : *Refunds);
 			}
@@ -1146,8 +1139,7 @@ TArray<FCozyUiListRow> UCozyUiScreen::GetListRows(ECozyUiListSource Source, FNam
 	}
 	if (Source == ECozyUiListSource::UpgradeFacilities && SelectedUpgradeFacility.IsValid())
 	{
-		const UWorld* World = GetWorld();
-		const UCozyEstateSubsystem* Estate = World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
+		const UCozyEstateSubsystem* Estate = GetEstate();
 		if (Estate && Estate->FindFacility(SelectedUpgradeFacility))
 		{
 			return {{ FName(*SelectedUpgradeFacility.ToString()), Estate->GetFacilityDisplayName(SelectedUpgradeFacility) }};
@@ -1198,8 +1190,7 @@ TArray<FCozyUiListRow> UCozyUiScreen::GetRealListRows(ECozyUiListSource Source, 
 	{
 		return Rows;
 	}
-	const UWorld* World = GetWorld();
-	const UCozyEstateSubsystem* Estate = World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
+	const UCozyEstateSubsystem* Estate = GetEstate();
 	if (!Estate || IsDesignTime())
 	{
 		// 디자이너 미리보기용 예시 줄
@@ -1339,13 +1330,12 @@ TArray<FCozyUiListRow> UCozyUiScreen::GetRealListRows(ECozyUiListSource Source, 
 	case ECozyUiListSource::AssignTargets:
 	{
 		// 부모 줄 = 주민 · 바로가기로 연 나가야면 그 시설만, 아니면 주민을 받을 수 있는 모든 시설 (지금 있는 곳 제외)
-		FGuid ResidentId;
-		FGuid::Parse(ParentRowId.ToString(), ResidentId);
-		const FCozyResidentState* Resident = Estate->GetState().Residents.FindByPredicate([&ResidentId](const FCozyResidentState& Each) { return Each.InstanceId == ResidentId; });
+		const FCozyResidentState* Resident = CozyUiScreenUtil::FindResident(Estate, ParentRowId);
 		if (!Resident)
 		{
 			break;
 		}
+		const FGuid ResidentId = Resident->InstanceId;
 		const bool bAssigned = Resident->AssignedFacility.IsValid();
 		for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
 		{
@@ -1460,12 +1450,9 @@ FText UCozyUiScreen::GetPreviewStateName(ECozyUiPreviewState State)
 
 void UCozyUiScreen::ShowMessage(const FText& Message) const
 {
-	if (const ACozyRealmEstatePlayerController* Controller = Cast<ACozyRealmEstatePlayerController>(GetOwningPlayer()))
+	if (UCozyHudWidget* Hud = CozyUiScreenUtil::FindHud(this))
 	{
-		if (UCozyHudWidget* Hud = Controller->GetHud())
-		{
-			Hud->ShowToast(Message);
-		}
+		Hud->ShowToast(Message);
 	}
 }
 
@@ -1476,8 +1463,7 @@ bool UCozyUiScreen::CanRunAction(const FCozyUiElementEntry& Entry, FText& OutRea
 		const UCozySettingsSubsystem* Settings = IsDesignTime() ? nullptr : UCozySettingsSubsystem::Get(this);
 		return !Settings || Settings->CanRun(Entry.Action, Entry.ActionParam, OutReason);
 	}
-	const UWorld* World = GetWorld();
-	const UCozyEstateSubsystem* Estate = World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
+	const UCozyEstateSubsystem* Estate = GetEstate();
 	if (bPreview)
 	{
 		const bool bAlwaysOn = Entry.Action == ECozyUiAction::CloseWindow || Entry.Action == ECozyUiAction::TogglePreview
@@ -1533,8 +1519,7 @@ bool UCozyUiScreen::CanRunAction(const FCozyUiElementEntry& Entry, FText& OutRea
 	case ECozyUiAction::SaleAll:
 	case ECozyUiAction::SellSelected:
 	{
-		const ACozyRealmEstatePlayerController* Controller = Cast<ACozyRealmEstatePlayerController>(GetOwningPlayer());
-		const UCozyHudWidget* Hud = Controller ? Controller->GetHud() : nullptr;
+		const UCozyHudWidget* Hud = CozyUiScreenUtil::FindHud(this);
 		if (!Hud)
 		{
 			return false;
@@ -1653,9 +1638,7 @@ bool UCozyUiScreen::CanRunAction(const FCozyUiElementEntry& Entry, FText& OutRea
 		return Estate->GetProcessingJobs(ContextFacility).ContainsByPredicate([](const FCozyProcessingJobView& Each) { return Each.bQueued; });
 	case ECozyUiAction::UnassignResident:
 	{
-		FGuid ResidentId;
-		FGuid::Parse(Entry.ActionParam.ToString(), ResidentId);
-		const FCozyResidentState* Resident = Estate->GetState().Residents.FindByPredicate([&ResidentId](const FCozyResidentState& Each) { return Each.InstanceId == ResidentId; });
+		const FCozyResidentState* Resident = CozyUiScreenUtil::FindResident(Estate, Entry.ActionParam);
 		if (!Resident || !Resident->AssignedFacility.IsValid())
 		{
 			OutReason = LOCTEXT("NotAssigned", "배치되어 있지 않습니다");
@@ -1684,10 +1667,9 @@ void UCozyUiScreen::RunAction(const FCozyUiElementEntry& Entry)
 	if (UCozySettingsSubsystem::IsSettingsAction(Entry.Action))
 	{
 		UE_LOG(LogCozyRealm, Log, TEXT("[UI] 설정 버튼: %s → %s"), *Entry.Id.ToString(), *GetActionName(Entry.Action).ToString());
-		const ACozyRealmEstatePlayerController* Controller = Cast<ACozyRealmEstatePlayerController>(GetOwningPlayer());
 		if (Entry.Action == ECozyUiAction::OpenSettings)
 		{
-			if (UCozyHudWidget* Hud = Controller ? Controller->GetHud() : nullptr)
+			if (UCozyHudWidget* Hud = CozyUiScreenUtil::FindHud(this))
 			{
 				Hud->ToggleSettingsWindow();
 			}
@@ -1724,12 +1706,9 @@ void UCozyUiScreen::RunAction(const FCozyUiElementEntry& Entry)
 	// 미리보기 중에도 창 닫기 · 디버그 창 열고 닫기는 동작 (게임 상태를 바꾸지 않는 화면 조작)
 	if (bPreview && (Entry.Action == ECozyUiAction::CloseWindow || Entry.Action == ECozyUiAction::ToggleDebug))
 	{
-		if (const ACozyRealmEstatePlayerController* Controller = Cast<ACozyRealmEstatePlayerController>(GetOwningPlayer()))
+		if (UCozyHudWidget* Hud = CozyUiScreenUtil::FindHud(this))
 		{
-			if (UCozyHudWidget* Hud = Controller->GetHud())
-			{
-				Entry.Action == ECozyUiAction::CloseWindow ? Hud->CloseWindow() : Hud->ToggleDebugPanel();
-			}
+			Entry.Action == ECozyUiAction::CloseWindow ? Hud->CloseWindow() : Hud->ToggleDebugPanel();
 		}
 		return;
 	}
@@ -1741,7 +1720,7 @@ void UCozyUiScreen::RunAction(const FCozyUiElementEntry& Entry)
 	}
 	ACozyRealmEstatePlayerController* Controller = Cast<ACozyRealmEstatePlayerController>(GetOwningPlayer());
 	UCozyHudWidget* Hud = Controller ? Controller->GetHud() : nullptr;
-	UCozyEstateSubsystem* Estate = GetWorld() ? GetWorld()->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
+	UCozyEstateSubsystem* Estate = GetEstate();
 	// 영지 HUD가 없는 곳(타이틀 화면)에 띄운 창: 닫기만 띄운 쪽에 맡긴다 (Claude 2026-10-21)
 	if (!Hud && Entry.Action == ECozyUiAction::CloseWindow)
 	{
@@ -1929,17 +1908,7 @@ void UCozyUiScreen::RunAction(const FCozyUiElementEntry& Entry)
 		Controller->SelectFacilityByDefinition(Entry.ActionParam);
 		break;
 	case ECozyUiAction::OpenUpgradeForWindow: Hud->OpenUpgradeFor(ContextFacility); break;
-	case ECozyUiAction::OpenUpgrade:
-		for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
-		{
-			const FCozyFacilityRow* Def = Estate->GetFacilityDef(Facility.DefinitionId);
-			if (Def && Def->Functions.Contains(ECozyFacilityFunction::UpgradeQueue) && !Facility.bStored)
-			{
-				Hud->OpenWindow(ECozyWindowKind::Upgrade, Facility.InstanceId);
-				break;
-			}
-		}
-		break;
+	case ECozyUiAction::OpenUpgrade: Hud->OpenUpgradeFor(FGuid()); break;
 	default: break;
 	}
 }

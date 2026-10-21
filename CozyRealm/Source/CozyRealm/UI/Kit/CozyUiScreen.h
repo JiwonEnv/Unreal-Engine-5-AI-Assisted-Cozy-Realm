@@ -7,8 +7,7 @@
 
 class UCozyUiTheme;
 class UCozyUiScreenConfig;
-struct FCozyUiElementEntry;
-struct FCozyUiAreaLayout;
+class UCozyEstateSubsystem;
 
 /**
  *  편집 가능한 화면의 부모 (WBP_화면이름의 부모 클래스).
@@ -39,9 +38,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Cozy UI")
 	void SetPreview(bool bEnable);
-
-	UFUNCTION(BlueprintCallable, Category = "Cozy UI")
-	void SetPreviewState(ECozyUiPreviewState NewState);
 
 	/** 영지 HUD 밖(타이틀 화면 등)에 띄웠을 때 '창 닫기' 버튼을 누르면 알림 · 띄운 쪽이 직접 닫는다 */
 	DECLARE_MULTICAST_DELEGATE_OneParam(FOnCozyScreenCloseRequested, UCozyUiScreen*);
@@ -77,7 +73,6 @@ public:
 	FGuid SelectedUpgradeFacility;
 	/** 작은 창 모드 (화면 설정의 Compact Elements만 보임 · HUD가 정함) */
 	void SetCompact(bool bEnable);
-	bool IsCompact() const { return bCompact; }
 	/** 이 요소가 지금 보이는가 (작은 창 모드 규칙 · 화면 설정의 Visible과 별개) */
 	bool IsElementShown(FName ElementId) const;
 	/** 창으로 띄울 때 이 화면이 차지할 수 있는 높이 (화면 단위 · HUD가 정함 · 0이면 제한 없음) → 'Scroll When Tall' 영역이 이 안에 맞춤 */
@@ -105,6 +100,10 @@ private:
 	void EnforcePassThrough() const;
 	void BindAssetEvents();
 	void UnbindAssetEvents();
+	/** 테마·설정 에셋을 다시 연결하고 테마·값을 모두 다시 적용 (테마 에셋이 바뀌었을 수도 있을 때) */
+	void RefreshAll();
+	/** 영지 서브시스템 (월드가 없으면 nullptr) */
+	UCozyEstateSubsystem* GetEstate() const;
 	void HandleAssetChanged(const UObject* Asset);
 	FCozyUiValueResult GetPreviewValue(ECozyUiValue Value) const;
 	/** 실제 게임 상태로 만든 목록 줄 (미리보기는 GetListRows가 이것을 바탕으로 예시 줄을 섞음) */

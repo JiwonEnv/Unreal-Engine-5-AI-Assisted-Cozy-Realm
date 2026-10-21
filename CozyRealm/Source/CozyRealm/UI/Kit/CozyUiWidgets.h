@@ -9,11 +9,8 @@
 #include "CozyUiWidgets.generated.h"
 
 class UCozyUiScreen;
-class UCozyUiTheme;
-class UCozyUiScreenConfig;
 class UButton;
 class UProgressBar;
-class UPanelWidget;
 
 /**
  *  편집 부품 공통 · 화면(UCozyUiScreen)이 테마를 적용하고 값을 갱신할 때 부른다.

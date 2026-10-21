@@ -3,31 +3,26 @@
 #include "Estate/CozyEstateSaveGame.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
-#include "Misc/CommandLine.h"
-#include "Misc/Parse.h"
 #include "Misc/Paths.h"
 #include "Misc/FileHelper.h"
 #include "HAL/FileManager.h"
+#include "Environment/Tests/CozyTerrainTestUtils.h"
 
 #if !UE_BUILD_SHIPPING
 static FAutoConsoleCommandWithWorld CozyTerrainRecoveryCheck(
 	TEXT("Cozy.TerrainRecoveryVerify"), TEXT("격리된 시험 저장의 이전 버전·누락 표면·손상·미래 버전 복구 검사"),
 	FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World)
 	{
+		// 복구 검사는 맵과 상관없이 격리된 시험 저장에서만
+		if (!CozyTerrainTest::IsAllowed(World, false)) return;
 		const FString Folder = FPaths::ProjectSavedDir();
-		if (!World || !World->IsGameWorld() || !FParse::Param(FCommandLine::Get(), TEXT("CozyTerrainTest"))
-			|| !(Folder.Contains(TEXT("TerrainPlayUser")) || Folder.Contains(TEXT("TerrainPackageUser")))) return;
 		auto* Estate = World->GetSubsystem<UCozyEstateSubsystem>();
 		if (!Estate) return;
 		Estate->SaveEstate(TEXT("복구 검사 시작")); Estate->FlushPendingSave();
 		const FCozyEstateState Original = Estate->GetState();
 		const FString SlotPath = Folder / TEXT("SaveGames/CozyRealm_Slot1.sav");
 		FString Report; int32 Failed = 0;
-		auto Check = [&](bool Passed, const TCHAR* Name)
-		{
-			Report += FString::Printf(TEXT("%s: %s\n"), Passed ? TEXT("통과") : TEXT("실패"), Name);
-			if (!Passed) ++Failed;
-		};
+		auto Check = CozyTerrainTest::MakeCheck(Report, Failed);
 		auto WriteSlot = [&](const FCozyEstateState& State, int32 Version)
 		{
 			Estate->FlushPendingSave();

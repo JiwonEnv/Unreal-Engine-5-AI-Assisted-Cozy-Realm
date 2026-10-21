@@ -1,4 +1,5 @@
 #include "Estate/CozyEstateSubsystem.h"
+#include "Algo/Count.h"
 #include "Environment/CozySurfaceComponent.h"
 #include "Facilities/CozyFacilityActor.h"
 #include "CozyRealm.h"
@@ -26,10 +27,41 @@ namespace CozyEstate
 
 	/** 한 번의 Tick에서 처리할 최대 게임 초 (디버그 배속 ×100 대비) */
 	constexpr int32 MaxStepsPerTick = 600;
+
+	/** 회전을 반영한 차지 칸 수 (90°·270°면 가로·세로를 바꿈) */
+	static FIntPoint RotateSize(const FIntPoint& Size, int32 Rotation)
+	{
+		return (Rotation % 2 == 0) ? Size : FIntPoint(Size.Y, Size.X);
+	}
+
+	/** 바닥 타일 스타일 번호(0~2)의 정의 ID */
+	static FName GetFloorDefinitionId(int32 Style)
+	{
+		static const FName Definitions[] = { TEXT("FloorWood"), TEXT("FloorStone"), TEXT("FloorGrass") };
+		return Definitions[Style];
+	}
+
+	/** 목록 문자열에 항목을 쉼표로 이어 붙임 ("A, B, C") */
+	static void AppendListItem(FString& List, const FString& Item)
+	{
+		List += FString::Printf(TEXT("%s%s"), List.IsEmpty() ? TEXT("") : TEXT(", "), *Item);
+	}
 }
 
 // ---------------------------------------------------------------------------
 // 시작
+
+bool UCozyEstateSubsystem::LoadOrBuildState(FDateTime& OutSavedUtc)
+{
+	// 저장 파일이 있으면 이어서, 없으면(또는 읽을 수 없으면) 새 게임
+	const bool bLoaded = LoadEstateFromSave(OutSavedUtc);
+	if (!bLoaded)
+	{
+		BuildNewGameState();
+	}
+	SpawnFacilityActors();
+	return bLoaded;
+}
 
 void UCozyEstateSubsystem::StartEstate()
 {
@@ -45,14 +77,8 @@ void UCozyEstateSubsystem::StartEstate()
 	}
 
 	ValidateData();
-	// 저장 파일이 있으면 이어서, 없으면(또는 읽을 수 없으면) 새 게임
 	FDateTime SavedUtc;
-	const bool bLoaded = LoadEstateFromSave(SavedUtc);
-	if (!bLoaded)
-	{
-		BuildNewGameState();
-	}
-	SpawnFacilityActors();
+	const bool bLoaded = LoadOrBuildState(SavedUtc);
 	bStarted = true;
 	if (bLoaded)
 	{
@@ -68,6 +94,24 @@ namespace CozyEstate
 	static const TCHAR* SaveSlotName = TEXT("CozyRealm_Slot1");
 	static constexpr int32 SaveUserIndex = 0;
 	static constexpr int32 CurrentSaveFileVersion = 2;
+
+	/** <프로젝트>/Saved/SaveGames */
+	static FString GetSaveDir()
+	{
+		return FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"));
+	}
+
+	/** 슬롯 이름 + Suffix + ".sav" 파일 경로 (Suffix가 비면 현재 저장 파일) */
+	static FString GetSaveFilePath(const TCHAR* Suffix = TEXT(""))
+	{
+		return FPaths::Combine(GetSaveDir(), FString(SaveSlotName) + Suffix + TEXT(".sav"));
+	}
+
+	/** 직전 정상본 슬롯 이름 (저장 쓰기가 <슬롯>_previous.sav로 보관함) */
+	static FString GetPreviousSlotName()
+	{
+		return FString(SaveSlotName) + TEXT("_previous");
+	}
 
 	/**
 	 *  저장 파일을 읽어 끝까지 온전한지 확인한 뒤 돌려준다 (못 읽거나 덜 들어 있으면 nullptr · 2026-10-21 타이틀 검증에서 발견한 두 경우).
@@ -106,7 +150,7 @@ bool UCozyEstateSubsystem::HasSaveFile() const
 ECozySaveProbe UCozyEstateSubsystem::ProbeSaveFile(FDateTime& OutSavedUtc, FString& OutDetail)
 {
 	// LoadEstateFromSave와 같은 판단을 하되 손상 사본·이관 사본·저장 쓰기를 하지 않는다.
-	const FString Previous = FString(CozyEstate::SaveSlotName) + TEXT("_previous");
+	const FString Previous = CozyEstate::GetPreviousSlotName();
 	const bool bMain = UGameplayStatics::DoesSaveGameExist(CozyEstate::SaveSlotName, CozyEstate::SaveUserIndex);
 	const bool bPrevious = UGameplayStatics::DoesSaveGameExist(Previous, CozyEstate::SaveUserIndex);
 	if (!bMain && !bPrevious) { OutDetail = TEXT("저장 없음"); return ECozySaveProbe::None; }
@@ -136,7 +180,7 @@ ECozySaveProbe UCozyEstateSubsystem::ProbeSaveFile(FDateTime& OutSavedUtc, FStri
 bool UCozyEstateSubsystem::ArchiveSaveForNewGame(FString& OutFolder, FString& OutError)
 {
 	IFileManager& Files = IFileManager::Get();
-	const FString Dir = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"));
+	const FString Dir = CozyEstate::GetSaveDir();
 	const FString Base = CozyEstate::SaveSlotName;
 	TArray<FString> Names = { Base + TEXT(".sav"), Base + TEXT("_previous.sav"), Base + TEXT(".sav.pending") };
 	TArray<FString> Present;
@@ -194,7 +238,7 @@ bool UCozyEstateSubsystem::SaveEstate(const FString& Reason)
 	TArray<uint8> Bytes;
     if (!UGameplayStatics::SaveGameToMemory(Save, Bytes)) return false;
     if (!SaveWriter.IsInitialized())
-        SaveWriter.Initialize(FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"), FString(CozyEstate::SaveSlotName) + TEXT(".sav")), {});
+        SaveWriter.Initialize(CozyEstate::GetSaveFilePath(), {});
     const int32 ByteCount = Bytes.Num();
     SaveWriter.Enqueue(MoveTemp(Bytes), Save->SavedUtc);
     AutosaveAccumulator = 0.0;
@@ -227,7 +271,7 @@ void UCozyEstateSubsystem::RestoreGroundReferences()
         if (!GetFacilityDef(Facility.DefinitionId))
         {
             Facility.bStored = true; ++Recovered;
-            if (ACozyFacilityActor* Actor = FindFacilityActor(Facility.InstanceId)) { FacilityActors.Remove(Actor); Actor->Destroy(); }
+            DestroyFacilityActor(Facility.InstanceId);
             continue;
         }
         // 이전 평지 저장은 기본 Landscape를 명시적으로 참조하도록 이관한다.
@@ -235,12 +279,12 @@ void UCozyEstateSubsystem::RestoreGroundReferences()
         const FGuid LegacySurfaceId(0xC02E0001, 0, 0, 1);
         const FGuid& RequiredSurface = Facility.bHasSurfacePlacement ? Facility.SurfaceId : LegacySurfaceId;
         const FIntPoint Size = GetFootprint(Facility.InstanceId, Facility.Rotation);
-        const FVector Min = Config.GridOrigin + FVector(Facility.GridCoord.X * Config.CellSize, Facility.GridCoord.Y * Config.CellSize, 0);
+        const FVector Min = GetCellMin(Facility.GridCoord);
         FCozySurfaceHit Support; FText Reason;
         if (!CozySurface::CheckFootprint(GetWorld(), Min, FVector2D(Size.X, Size.Y) * Config.CellSize, Config.CellSize * .5f, Support, Reason, &RequiredSurface))
         {
             Facility.bStored = true; ++Recovered;
-            if (ACozyFacilityActor* Actor = FindFacilityActor(Facility.InstanceId)) { FacilityActors.Remove(Actor); Actor->Destroy(); }
+            DestroyFacilityActor(Facility.InstanceId);
         }
         else
         {
@@ -253,12 +297,11 @@ void UCozyEstateSubsystem::RestoreGroundReferences()
     for (FCozyFloorTile& Tile : State.FloorTiles)
     {
         if (Tile.bStored) continue;
-        static const FName Definitions[] = { TEXT("FloorWood"), TEXT("FloorStone"), TEXT("FloorGrass") };
         const bool KnownStyle = Tile.Style >= 0 && Tile.Style <= 2;
-        if (KnownStyle && Tile.DefinitionId.IsNone()) Tile.DefinitionId = Definitions[Tile.Style];
-        const FVector Min = Config.GridOrigin + FVector(Tile.Cell.X * Config.CellSize, Tile.Cell.Y * Config.CellSize, 0);
+        if (KnownStyle && Tile.DefinitionId.IsNone()) Tile.DefinitionId = CozyEstate::GetFloorDefinitionId(Tile.Style);
+        const FVector Min = GetCellMin(Tile.Cell);
         FCozySurfaceHit Support; FText Reason;
-        if (!KnownStyle || Tile.DefinitionId != Definitions[Tile.Style] || Tile.Transform.ContainsNaN()
+        if (!KnownStyle || Tile.DefinitionId != CozyEstate::GetFloorDefinitionId(Tile.Style) || Tile.Transform.ContainsNaN()
             || !CozySurface::CheckFootprint(GetWorld(), Min, FVector2D(Config.CellSize), Config.CellSize * .25f, Support, Reason, &Tile.SurfaceId))
         { Tile.bStored = true; ++Recovered; }
         else Tile.Transform.SetLocation(Support.Position + FVector(0, 0, 1.5));
@@ -290,7 +333,7 @@ void UCozyEstateSubsystem::PollSave(bool bWait)
 bool UCozyEstateSubsystem::LoadEstateFromSave(FDateTime& OutSavedUtc)
 {
 	bSaveBlockedByInvalidFile = false;
-	if (!HasSaveFile() && !UGameplayStatics::DoesSaveGameExist(FString(CozyEstate::SaveSlotName) + TEXT("_previous"), CozyEstate::SaveUserIndex))
+	if (!HasSaveFile() && !UGameplayStatics::DoesSaveGameExist(CozyEstate::GetPreviousSlotName(), CozyEstate::SaveUserIndex))
 	{
 		return false;
 	}
@@ -300,7 +343,7 @@ bool UCozyEstateSubsystem::LoadEstateFromSave(FDateTime& OutSavedUtc)
     {
         if (HasSaveFile())
         {
-            const FString Source = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"), FString(CozyEstate::SaveSlotName) + TEXT(".sav"));
+            const FString Source = CozyEstate::GetSaveFilePath();
             const FString Damaged = Source + TEXT(".damaged_") + FDateTime::UtcNow().ToString(TEXT("%Y%m%d_%H%M%S"));
             if (IFileManager::Get().Copy(*Damaged, *Source) != COPY_OK)
             {
@@ -309,7 +352,7 @@ bool UCozyEstateSubsystem::LoadEstateFromSave(FDateTime& OutSavedUtc)
                 return false;
             }
         }
-        LoadedSlot += TEXT("_previous");
+        LoadedSlot = CozyEstate::GetPreviousSlotName();
         Save = CozyEstate::ReadCompleteSave(LoadedSlot);
         if (Save) RecoveryNotice = TEXT("현재 저장본을 읽지 못해 직전 정상 저장본으로 복구했습니다.");
     }
@@ -322,10 +365,10 @@ bool UCozyEstateSubsystem::LoadEstateFromSave(FDateTime& OutSavedUtc)
     }
     TArray<uint8> PreviousBytes;
     UGameplayStatics::LoadDataFromSlot(PreviousBytes, LoadedSlot, CozyEstate::SaveUserIndex);
-    const FString SavePath = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"), FString(CozyEstate::SaveSlotName) + TEXT(".sav"));
+    const FString SavePath = CozyEstate::GetSaveFilePath();
     if (Save->FileVersion == 1)
     {
-        const FString MigrationCopy = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"), FString(CozyEstate::SaveSlotName) + TEXT("_before_terrain_v1.sav"));
+        const FString MigrationCopy = CozyEstate::GetSaveFilePath(TEXT("_before_terrain_v1"));
         if (!IFileManager::Get().FileExists(*MigrationCopy) && !FFileHelper::SaveArrayToFile(PreviousBytes, *MigrationCopy))
         {
             bSaveBlockedByInvalidFile = true;
@@ -383,7 +426,7 @@ void UCozyEstateSubsystem::SanitizeLoadedState()
 		}
 		if (Job.Type == ECozyJobType::Growth)
 		{
-			return !GrowthTable || !GrowthTable->FindRow<FCozyGrowthRow>(Job.ContentId, TEXT(""), false);
+			return !GetGrowthDef(Job.ContentId);
 		}
 		if (Job.Type == ECozyJobType::Processing)
 		{
@@ -426,12 +469,7 @@ void UCozyEstateSubsystem::DebugReloadFromSave()
 	}
 	DestroyFacilityActors();
 	FDateTime SavedUtc;
-	const bool bLoaded = LoadEstateFromSave(SavedUtc);
-	if (!bLoaded)
-	{
-		BuildNewGameState();
-	}
-	SpawnFacilityActors();
+	const bool bLoaded = LoadOrBuildState(SavedUtc);
 	StepAccumulator = 0.0;
 	if (bLoaded)
 	{
@@ -593,7 +631,7 @@ bool UCozyEstateSubsystem::LoadAllData(FString& OutErrors)
 	return FacilityTable && CropTable && ItemTable && ResidentTable && StartFacilityTable;
 }
 
-int32 UCozyEstateSubsystem::ValidateData() const
+void UCozyEstateSubsystem::ValidateData() const
 {
 	int32 Issues = 0;
 	auto Warn = [&Issues](const FString& Message)
@@ -742,13 +780,13 @@ int32 UCozyEstateSubsystem::ValidateData() const
 				Warn(FString::Printf(TEXT("시작 시설 %s: 없는 시설 참조 %s"), *Key.ToString(), *Row.FacilityId.ToString()));
 				return;
 			}
-			const FIntPoint Size = (Row.Rotation % 2 == 0) ? Def->Size : FIntPoint(Def->Size.Y, Def->Size.X);
+			const FIntPoint Size = CozyEstate::RotateSize(Def->Size, Row.Rotation);
 			for (int32 X = 0; X < Size.X; ++X)
 			{
 				for (int32 Y = 0; Y < Size.Y; ++Y)
 				{
 					const FIntPoint Cell = Row.GridCoord + FIntPoint(X, Y);
-					if (Cell.X < 0 || Cell.Y < 0 || Cell.X >= Config.GridSize.X || Cell.Y >= Config.GridSize.Y)
+					if (!IsCellInGrid(Cell))
 					{
 						Warn(FString::Printf(TEXT("시작 시설 %s: 칸 (%d,%d)이 영지 밖"), *Key.ToString(), Cell.X, Cell.Y));
 						return;
@@ -812,7 +850,6 @@ int32 UCozyEstateSubsystem::ValidateData() const
 	ValidateProgression(Warn);
 
 	UE_LOG(LogCozyRealm, Log, TEXT("[데이터 검사] 끝 · 문제 %d개"), Issues);
-	return Issues;
 }
 
 void UCozyEstateSubsystem::ValidateProgression(TFunctionRef<void(const FString&)> Warn) const
@@ -992,10 +1029,15 @@ void UCozyEstateSubsystem::BuildNewGameState()
 	}
 }
 
-void UCozyEstateSubsystem::SpawnFacilityActors()
+void UCozyEstateSubsystem::RebuildFloorTileActor()
 {
 	if (!FloorTileActor) FloorTileActor = GetWorld()->SpawnActor<ACozyFloorTiles>();
 	if (FloorTileActor) FloorTileActor->Rebuild(State.FloorTiles);
+}
+
+void UCozyEstateSubsystem::SpawnFacilityActors()
+{
+	RebuildFloorTileActor();
 	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
 	{
 		UCozySurfaceComponent* Surface = It->FindComponentByClass<UCozySurfaceComponent>();
@@ -1022,8 +1064,7 @@ void UCozyEstateSubsystem::SpawnFacilityActor(const FCozyFacilityState& Facility
 		return;
 	}
 
-	const FIntPoint Size = (Facility.Rotation % 2 == 0) ? Def->Size : FIntPoint(Def->Size.Y, Def->Size.X);
-	FVector Center = ComputeFacilityLocation(Facility.GridCoord, Size);
+	FVector Center = ComputeFacilityLocation(Facility.GridCoord, CozyEstate::RotateSize(Def->Size, Facility.Rotation));
 	if (Facility.bHasSurfacePlacement) Center.Z = Facility.SurfaceHeight;
 
 	FActorSpawnParameters Params;
@@ -1060,6 +1101,15 @@ ACozyFacilityActor* UCozyEstateSubsystem::FindFacilityActor(const FGuid& Facilit
 	return nullptr;
 }
 
+void UCozyEstateSubsystem::DestroyFacilityActor(const FGuid& FacilityId)
+{
+	if (ACozyFacilityActor* Actor = FindFacilityActor(FacilityId))
+	{
+		FacilityActors.Remove(Actor);
+		Actor->Destroy();
+	}
+}
+
 FIntPoint UCozyEstateSubsystem::GetFootprint(const FGuid& FacilityId, int32 Rotation) const
 {
 	const FCozyFacilityState* Facility = FindFacility(FacilityId);
@@ -1068,7 +1118,17 @@ FIntPoint UCozyEstateSubsystem::GetFootprint(const FGuid& FacilityId, int32 Rota
 	{
 		return FIntPoint(1, 1);
 	}
-	return (Rotation % 2 == 0) ? Def->Size : FIntPoint(Def->Size.Y, Def->Size.X);
+	return CozyEstate::RotateSize(Def->Size, Rotation);
+}
+
+bool UCozyEstateSubsystem::IsCellInGrid(FIntPoint Cell) const
+{
+	return Cell.X >= 0 && Cell.Y >= 0 && Cell.X < Config.GridSize.X && Cell.Y < Config.GridSize.Y;
+}
+
+FVector UCozyEstateSubsystem::GetCellMin(FIntPoint Cell) const
+{
+	return Config.GridOrigin + FVector(Cell.X * Config.CellSize, Cell.Y * Config.CellSize, 0);
 }
 
 FIntPoint UCozyEstateSubsystem::WorldToCell(const FVector& WorldLocation) const
@@ -1105,12 +1165,12 @@ bool UCozyEstateSubsystem::StoreFloorTile(const FGuid& Id, FText& Reason)
 bool UCozyEstateSubsystem::EditFloorTile(FVector Position, int32 Style, int32 Rotation, bool bErase, FText& Reason, const FGuid* Surface, const FGuid& MovingId)
 {
     const FIntPoint Cell = WorldToCell(Position);
-    if (Cell.X < 0 || Cell.Y < 0 || Cell.X >= Config.GridSize.X || Cell.Y >= Config.GridSize.Y || Style < 0 || Style > 2)
+    if (!IsCellInGrid(Cell) || Style < 0 || Style > 2)
     {
         Reason = LOCTEXT("FloorOutside", "영지 안의 바닥을 선택해 주세요"); return false;
     }
     FCozySurfaceHit Support;
-    const FVector Min = Config.GridOrigin + FVector(Cell.X * Config.CellSize, Cell.Y * Config.CellSize, 0);
+    const FVector Min = GetCellMin(Cell);
     if (!CozySurface::CheckFootprint(GetWorld(), Min, FVector2D(Config.CellSize), Config.CellSize * .25f, Support, Reason, Surface)) return false;
     const int32 Index = State.FloorTiles.IndexOfByPredicate([&](const FCozyFloorTile& Tile) { return !Tile.bStored && Tile.Cell == Cell && Tile.SurfaceId == Support.SurfaceId; });
     if (bErase)
@@ -1130,38 +1190,19 @@ bool UCozyEstateSubsystem::EditFloorTile(FVector Position, int32 Style, int32 Ro
         FCozyFloorTile Tile;
         Tile.InstanceId = Target == INDEX_NONE ? FGuid::NewGuid() : State.FloorTiles[Target].InstanceId;
         Tile.Cell = Cell; Tile.SurfaceId = Support.SurfaceId; Tile.Style = Style;
-        static const FName Definitions[] = { TEXT("FloorWood"), TEXT("FloorStone"), TEXT("FloorGrass") };
-        Tile.DefinitionId = Definitions[Style];
+        Tile.DefinitionId = CozyEstate::GetFloorDefinitionId(Style);
         Tile.Transform = FTransform(FRotator(0, ((Rotation % 4 + 4) % 4) * 90.f, 0), Support.Position + FVector(0, 0, 1.5), FVector(Config.CellSize * .0098f, Config.CellSize * .0098f, .02f));
         if (Target == INDEX_NONE) State.FloorTiles.Add(Tile); else State.FloorTiles[Target] = Tile;
     }
-    if (!FloorTileActor) FloorTileActor = GetWorld()->SpawnActor<ACozyFloorTiles>();
-    if (FloorTileActor) FloorTileActor->Rebuild(State.FloorTiles);
+    RebuildFloorTileActor();
     const bool Saved = SaveEstate(TEXT("바닥 타일 편집"));
     Reason = FText::FromString(!Saved ? TEXT("바닥을 편집했지만 파일 저장에 실패했습니다") : bErase ? TEXT("바닥 타일을 제거했습니다 · 시설은 유지됩니다") : TEXT("바닥 타일을 설치했습니다"));
     return true;
 }
 
-bool UCozyEstateSubsystem::CanWalkBetween(FIntPoint From, FIntPoint To) const
-{
-	if (!IsCellWalkable(To)) return false;
-	const FVector Start = GetCellCenter(From), End = GetCellCenter(To);
-	const int32 Samples = FMath::Max(1, FMath::CeilToInt(FVector::Dist2D(Start, End) / 25.f));
-	float PreviousZ = Start.Z;
-	for (int32 I = 1; I <= Samples; ++I)
-	{
-		FCozySurfaceHit Hit;
-		if (!CozySurface::GroundAt(GetWorld(), FMath::Lerp(Start, End, float(I) / Samples), Hit)
-			|| Hit.Normal.Z < .72f || FMath::Abs(Hit.Position.Z - PreviousZ) > 35.f
-			|| (Hit.Rules.IsValid() && !Hit.Rules->bAllowWalking)) return false;
-		PreviousZ = Hit.Position.Z;
-	}
-	return true;
-}
-
 bool UCozyEstateSubsystem::IsCellWalkable(FIntPoint Cell) const
 {
-	if (Cell.X < 0 || Cell.Y < 0 || Cell.X >= Config.GridSize.X || Cell.Y >= Config.GridSize.Y)
+	if (!IsCellInGrid(Cell))
 	{
 		return false;
 	}
@@ -1196,7 +1237,7 @@ FGuid UCozyEstateSubsystem::FindNearestFacility(const FVector& Location, float R
 		const float GroundHeight = Facility.bHasSurfacePlacement ? Facility.SurfaceHeight : ComputeFacilityLocation(Facility.GridCoord, Size).Z;
 		// Location은 주인공 캡슐 중심이다. 다른 층 시설을 수평 거리만으로 선택하지 않는다.
 		if (Location.Z < GroundHeight - 30.f || Location.Z > GroundHeight + 180.f) continue;
-		const FVector2D Min(Config.GridOrigin.X + Facility.GridCoord.X * Config.CellSize, Config.GridOrigin.Y + Facility.GridCoord.Y * Config.CellSize);
+		const FVector2D Min(GetCellMin(Facility.GridCoord));
 		const FVector2D Max = Min + FVector2D(Size.X, Size.Y) * Config.CellSize;
 		// 시설 차지 칸(사각형) 바깥 테두리까지 거리 · 안에 있으면 0
 		const FVector2D Closest(FMath::Clamp(Point.X, Min.X, Max.X), FMath::Clamp(Point.Y, Min.Y, Max.Y));
@@ -1222,7 +1263,7 @@ bool UCozyEstateSubsystem::CanPlaceFacility(const FGuid& FacilityId, FIntPoint C
 		return false;
 	}
 	FCozySurfaceHit Support;
-	const FVector Min = Config.GridOrigin + FVector(Coord.X * Config.CellSize, Coord.Y * Config.CellSize, 0);
+	const FVector Min = GetCellMin(Coord);
 	const FGuid* TargetSurface = IsPlacing() && PlacementId == FacilityId ? &PlacementSurfaceId : nullptr;
 	if (!CozySurface::CheckFootprint(GetWorld(), Min, FVector2D(Size.X, Size.Y) * Config.CellSize, Config.CellSize * .5f, Support, OutReason, TargetSurface)) return false;
 	FCollisionQueryParams CollisionParams(SCENE_QUERY_STAT(CozyBuildClearance), false);
@@ -1306,9 +1347,9 @@ bool UCozyEstateSubsystem::CanStoreFacility(const FGuid& FacilityId, FText& OutR
 		OutReason = LOCTEXT("StoreBusy", "진행 중이거나 일시 정지된 작업이 있어 보관할 수 없습니다 · 작업이 끝나거나 취소한 뒤(생산은 주민 배치 해제) 보관해 주세요");
 		return false;
 	}
-	if (GetUnclaimedTotal(FacilityId) > 0)
+	if (Facility->UnclaimedAmount > 0)
 	{
-		OutReason = FText::Format(LOCTEXT("StoreUnclaimed", "미수령 {0} {1}개를 모두 수령해야 보관할 수 있습니다"), GetItemName(Facility->UnclaimedItemId), FText::AsNumber(GetUnclaimedTotal(FacilityId)));
+		OutReason = FText::Format(LOCTEXT("StoreUnclaimed", "미수령 {0} {1}개를 모두 수령해야 보관할 수 있습니다"), GetItemName(Facility->UnclaimedItemId), FText::AsNumber(Facility->UnclaimedAmount));
 		return false;
 	}
 	return true;
@@ -1337,11 +1378,7 @@ bool UCozyEstateSubsystem::StoreFacility(const FGuid& InFacilityId, FText& OutMe
 		}
 	}
 	Facility->bStored = true;
-	if (ACozyFacilityActor* Actor = FindFacilityActor(FacilityId))
-	{
-		FacilityActors.Remove(Actor);
-		Actor->Destroy();
-	}
+	DestroyFacilityActor(FacilityId);
 	const FText Name = GetFacilityDisplayName(FacilityId);
 	OutMessage = Returned > 0
 		? FText::Format(LOCTEXT("StoredRes", "{0}|hpp(을,를) 보관함에 넣었습니다 · 주민 {1}명은 나가야로 돌아갔습니다"), Name, FText::AsNumber(Returned))
@@ -1390,17 +1427,13 @@ bool UCozyEstateSubsystem::BeginPlacement(const FGuid& FacilityId)
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	PlacementActor = World->SpawnActor<ACozyFacilityActor>(ACozyFacilityActor::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, Params);
-	if (PlacementActor)
-	{
-		PlacementActor->InitFacility(FacilityId, *Def, Config.CellSize);
-		PlacementActor->SetActorEnableCollision(false);
-	}
-
 	if (!PlacementActor)
 	{
 		PlacementId.Invalidate();
 		return false;
 	}
+	PlacementActor->InitFacility(FacilityId, *Def, Config.CellSize);
+	PlacementActor->SetActorEnableCollision(false);
 	UpdatePlacement(PlacementCoord, PlacementRotation);
 	NotifyChanged(true);
 	return true;
@@ -1417,7 +1450,7 @@ void UCozyEstateSubsystem::UpdatePlacement(FIntPoint Coord, int32 Rotation)
 	PlacementCoord = FIntPoint(FMath::Clamp(Coord.X, 0, FMath::Max(0, Config.GridSize.X - Size.X)), FMath::Clamp(Coord.Y, 0, FMath::Max(0, Config.GridSize.Y - Size.Y)));
 	PlacementActor->SetActorLocationAndRotation(ComputeFacilityLocation(PlacementCoord, Size, &PlacementSurfaceId), FRotator(0.f, 90.f * PlacementRotation, 0.f));
 	FText Reason;
-	PlacementActor->SetPlacementPreview(true, CanPlaceFacility(PlacementId, PlacementCoord, PlacementRotation, Reason));
+	PlacementActor->SetPlacementPreview(CanPlaceFacility(PlacementId, PlacementCoord, PlacementRotation, Reason));
 }
 
 void UCozyEstateSubsystem::RotatePlacement()
@@ -1443,7 +1476,7 @@ bool UCozyEstateSubsystem::ConfirmPlacement(FText& OutMessage)
 	FCozySurfaceHit Support;
 	FText SupportReason;
 	const FIntPoint Footprint = GetFootprint(PlacementId, PlacementRotation);
-	const FVector FootprintMin = Config.GridOrigin + FVector(PlacementCoord.X * Config.CellSize, PlacementCoord.Y * Config.CellSize, 0);
+	const FVector FootprintMin = GetCellMin(PlacementCoord);
 	if (CozySurface::CheckFootprint(GetWorld(), FootprintMin, FVector2D(Footprint.X, Footprint.Y) * Config.CellSize, Config.CellSize * .5f, Support, SupportReason, &PlacementSurfaceId))
 	{
 		Facility->SurfaceId = Support.SurfaceId; Facility->SurfaceHeight = Support.Position.Z; Facility->bHasSurfacePlacement = true;
@@ -1457,7 +1490,7 @@ bool UCozyEstateSubsystem::ConfirmPlacement(FText& OutMessage)
 	}
 	else if (ACozyFacilityActor* Actual = FindFacilityActor(PlacementId))
 	{
-		FVector Location = ComputeFacilityLocation(PlacementCoord, GetFootprint(PlacementId, PlacementRotation));
+		FVector Location = ComputeFacilityLocation(PlacementCoord, Footprint);
 		Location.Z = Facility->SurfaceHeight;
 		Actual->SetActorLocationAndRotation(Location, FRotator(0, PlacementRotation * 90.f, 0));
 	}
@@ -1631,9 +1664,8 @@ FCozyProductionView UCozyEstateSubsystem::GetProductionView(const FGuid& Facilit
 	View.SpeedMultiplier = static_cast<float>(GetSpeedMultiplier(*Facility, *Def));
 	if (!Def->ManagerFacilityId.IsNone())
 	{
-		const FCozyFacilityRow* ManagerDef = GetFacilityDef(Def->ManagerFacilityId);
 		View.bHasGrowthSource = true;
-		View.GrowthSourceName = ManagerDef ? ManagerDef->DisplayName : FText::FromName(Def->ManagerFacilityId);
+		View.GrowthSourceName = GetFacilityDefName(Def->ManagerFacilityId);
 		View.GrowthSourceLevel = GetHighestLevelOf(Def->ManagerFacilityId);
 	}
 	{
@@ -1692,20 +1724,6 @@ int32 UCozyEstateSubsystem::GetAmount(FName ItemId) const
 	return Found ? *Found : 0;
 }
 
-bool UCozyEstateSubsystem::CanStore(FName ItemId, int32 Amount) const
-{
-	const FCozyItemRow* Item = GetItemDef(ItemId);
-	if (!Item)
-	{
-		return false;
-	}
-	if (Item->Category == ECozyItemCategory::Currency)
-	{
-		return true;
-	}
-	return GetAmount(ItemId) + Amount <= Config.StorageCapPerItem;
-}
-
 int32 UCozyEstateSubsystem::GetStorageSpace(FName ItemId) const
 {
 	const FCozyItemRow* Item = GetItemDef(ItemId);
@@ -1754,12 +1772,6 @@ int32 UCozyEstateSubsystem::AddResource(FName ItemId, int32 Amount)
 
 // ---------------------------------------------------------------------------
 // 미수령 생산물
-
-int32 UCozyEstateSubsystem::GetUnclaimedTotal(const FGuid& FacilityId) const
-{
-	const FCozyFacilityState* Facility = FindFacility(FacilityId);
-	return Facility ? Facility->UnclaimedAmount : 0;
-}
 
 FCozyUnclaimedView UCozyEstateSubsystem::GetUnclaimedView(const FGuid& FacilityId) const
 {
@@ -1870,6 +1882,18 @@ FText UCozyEstateSubsystem::GetItemName(FName ItemId) const
 	return ItemDef ? ItemDef->DisplayName : FText::FromName(ItemId);
 }
 
+FText UCozyEstateSubsystem::GetCropName(FName CropId) const
+{
+	const FCozyCropRow* Crop = GetCropDef(CropId);
+	return Crop ? Crop->DisplayName : FText::FromName(CropId);
+}
+
+FText UCozyEstateSubsystem::GetFacilityDefName(FName DefinitionId) const
+{
+	const FCozyFacilityRow* Def = GetFacilityDef(DefinitionId);
+	return Def ? Def->DisplayName : FText::FromName(DefinitionId);
+}
+
 FText UCozyEstateSubsystem::CollectAllProduction()
 {
 	int32 Facilities = 0;
@@ -1911,7 +1935,7 @@ FCozyCollectResult UCozyEstateSubsystem::CollectUnclaimed(const FGuid& FacilityI
 		Result.Message = LOCTEXT("CollectNoFacility", "시설을 찾을 수 없습니다");
 		return Result;
 	}
-	if (GetUnclaimedTotal(FacilityId) <= 0)
+	if (Facility->UnclaimedAmount <= 0)
 	{
 		Result.Message = LOCTEXT("CollectNothing", "수령할 생산물이 없습니다");
 		return Result;
@@ -1938,7 +1962,6 @@ FCozyCollectResult UCozyEstateSubsystem::CollectUnclaimed(const FGuid& FacilityI
 	}
 	else
 	{
-		Result.bSuccess = true;
 		Result.Message = Result.Remaining > 0
 			? FText::Format(LOCTEXT("CollectPartial", "{0} {1}개를 창고로 옮겼습니다 · 창고 공간이 부족해 일부는 시설에 남김"), FirstItemName, FText::AsNumber(Result.Moved))
 			: FText::Format(LOCTEXT("CollectAll", "{0} {1}개를 창고로 옮겼습니다"), FirstItemName, FText::AsNumber(Result.Moved));
@@ -2242,6 +2265,25 @@ bool UCozyEstateSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType
 // ---------------------------------------------------------------------------
 // 작업 진행
 
+namespace CozyEstate
+{
+	/** 작업 보류·일시 정지 시작 (Now부터 멈춘 시간으로 셈) */
+	static void HoldJob(FCozyJobRecord& Job, double Now, const FText& Reason)
+	{
+		Job.State = ECozyJobState::Held;
+		Job.HeldSinceGameSeconds = Now;
+		Job.HeldReason = Reason;
+	}
+
+	/** 보류·일시 정지 해제 · 멈춘 시간은 진행에서 제외 */
+	static void ResumeJob(FCozyJobRecord& Job, double Now)
+	{
+		Job.PausedSeconds += Now - Job.HeldSinceGameSeconds;
+		Job.State = ECozyJobState::Running;
+		Job.HeldReason = FText::GetEmpty();
+	}
+}
+
 void UCozyEstateSubsystem::StepJobs()
 {
 	for (FCozyFacilityState& Facility : State.Facilities)
@@ -2278,6 +2320,19 @@ double UCozyEstateSubsystem::GetProductionDuration(const FCozyFacilityState& Fac
 	return FMath::Max(0.1, static_cast<double>(Crop.ProductionSeconds) / GetSpeedMultiplier(Facility, Def));
 }
 
+const FCozyJobRecord& UCozyEstateSubsystem::AddProductionJob(FCozyFacilityState& Facility, const FCozyCropRow& Crop, const FCozyFacilityRow& Def, double StartAt)
+{
+	FCozyJobRecord NewJob;
+	NewJob.JobId = FGuid::NewGuid();
+	NewJob.FacilityId = Facility.InstanceId;
+	NewJob.Type = ECozyJobType::Production;
+	NewJob.ContentId = Facility.SelectedCropId;
+	NewJob.StartGameSeconds = StartAt;
+	NewJob.DurationSeconds = GetProductionDuration(Facility, Crop, Def);
+	Facility.ActiveJobId = NewJob.JobId;
+	return State.Jobs.Add_GetRef(NewJob);
+}
+
 void UCozyEstateSubsystem::StepProduction(FCozyFacilityState& Facility, const FCozyFacilityRow& Def)
 {
 	const FCozyCropRow* Crop = GetCropDef(Facility.SelectedCropId);
@@ -2291,17 +2346,9 @@ void UCozyEstateSubsystem::StepProduction(FCozyFacilityState& Facility, const FC
 	FCozyJobRecord* Job = FindJobMutable(Facility.ActiveJobId);
 	if (!Job)
 	{
-		FCozyJobRecord NewJob;
-		NewJob.JobId = FGuid::NewGuid();
-		NewJob.FacilityId = Facility.InstanceId;
-		NewJob.Type = ECozyJobType::Production;
-		NewJob.ContentId = Facility.SelectedCropId;
-		NewJob.StartGameSeconds = State.GameSeconds;
-		NewJob.DurationSeconds = GetProductionDuration(Facility, *Crop, Def);
-		Facility.ActiveJobId = NewJob.JobId;
+		const FCozyJobRecord& NewJob = AddProductionJob(Facility, *Crop, Def, State.GameSeconds);
 		UE_LOG(LogCozyRealm, Log, TEXT("생산 주기 시작: %s(%s) %s · 한 주기 %.2f초 (속도 ×%.2f)"), *GetFacilityDisplayName(Facility.InstanceId).ToString(),
 			*Facility.GridCoord.ToString(), *Facility.SelectedCropId.ToString(), NewJob.DurationSeconds, GetSpeedMultiplier(Facility, Def));
-		State.Jobs.Add(NewJob);
 		return;
 	}
 
@@ -2319,9 +2366,7 @@ void UCozyEstateSubsystem::StepProduction(FCozyFacilityState& Facility, const FC
 		{
 			return;
 		}
-		Job->PausedSeconds += State.GameSeconds - Job->HeldSinceGameSeconds;
-		Job->State = ECozyJobState::Running;
-		Job->HeldReason = FText::GetEmpty();
+		CozyEstate::ResumeJob(*Job, State.GameSeconds);
 	}
 
 	const double Elapsed = State.GameSeconds - Job->StartGameSeconds - Job->PausedSeconds;
@@ -2332,9 +2377,7 @@ void UCozyEstateSubsystem::StepProduction(FCozyFacilityState& Facility, const FC
 		// 🙋 이 시설의 미수령 공간이 꽉 차면 이 시설만 생산을 멈춘다 (D27 · 공용 창고 한도와 별개)
 		if (!HasUnclaimedSpace())
 		{
-			Job->State = ECozyJobState::Held;
-			Job->HeldSinceGameSeconds = State.GameSeconds;
-			Job->HeldReason = LOCTEXT("UnclaimedFull", "미수령 공간이 가득 차 생산을 멈췄습니다");
+			CozyEstate::HoldJob(*Job, State.GameSeconds, LOCTEXT("UnclaimedFull", "미수령 공간이 가득 차 생산을 멈췄습니다"));
 			break;
 		}
 		// 완료분은 보유 재료가 아니라 시설의 미수령분으로 · 주기 기록과 함께 (같은 주기를 두 번 넘기지 않음)
@@ -2349,15 +2392,7 @@ void UCozyEstateSubsystem::StepProduction(FCozyFacilityState& Facility, const FC
 		const double CycleStart = Job->StartGameSeconds + Job->PausedSeconds + Job->PaidCycles * Job->DurationSeconds;
 		const FGuid OldJobId = Job->JobId;
 		State.Jobs.RemoveAll([&OldJobId](const FCozyJobRecord& J) { return J.JobId == OldJobId; });
-		FCozyJobRecord NewJob;
-		NewJob.JobId = FGuid::NewGuid();
-		NewJob.FacilityId = Facility.InstanceId;
-		NewJob.Type = ECozyJobType::Production;
-		NewJob.ContentId = Facility.SelectedCropId;
-		NewJob.StartGameSeconds = CycleStart;
-		NewJob.DurationSeconds = GetProductionDuration(Facility, *Crop, Def);
-		Facility.ActiveJobId = NewJob.JobId;
-		State.Jobs.Add(NewJob);
+		const FCozyJobRecord& NewJob = AddProductionJob(Facility, *Crop, Def, CycleStart);
 		UE_LOG(LogCozyRealm, Log, TEXT("생산 주기 시작(새 속도 적용): %s(%s) %s · 한 주기 %.2f초 (속도 ×%.2f)"), *GetFacilityDisplayName(Facility.InstanceId).ToString(),
 			*Facility.GridCoord.ToString(), *Facility.SelectedCropId.ToString(), NewJob.DurationSeconds, GetSpeedMultiplier(Facility, Def));
 	}
@@ -2538,8 +2573,23 @@ bool UCozyEstateSubsystem::StartProcessing(const FGuid& FacilityId, FName Recipe
 	for (const FCozyRecipeQuote::FInput& Input : Quote.Inputs)
 	{
 		State.Resources.FindOrAdd(Input.ItemId) -= Input.Need;
-		UsedText += FString::Printf(TEXT("%s%s %d개"), UsedText.IsEmpty() ? TEXT("") : TEXT(", "), *GetItemName(Input.ItemId).ToString(), Input.Need);
+		CozyEstate::AppendListItem(UsedText, FString::Printf(TEXT("%s %d개"), *GetItemName(Input.ItemId).ToString(), Input.Need));
 	}
+
+	// 가공 작업 기록 (진행·대기 공통 · 남은 회차 × 1회 개수만큼 미수령 공간을 확보한 것으로 계산됨)
+	auto MakeJob = [&]()
+	{
+		FCozyJobRecord Job;
+		Job.JobId = FGuid::NewGuid();
+		Job.FacilityId = FacilityId;
+		Job.Type = ECozyJobType::Processing;
+		Job.ContentId = RecipeId;
+		Job.DurationSeconds = Quote.SecondsPerRun;
+		Job.TotalRuns = Runs;
+		Job.OutputItemId = Recipe->OutputItem;
+		Job.OutputPerRun = Quote.OutputPerRun;
+		return Job;
+	};
 
 	// 제작 추가: 같은 레시피의 마지막 대기 작업이 있으면 횟수만 늘리고, 없으면 대기 작업을 새로 둠
 	// (진행 중인 회차의 진행률·남은 시간은 건드리지 않음 · 추가분의 재료만 위에서 차감 · 공간은 대기 작업의 남은 회차로 확보)
@@ -2559,15 +2609,7 @@ bool UCozyEstateSubsystem::StartProcessing(const FGuid& FacilityId, FName Recipe
 		}
 		else
 		{
-			FCozyJobRecord Queued;
-			Queued.JobId = FGuid::NewGuid();
-			Queued.FacilityId = FacilityId;
-			Queued.Type = ECozyJobType::Processing;
-			Queued.ContentId = RecipeId;
-			Queued.DurationSeconds = Quote.SecondsPerRun;
-			Queued.TotalRuns = Runs;
-			Queued.OutputItemId = Recipe->OutputItem;
-			Queued.OutputPerRun = Quote.OutputPerRun;
+			FCozyJobRecord Queued = MakeJob();
 			Queued.bQueued = true;
 			State.Jobs.Add(Queued);
 		}
@@ -2578,17 +2620,9 @@ bool UCozyEstateSubsystem::StartProcessing(const FGuid& FacilityId, FName Recipe
 		return true;
 	}
 
-	// 작업 등록 · 남은 회차 × 1회 개수만큼 미수령 공간을 확보한 것으로 계산됨
-	FCozyJobRecord Job;
-	Job.JobId = FGuid::NewGuid();
-	Job.FacilityId = FacilityId;
-	Job.Type = ECozyJobType::Processing;
-	Job.ContentId = RecipeId;
+	// 작업 등록
+	FCozyJobRecord Job = MakeJob();
 	Job.StartGameSeconds = State.GameSeconds;
-	Job.DurationSeconds = Quote.SecondsPerRun;
-	Job.TotalRuns = Runs;
-	Job.OutputItemId = Recipe->OutputItem;
-	Job.OutputPerRun = Quote.OutputPerRun;
 	State.Jobs.Add(Job);
 
 	OutMessage = FText::Format(LOCTEXT("StartOk", "{0} {1}회 제작을 시작했습니다 (완료품 {2}개) · 재료 {3} 사용"),
@@ -2678,17 +2712,13 @@ void UCozyEstateSubsystem::UpdateProcessingPause(FCozyFacilityState& Facility)
 		if (!bWorking && Job.State == ECozyJobState::Running)
 		{
 			// 🙋 판단 기준은 '필요 인원 미달' · 현재 회차 진행도와 투입 재료를 그대로 둔 채 멈춤
-			Job.State = ECozyJobState::Held;
-			Job.HeldSinceGameSeconds = State.GameSeconds;
-			Job.HeldReason = LOCTEXT("ProcessingPaused", "주민 부족으로 가공 일시 정지");
+			CozyEstate::HoldJob(Job, State.GameSeconds, LOCTEXT("ProcessingPaused", "주민 부족으로 가공 일시 정지"));
 			UE_LOG(LogCozyRealm, Log, TEXT("가공 일시 정지(주민 부족): %s · %d/%d회 완료"), *GetFacilityDisplayName(Facility.InstanceId).ToString(), Job.PaidCycles, Job.TotalRuns);
 		}
 		else if (bWorking && Job.State == ECozyJobState::Held)
 		{
 			// 멈춘 시점부터 이어서 · 재료를 다시 차감하지 않음
-			Job.PausedSeconds += State.GameSeconds - Job.HeldSinceGameSeconds;
-			Job.State = ECozyJobState::Running;
-			Job.HeldReason = FText::GetEmpty();
+			CozyEstate::ResumeJob(Job, State.GameSeconds);
 			UE_LOG(LogCozyRealm, Log, TEXT("가공 재개: %s · 멈춘 시간 %.0f초는 진행에서 제외"), *GetFacilityDisplayName(Facility.InstanceId).ToString(), Job.PausedSeconds);
 		}
 	}
@@ -2732,11 +2762,7 @@ void UCozyEstateSubsystem::PromoteQueuedProcessing(const FGuid& FacilityId, doub
 	{
 		return;
 	}
-	int32 Active = 0;
-	for (const FCozyJobRecord& Job : State.Jobs)
-	{
-		Active += (Job.FacilityId == FacilityId && Job.Type == ECozyJobType::Processing && !Job.bQueued) ? 1 : 0;
-	}
+	int32 Active = static_cast<int32>(Algo::CountIf(State.Jobs, [&FacilityId](const FCozyJobRecord& Job) { return Job.FacilityId == FacilityId && Job.Type == ECozyJobType::Processing && !Job.bQueued; }));
 	for (FCozyJobRecord& Job : State.Jobs)
 	{
 		if (Active >= FMath::Max(1, Def->ProcessingSlots))
@@ -2760,6 +2786,11 @@ void UCozyEstateSubsystem::PromoteQueuedProcessing(const FGuid& FacilityId, doub
 
 // ---------------------------------------------------------------------------
 // 공통 성장 · 업그레이드 (후신소 · 신사·시설·관리 시설이 모두 같은 처리 · 차이는 성장 설정표의 행)
+
+const FCozyGrowthRow* UCozyEstateSubsystem::GetGrowthDef(FName RowId) const
+{
+	return GrowthTable ? GrowthTable->FindRow<FCozyGrowthRow>(RowId, TEXT(""), false) : nullptr;
+}
 
 const FCozyGrowthRow* UCozyEstateSubsystem::FindGrowthRow(FName DefinitionId, int32 FromLevel, FName* OutRowId) const
 {
@@ -2887,20 +2918,17 @@ FCozyUpgradeQuote UCozyEstateSubsystem::GetUpgradeQuote(const FGuid& FacilityId)
 	}
 	Quote.bValid = true;
 	Quote.Seconds = Row->Seconds;
-	Quote.RequiredShrineLevel = Row->RequiredShrineLevel;
 	for (const TPair<FName, int32>& Cost : Row->StartCost)
 	{
 		Quote.Costs.Add({ Cost.Key, Cost.Value, GetAmount(Cost.Key) });
 	}
 	for (const FName& CropId : Row->UnlockCrops)
 	{
-		const FCozyCropRow* Crop = GetCropDef(CropId);
-		Quote.UnlockCropNames.Add(Crop ? Crop->DisplayName : FText::FromName(CropId));
+		Quote.UnlockCropNames.Add(GetCropName(CropId));
 	}
 	for (const FName& UnlockId : Row->UnlockFacilities)
 	{
-		const FCozyFacilityRow* Unlock = GetFacilityDef(UnlockId);
-		Quote.UnlockFacilityNames.Add(Unlock ? Unlock->DisplayName : FText::FromName(UnlockId));
+		Quote.UnlockFacilityNames.Add(GetFacilityDefName(UnlockId));
 	}
 	// 조건 목록: 신사 상한 → 선행 시설 (UI의 ✅ 표시와 '이동' 버튼용 · D41)
 	if (Row->RequiredShrineLevel > 0)
@@ -2917,14 +2945,13 @@ FCozyUpgradeQuote UCozyEstateSubsystem::GetUpgradeQuote(const FGuid& FacilityId)
 		}
 		const int32 ShrineNow = GetShrineLevel();
 		Quote.Conditions.Add({ FText::Format(LOCTEXT("CondShrine", "신사 Lv{0}"), FText::AsNumber(Row->RequiredShrineLevel)),
-			ShrineNow >= Row->RequiredShrineLevel, ShrineDefId, Row->RequiredShrineLevel, ShrineNow });
+			ShrineNow >= Row->RequiredShrineLevel, ShrineDefId, ShrineNow });
 	}
 	for (const TPair<FName, int32>& Required : Row->RequiredFacilities)
 	{
-		const FCozyFacilityRow* RequiredDef = GetFacilityDef(Required.Key);
 		const int32 Have = GetHighestLevelOf(Required.Key);
-		Quote.Conditions.Add({ FText::Format(LOCTEXT("CondFacility", "{0} Lv{1}"), RequiredDef ? RequiredDef->DisplayName : FText::FromName(Required.Key), FText::AsNumber(Required.Value)),
-			Have >= Required.Value, Required.Key, Required.Value, Have });
+		Quote.Conditions.Add({ FText::Format(LOCTEXT("CondFacility", "{0} Lv{1}"), GetFacilityDefName(Required.Key), FText::AsNumber(Required.Value)),
+			Have >= Required.Value, Required.Key, Have });
 	}
 	if (Def->Functions.Contains(ECozyFacilityFunction::FieldManagement))
 	{
@@ -2958,14 +2985,7 @@ FCozyUpgradeQuote UCozyEstateSubsystem::GetUpgradeQuote(const FGuid& FacilityId)
 		}
 	}
 
-	int32 ActiveUpgrades = 0;
-	for (const FCozyJobRecord& Job : State.Jobs)
-	{
-		if (Job.Type == ECozyJobType::Growth)
-		{
-			++ActiveUpgrades;
-		}
-	}
+	const int32 ActiveUpgrades = static_cast<int32>(Algo::CountIf(State.Jobs, [](const FCozyJobRecord& Job) { return Job.Type == ECozyJobType::Growth; }));
 	const int32 Slots = GetUpgradeSlotCount();
 	const int32 ShrineLevel = GetShrineLevel();
 
@@ -3024,7 +3044,7 @@ FCozyUpgradeQuote UCozyEstateSubsystem::GetUpgradeQuote(const FGuid& FacilityId)
 			const int32 Final = Refund.Have - CostOfSame + Refund.Amount;
 			if (Final > Config.StorageCapPerItem)
 			{
-				Shortages += FString::Printf(TEXT("%s%s 공간 %d개 부족"), Shortages.IsEmpty() ? TEXT("") : TEXT(", "), *GetItemName(Refund.ItemId).ToString(), Final - Config.StorageCapPerItem);
+				CozyEstate::AppendListItem(Shortages, FString::Printf(TEXT("%s 공간 %d개 부족"), *GetItemName(Refund.ItemId).ToString(), Final - Config.StorageCapPerItem));
 			}
 		}
 		if (!Shortages.IsEmpty())
@@ -3052,7 +3072,7 @@ bool UCozyEstateSubsystem::StartUpgrade(const FGuid& FacilityId, FText& OutMessa
 	for (const FCozyUpgradeQuote::FAmount& Cost : Quote.Costs)
 	{
 		State.Resources.FindOrAdd(Cost.ItemId) -= Cost.Amount;
-		CostText += FString::Printf(TEXT("%s%s %d"), CostText.IsEmpty() ? TEXT("") : TEXT(", "), *GetItemName(Cost.ItemId).ToString(), Cost.Amount);
+		CozyEstate::AppendListItem(CostText, FString::Printf(TEXT("%s %d"), *GetItemName(Cost.ItemId).ToString(), Cost.Amount));
 	}
 	const int32 EndedJobs = State.Jobs.RemoveAll([&FacilityId](const FCozyJobRecord& Job) { return Job.FacilityId == FacilityId && Job.Type == ECozyJobType::Processing; });
 	FString RefundText;
@@ -3060,7 +3080,7 @@ bool UCozyEstateSubsystem::StartUpgrade(const FGuid& FacilityId, FText& OutMessa
 	{
 		const int32 Added = AddResource(Refund.ItemId, Refund.Amount);
 		ensureMsgf(Added == Refund.Amount, TEXT("반환 공간 검사를 통과했는데 다 들어가지 않음"));
-		RefundText += FString::Printf(TEXT("%s%s %d개"), RefundText.IsEmpty() ? TEXT("") : TEXT(", "), *GetItemName(Refund.ItemId).ToString(), Added);
+		CozyEstate::AppendListItem(RefundText, FString::Printf(TEXT("%s %d개"), *GetItemName(Refund.ItemId).ToString(), Added));
 	}
 
 	FCozyJobRecord Job;
@@ -3097,7 +3117,7 @@ TArray<FCozyUpgradeJobView> UCozyEstateSubsystem::GetUpgradeJobs() const
 		View.JobId = Job.JobId;
 		View.FacilityId = Job.FacilityId;
 		View.FacilityName = GetFacilityDisplayName(Job.FacilityId);
-		const FCozyGrowthRow* Row = GrowthTable ? GrowthTable->FindRow<FCozyGrowthRow>(Job.ContentId, TEXT(""), false) : nullptr;
+		const FCozyGrowthRow* Row = GetGrowthDef(Job.ContentId);
 		View.ToLevel = Row ? Row->FromLevel + 1 : 0;
 		const double Elapsed = FMath::Max(0.0, State.GameSeconds - Job.StartGameSeconds);
 		View.Progress01 = Job.DurationSeconds > 0.0 ? FMath::Clamp(static_cast<float>(Elapsed / Job.DurationSeconds), 0.f, 1.f) : 1.f;
@@ -3112,7 +3132,7 @@ FCozySpeedupQuote UCozyEstateSubsystem::GetSpeedupQuote(const FGuid& JobId, int3
 	Quote.Count = Count;
 	Quote.Owned = GetAmount(Config.SpeedupItemId);
 	Quote.SecondsPerItem = Config.SpeedupSecondsPerItem;
-	const FCozyJobRecord* Job = State.Jobs.FindByPredicate([&JobId](const FCozyJobRecord& Each) { return Each.JobId == JobId; });
+	const FCozyJobRecord* Job = FindJob(JobId);
 	if (!Job || Job->Type != ECozyJobType::Growth)
 	{
 		Quote.BlockReason = LOCTEXT("SpeedNoJob", "단축할 업그레이드가 없습니다");
@@ -3155,7 +3175,7 @@ bool UCozyEstateSubsystem::ApplySpeedup(const FGuid& JobId, int32 Count, FText& 
 		OutMessage = Quote.BlockReason;
 		return false;
 	}
-	FCozyJobRecord* Job = State.Jobs.FindByPredicate([&JobId](const FCozyJobRecord& Each) { return Each.JobId == JobId; });
+	FCozyJobRecord* Job = FindJobMutable(JobId);
 	State.Resources.FindOrAdd(Config.SpeedupItemId) -= Count;
 	Job->DurationSeconds -= Quote.Reduce;
 	const FText Name = GetFacilityDisplayName(Job->FacilityId);
@@ -3202,7 +3222,7 @@ bool UCozyEstateSubsystem::GrantOneTimeReward(FName RewardId, FText& OutMessage)
 	for (const FCozyRewardRow* Row : Rows)
 	{
 		const int32 Added = AddResource(Row->ItemId, Row->Amount);
-		Given += FString::Printf(TEXT("%s%s %d"), Given.IsEmpty() ? TEXT("") : TEXT(", "), *GetItemName(Row->ItemId).ToString(), Added);
+		CozyEstate::AppendListItem(Given, FString::Printf(TEXT("%s %d"), *GetItemName(Row->ItemId).ToString(), Added));
 	}
 	State.GrantedRewards.Add(RewardId);
 	OutMessage = FText::Format(LOCTEXT("RewardGiven", "보상을 받았습니다 · {0}"), FText::FromString(Given));
@@ -3220,7 +3240,7 @@ void UCozyEstateSubsystem::StepGrowth()
 		{
 			continue;
 		}
-		const FCozyGrowthRow* Row = GrowthTable ? GrowthTable->FindRow<FCozyGrowthRow>(Job.ContentId, TEXT(""), false) : nullptr;
+		const FCozyGrowthRow* Row = GetGrowthDef(Job.ContentId);
 		if (FCozyFacilityState* Facility = FindFacilityMutable(Job.FacilityId))
 		{
 			// 효과: 레벨 +1 · 신사 상한·관리 시설 속도·작물 해금은 레벨에서 계산되므로 따로 저장하지 않음
@@ -3251,8 +3271,7 @@ FCozyFieldManagementView UCozyEstateSubsystem::GetFieldManagementView(const FGui
 		View.NextMultiplier = 1.f + Def->SpeedBonusPerLevel * View.Level;
 		for (const FName& CropId : Next->UnlockCrops)
 		{
-			const FCozyCropRow* Crop = GetCropDef(CropId);
-			View.NextUnlockCrops.Add(Crop ? Crop->DisplayName : FText::FromName(CropId));
+			View.NextUnlockCrops.Add(GetCropName(CropId));
 		}
 	}
 	// 이 관리 시설이 맡는 생산 시설과, 그 시설들이 키울 수 있는 작물 중 해금된 것
@@ -3270,20 +3289,16 @@ FCozyFieldManagementView UCozyEstateSubsystem::GetFieldManagementView(const FGui
 				if (!Shown.Contains(CropId) && IsCropUnlocked(CropId))
 				{
 					Shown.Add(CropId);
-					const FCozyCropRow* Crop = GetCropDef(CropId);
-					View.UnlockedCrops.Add(Crop ? Crop->DisplayName : FText::FromName(CropId));
+					View.UnlockedCrops.Add(GetCropName(CropId));
 				}
 			}
 		});
 	}
-	for (const FCozyFacilityState& Other : State.Facilities)
+	View.ManagedFacilities = static_cast<int32>(Algo::CountIf(State.Facilities, [this, Facility](const FCozyFacilityState& Other)
 	{
 		const FCozyFacilityRow* OtherDef = GetFacilityDef(Other.DefinitionId);
-		if (OtherDef && OtherDef->ManagerFacilityId == Facility->DefinitionId)
-		{
-			++View.ManagedFacilities;
-		}
-	}
+		return OtherDef && OtherDef->ManagerFacilityId == Facility->DefinitionId;
+	}));
 	return View;
 }
 
@@ -3348,8 +3363,7 @@ FText UCozyEstateSubsystem::GetCropUnlockHint(FName CropId) const
 			if (!bFound && Row.UnlockCrops.Contains(CropId))
 			{
 				bFound = true;
-				const FCozyFacilityRow* Def = GetFacilityDef(Row.TargetFacilityId);
-				const FText Name = Def ? Def->DisplayName : FText::FromName(Row.TargetFacilityId);
+				const FText Name = GetFacilityDefName(Row.TargetFacilityId);
 				Hint = GetHighestLevelOf(Row.TargetFacilityId) > 0
 					? FText::Format(LOCTEXT("CropLockedHint", "{0} Lv{1}에서 해금"), Name, FText::AsNumber(Row.FromLevel + 1))
 					: FText::Format(LOCTEXT("CropLockedNoFacility", "{0} Lv{1}에서 해금 ({0}이 아직 없습니다)"), Name, FText::AsNumber(Row.FromLevel + 1));
@@ -3444,7 +3458,7 @@ bool UCozyEstateSubsystem::DebugAddFacility(FName DefinitionId)
 		}
 		if (const FCozyFacilityRow* OtherDef = GetFacilityDef(Facility.DefinitionId))
 		{
-			const FIntPoint OtherSize = (Facility.Rotation % 2 == 0) ? OtherDef->Size : FIntPoint(OtherDef->Size.Y, OtherDef->Size.X);
+			const FIntPoint OtherSize = CozyEstate::RotateSize(OtherDef->Size, Facility.Rotation);
 			for (int32 X = 0; X < OtherSize.X; ++X)
 			{
 				for (int32 Y = 0; Y < OtherSize.Y; ++Y)

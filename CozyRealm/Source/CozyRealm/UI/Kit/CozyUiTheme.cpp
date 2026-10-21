@@ -65,22 +65,29 @@ FLinearColor FCozyUiColors::Get(ECozyUiColor Role) const
 	}
 }
 
+namespace CozyUiThemeStyles
+{
+	/** 이름으로 모양을 찾고, 없거나 비어 있으면 'Default' */
+	template <typename TStyle>
+	const TStyle* FindOrDefault(const TMap<FName, TStyle>& Styles, FName Name)
+	{
+		const FName DefaultName(TEXT("Default"));
+		if (const TStyle* Found = Styles.Find(Name.IsNone() ? DefaultName : Name))
+		{
+			return Found;
+		}
+		return Styles.Find(DefaultName);
+	}
+}
+
 const FButtonStyle* UCozyUiTheme::FindButtonStyle(FName Name) const
 {
-	if (const FButtonStyle* Found = ButtonStyles.Find(Name.IsNone() ? FName(TEXT("Default")) : Name))
-	{
-		return Found;
-	}
-	return ButtonStyles.Find(TEXT("Default"));
+	return CozyUiThemeStyles::FindOrDefault(ButtonStyles, Name);
 }
 
 const FCozyUiGaugeStyle* UCozyUiTheme::FindGaugeStyle(FName Name) const
 {
-	if (const FCozyUiGaugeStyle* Found = GaugeStyles.Find(Name.IsNone() ? FName(TEXT("Default")) : Name))
-	{
-		return Found;
-	}
-	return GaugeStyles.Find(TEXT("Default"));
+	return CozyUiThemeStyles::FindOrDefault(GaugeStyles, Name);
 }
 
 namespace CozyUiThemeOptions
@@ -125,16 +132,6 @@ TArray<FName> UCozyUiTheme::GetImageNameOptions()
 			}
 		}
 	});
-}
-
-TArray<FName> UCozyUiTheme::GetButtonStyleOptions()
-{
-	return CozyUiThemeOptions::Collect([](const UCozyUiTheme& Theme, TSet<FName>& Out) { for (const auto& Pair : Theme.ButtonStyles) { Out.Add(Pair.Key); } });
-}
-
-TArray<FName> UCozyUiTheme::GetGaugeStyleOptions()
-{
-	return CozyUiThemeOptions::Collect([](const UCozyUiTheme& Theme, TSet<FName>& Out) { for (const auto& Pair : Theme.GaugeStyles) { Out.Add(Pair.Key); } });
 }
 
 #if WITH_EDITOR

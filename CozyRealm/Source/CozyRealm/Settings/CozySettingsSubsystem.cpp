@@ -43,6 +43,13 @@ namespace CozySettings
 	}
 
 	int32 Percent(float Ratio) { return FMath::RoundToInt(FMath::Clamp(Ratio, 0.f, 1.f) * 100.f); }
+
+	/** 영지 화면의 HUD (타이틀 화면 등 영지 밖이면 nullptr) */
+	UCozyHudWidget* FindHud(const APlayerController* Controller)
+	{
+		const ACozyRealmEstatePlayerController* Cozy = Cast<ACozyRealmEstatePlayerController>(Controller);
+		return Cozy ? Cozy->GetHud() : nullptr;
+	}
 }
 
 UCozySettingsSubsystem* UCozySettingsSubsystem::Get(const UObject* WorldContext)
@@ -89,10 +96,7 @@ bool UCozySettingsSubsystem::CloseSettings()
 	if (HasPendingSound())
 	{
 		// 미리 듣던 음량을 저장된 값으로 되돌림
-		if (const UCozyGameUserSettings* Saved = UCozyGameUserSettings::Get())
-		{
-			ApplyAudioToWorld(SettingsWorld.Get(), Saved->MasterVolume, Saved->MusicVolume, Saved->SfxVolume);
-		}
+		ApplySavedAudio(SettingsWorld.Get());
 		bDiscarded = true;
 	}
 	bDiscarded |= HasPendingDisplay();
@@ -144,13 +148,18 @@ UCozySettingsSubsystem::FDisplayChoice UCozySettingsSubsystem::ReadAppliedDispla
 
 void UCozySettingsSubsystem::LoadPendingFromSaved()
 {
+	LoadPendingSound();
+	PendingDisplay = ReadAppliedDisplay();
+}
+
+void UCozySettingsSubsystem::LoadPendingSound()
+{
 	if (const UCozyGameUserSettings* Settings = UCozyGameUserSettings::Get())
 	{
 		PendingMaster = Settings->MasterVolume;
 		PendingMusic = Settings->MusicVolume;
 		PendingSfx = Settings->SfxVolume;
 	}
-	PendingDisplay = ReadAppliedDisplay();
 }
 
 bool UCozySettingsSubsystem::HasPendingSound() const
@@ -236,6 +245,11 @@ FCozyUiValueResult UCozySettingsSubsystem::GetUiValue(ECozyUiValue Value, FName 
 	const FDisplayChoice Applied = ReadAppliedDisplay();
 	const bool bBorderless = PendingDisplay.Mode == EWindowMode::WindowedFullscreen;
 	const FIntPoint DesktopResolution = Saved ? Saved->GetDesktopResolution() : PendingDisplay.Resolution;
+	// 테두리 없는 창은 모니터 해상도를 그대로 쓰므로 그 값을 보여 줌
+	auto ShownResolution = [&DesktopResolution](const FDisplayChoice& Choice)
+	{
+		return ResolutionName(Choice.Mode == EWindowMode::WindowedFullscreen ? DesktopResolution : Choice.Resolution);
+	};
 	switch (Value)
 	{
 	case ECozyUiValue::SettingsTab:
@@ -264,7 +278,7 @@ FCozyUiValueResult UCozySettingsSubsystem::GetUiValue(ECozyUiValue Value, FName 
 	}
 	case ECozyUiValue::SettingsDisplayCurrent:
 		R.Text = FText::Format(LOCTEXT("DisplayCurrent", "지금 적용: {0} · {1} · 수직 동기화 {2} · 최대 프레임 {3}"),
-			ModeName(Applied.Mode), ResolutionName(Applied.Mode == EWindowMode::WindowedFullscreen ? DesktopResolution : Applied.Resolution),
+			ModeName(Applied.Mode), ShownResolution(Applied),
 			Applied.bVSync ? LOCTEXT("On", "켬") : LOCTEXT("Off", "끔"), FrameLimitName(Applied.FrameLimit));
 		R.StateColor = ECozyUiColor::InkMuted;
 		break;
@@ -276,7 +290,7 @@ FCozyUiValueResult UCozySettingsSubsystem::GetUiValue(ECozyUiValue Value, FName 
 		break;
 	}
 	case ECozyUiValue::SettingsResolution:
-		R.Text = ResolutionName(bBorderless ? DesktopResolution : PendingDisplay.Resolution);
+		R.Text = ShownResolution(PendingDisplay);
 		R.StateColor = bBorderless ? ECozyUiColor::Locked : ECozyUiColor::Ink;
 		break;
 	case ECozyUiValue::SettingsResolutionNote:
@@ -317,8 +331,7 @@ FCozyUiValueResult UCozySettingsSubsystem::GetUiValue(ECozyUiValue Value, FName 
 		R.Max = ConfirmSeconds;
 		R.RemainingSeconds = ConfirmRemaining;
 		R.Text = FText::Format(LOCTEXT("ConfirmText", "이 설정을 유지할까요?\n{0}초 안에 '유지'를 누르지 않으면 이전 설정({1} · {2})으로 돌아갑니다."),
-			FText::AsNumber(FMath::CeilToInt(ConfirmRemaining)), ModeName(ConfirmBefore.Mode),
-			ResolutionName(ConfirmBefore.Mode == EWindowMode::WindowedFullscreen ? DesktopResolution : ConfirmBefore.Resolution));
+			FText::AsNumber(FMath::CeilToInt(ConfirmRemaining)), ModeName(ConfirmBefore.Mode), ShownResolution(ConfirmBefore));
 		R.StateColor = ECozyUiColor::Ink;
 		break;
 	case ECozyUiValue::SettingsQuit:
@@ -342,7 +355,7 @@ FCozyUiValueResult UCozySettingsSubsystem::GetUiValue(ECozyUiValue Value, FName 
 	return R;
 }
 
-bool UCozySettingsSubsystem::GetListRows(ECozyUiListSource Source, TArray<FCozyUiListRow>& OutRows) const
+void UCozySettingsSubsystem::GetListRows(ECozyUiListSource Source, TArray<FCozyUiListRow>& OutRows) const
 {
 	bool bRow = false;
 	switch (Source)
@@ -352,13 +365,12 @@ bool UCozySettingsSubsystem::GetListRows(ECozyUiListSource Source, TArray<FCozyU
 	case ECozyUiListSource::SettingsConfirm: bRow = bConfirmActive; break;
 	case ECozyUiListSource::SettingsQuitAsk: bRow = QuitState == EQuit::Asking; break;
 	case ECozyUiListSource::SettingsQuitFailed: bRow = QuitState == EQuit::SaveFailed; break;
-	default: return false;
+	default: return;
 	}
 	if (bRow)
 	{
 		OutRows.Add({ TEXT("Row"), FText::GetEmpty() });
 	}
-	return true;
 }
 
 bool UCozySettingsSubsystem::CanRun(ECozyUiAction Action, FName Param, FText& OutReason) const
@@ -424,11 +436,11 @@ bool UCozySettingsSubsystem::CanRun(ECozyUiAction Action, FName Param, FText& Ou
 // ---------------------------------------------------------------------------
 // 동작
 
-bool UCozySettingsSubsystem::Run(ECozyUiAction Action, FName Param, APlayerController* Controller, float Ratio)
+void UCozySettingsSubsystem::Run(ECozyUiAction Action, FName Param, APlayerController* Controller, float Ratio)
 {
 	if (!IsSettingsAction(Action))
 	{
-		return false;
+		return;
 	}
 	if (Controller)
 	{
@@ -437,13 +449,13 @@ bool UCozySettingsSubsystem::Run(ECozyUiAction Action, FName Param, APlayerContr
 	FText Why;
 	if (!CanRun(Action, Param, Why))
 	{
-		return true;
+		return;
 	}
 	switch (Action)
 	{
 	case ECozyUiAction::SettingsTab:
 		Tab = Param == TEXT("Display") ? ETab::Display : ETab::Sound;
-		Touch(FText::GetEmpty());
+		Touch();
 		break;
 	case ECozyUiAction::SetVolume:
 		if (Ratio >= 0.f)
@@ -487,12 +499,9 @@ bool UCozySettingsSubsystem::Run(ECozyUiAction Action, FName Param, APlayerContr
 		FText Reason;
 		if (!ToggleCompact(Controller, Reason) && !Reason.IsEmpty())
 		{
-			if (const ACozyRealmEstatePlayerController* Cozy = Cast<ACozyRealmEstatePlayerController>(Controller))
+			if (UCozyHudWidget* Hud = CozySettings::FindHud(Controller))
 			{
-				if (UCozyHudWidget* Hud = Cozy->GetHud())
-				{
-					Hud->ShowToast(Reason);
-				}
+				Hud->ShowToast(Reason);
 			}
 		}
 		break;
@@ -503,7 +512,7 @@ bool UCozySettingsSubsystem::Run(ECozyUiAction Action, FName Param, APlayerContr
 	case ECozyUiAction::ResetSettingsTab: ResetTab(); break;
 	case ECozyUiAction::KeepDisplay: FinishConfirm(true, false); break;
 	case ECozyUiAction::UndoDisplay: FinishConfirm(false, false); break;
-	case ECozyUiAction::AskQuit: QuitState = EQuit::Asking; Touch(FText::GetEmpty()); break;
+	case ECozyUiAction::AskQuit: QuitState = EQuit::Asking; Touch(); break;
 	case ECozyUiAction::CancelQuit: QuitState = EQuit::None; Touch(LOCTEXT("QuitCanceled2", "게임 종료를 취소했습니다")); break;
 	case ECozyUiAction::ConfirmQuit:
 	{
@@ -529,7 +538,6 @@ bool UCozySettingsSubsystem::Run(ECozyUiAction Action, FName Param, APlayerContr
 	default:
 		break;
 	}
-	return true;
 }
 
 void UCozySettingsSubsystem::StepResolution(int32 Direction)
@@ -603,7 +611,7 @@ void UCozySettingsSubsystem::ApplyDisplay()
 	PendingDisplay = ReadAppliedDisplay();
 	UE_LOG(LogCozyRealm, Log, TEXT("[설정] 화면 모드·해상도 적용 → 유지 확인 시작: %s %dx%d (이전 %s %dx%d)"),
 		*ModeName(Want.Mode).ToString(), Want.Resolution.X, Want.Resolution.Y, *ModeName(Before.Mode).ToString(), Before.Resolution.X, Before.Resolution.Y);
-	Touch(FText::GetEmpty());
+	Touch();
 }
 
 void UCozySettingsSubsystem::FinishConfirm(bool bKeep, bool bTimedOut)
@@ -642,13 +650,9 @@ void UCozySettingsSubsystem::RevertTab()
 {
 	if (Tab == ETab::Sound)
 	{
-		if (const UCozyGameUserSettings* Saved = UCozyGameUserSettings::Get())
-		{
-			PendingMaster = Saved->MasterVolume;
-			PendingMusic = Saved->MusicVolume;
-			PendingSfx = Saved->SfxVolume;
-			ApplyAudioToWorld(SettingsWorld.Get(), PendingMaster, PendingMusic, PendingSfx);
-		}
+		// 저장된 음량으로 되돌리고 미리 듣던 소리도 그 값으로
+		LoadPendingSound();
+		ApplySavedAudio(SettingsWorld.Get());
 	}
 	else
 	{
@@ -753,12 +757,7 @@ bool UCozySettingsSubsystem::ToggleCompact(APlayerController* Controller, FText&
 		return false;
 	}
 #endif
-	if (HasDialog())
-	{
-		OutReason = LOCTEXT("CompactDialog", "설정 창의 확인을 먼저 닫아 주세요");
-		return false;
-	}
-
+	// 확인 창이 떠 있을 때는 유일한 호출 경로인 Run이 CanRun에서 먼저 막는다 (WhyCompactDialog)
 	const bool bEditorWindow = GIsEditor;
 	if (!bCompact)
 	{
@@ -815,12 +814,9 @@ bool UCozySettingsSubsystem::ToggleCompact(APlayerController* Controller, FText&
 		UE_LOG(LogCozyRealm, Log, TEXT("[작은 창] 끔 → %s %dx%d"), *ModeName(SavedMode).ToString(), SavedResolution.X, SavedResolution.Y);
 	}
 
-	if (const ACozyRealmEstatePlayerController* Cozy = Cast<ACozyRealmEstatePlayerController>(Controller))
+	if (UCozyHudWidget* Hud = CozySettings::FindHud(Controller))
 	{
-		if (UCozyHudWidget* Hud = Cozy->GetHud())
-		{
-			Hud->SetCompactMode(bCompact);
-		}
+		Hud->SetCompactMode(bCompact);
 	}
 	Touch();
 	return true;

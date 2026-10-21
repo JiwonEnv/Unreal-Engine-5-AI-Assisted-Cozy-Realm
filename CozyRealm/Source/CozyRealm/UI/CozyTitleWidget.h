@@ -95,6 +95,8 @@ private:
 	UButton* MakeButton(FName Style, UTextBlock*& OutLabel, const FText& Text, float FontSize);
 	FSlateFontInfo Font(float Size) const;
 	FLinearColor ThemeColor(ECozyUiColor Role, const FLinearColor& Fallback) const;
+	/** 버튼 글자색: 선택이면 강조색(Point) · 아니면 기본 글자색(Ink) */
+	FLinearColor SelectedColor(bool bSelected) const;
 
 	UPROPERTY(Transient) TObjectPtr<UCozyUiTheme> Theme;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> AccentTexture;

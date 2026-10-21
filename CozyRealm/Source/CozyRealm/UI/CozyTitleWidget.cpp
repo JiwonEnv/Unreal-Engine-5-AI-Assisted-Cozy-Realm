@@ -42,6 +42,9 @@ namespace CozyTitle
 	static const FName Close(TEXT("Close"));
 	constexpr float ButtonWidth = 340.f;
 	constexpr float ButtonHeight = 64.f;
+	/** 테마가 없을 때 쓰는 글자색 (기본 글자 · 강조/선택) */
+	const FLinearColor InkFallback(.2f, .14f, .1f);
+	const FLinearColor PointFallback(.75f, .25f, .2f);
 
 	/** 왼쪽이 짙고 오른쪽으로 사라지는 그림자 (배경 위에서도 글자가 읽히게) */
 	static UTexture2D* MakeGradient()
@@ -89,6 +92,11 @@ FLinearColor UCozyTitleWidget::ThemeColor(ECozyUiColor Role, const FLinearColor&
 	return Theme ? Theme->Colors.Get(Role) : Fallback;
 }
 
+FLinearColor UCozyTitleWidget::SelectedColor(bool bSelected) const
+{
+	return bSelected ? ThemeColor(ECozyUiColor::Point, CozyTitle::PointFallback) : ThemeColor(ECozyUiColor::Ink, CozyTitle::InkFallback);
+}
+
 UButton* UCozyTitleWidget::MakeButton(FName Style, UTextBlock*& OutLabel, const FText& Text, float FontSize)
 {
 	UButton* Button = WidgetTree->ConstructWidget<UButton>();
@@ -97,7 +105,7 @@ UButton* UCozyTitleWidget::MakeButton(FName Style, UTextBlock*& OutLabel, const 
 	OutLabel->SetText(Text);
 	OutLabel->SetFont(Font(FontSize));
 	OutLabel->SetJustification(ETextJustify::Center);
-	OutLabel->SetColorAndOpacity(FSlateColor(ThemeColor(ECozyUiColor::Ink, FLinearColor(.2f, .14f, .1f))));
+	OutLabel->SetColorAndOpacity(FSlateColor(SelectedColor(false)));
 	Button->SetContent(OutLabel);
 	return Button;
 }
@@ -247,14 +255,14 @@ void UCozyTitleWidget::BuildTree()
 	Window->SetContent(ModalBox);
 	ModalTitle = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("ModalTitle"));
 	ModalTitle->SetFont(Font(32.f));
-	ModalTitle->SetColorAndOpacity(FSlateColor(ThemeColor(ECozyUiColor::Point, FLinearColor(.75f, .25f, .2f))));
+	ModalTitle->SetColorAndOpacity(FSlateColor(ThemeColor(ECozyUiColor::Point, CozyTitle::PointFallback)));
 	ModalTitle->SetJustification(ETextJustify::Center);
 	ModalBox->AddChildToVerticalBox(ModalTitle)->SetPadding(FMargin(0.f, 0.f, 0.f, 14.f));
 	ModalBody = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("ModalBody"));
 	ModalBody->SetFont(Font(22.f));
 	ModalBody->SetAutoWrapText(true);
 	ModalBody->SetJustification(ETextJustify::Center);
-	ModalBody->SetColorAndOpacity(FSlateColor(ThemeColor(ECozyUiColor::Ink, FLinearColor(.2f, .14f, .1f))));
+	ModalBody->SetColorAndOpacity(FSlateColor(ThemeColor(ECozyUiColor::Ink, CozyTitle::InkFallback)));
 	ModalBox->AddChildToVerticalBox(ModalBody)->SetPadding(FMargin(0.f, 0.f, 0.f, 22.f));
 	ModalButtonRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("ModalButtons"));
 	if (UVerticalBoxSlot* S = ModalBox->AddChildToVerticalBox(ModalButtonRow)) S->SetHorizontalAlignment(HAlign_Center);
@@ -265,6 +273,7 @@ void UCozyTitleWidget::BuildTree()
 		USizeBox* Size = WidgetTree->ConstructWidget<USizeBox>();
 		Size->SetWidthOverride(250.f); Size->SetHeightOverride(56.f);
 		Size->SetContent(Button);
+		Size->SetRenderTransformPivot(FVector2D(.5f, .5f)); // 선택 시 가운데 기준으로 커짐 (UpdateModalVisuals)
 		if (UHorizontalBoxSlot* S = ModalButtonRow->AddChildToHorizontalBox(Size)) S->SetPadding(FMargin(10.f, 0.f));
 		ModalButtons.Add(Button); ModalLabels.Add(Label);
 	}
@@ -373,14 +382,14 @@ void UCozyTitleWidget::UpdateButtonVisuals()
 		const bool bSel = I == Selected;
 		Buttons[I].Marker->SetRenderOpacity(bSel ? 1.f : 0.f);
 		Buttons[I].Size->SetRenderScale(bSel ? FVector2D(1.05f, 1.05f) : FVector2D(1.f, 1.f));
-		Buttons[I].Label->SetColorAndOpacity(FSlateColor(bSel ? ThemeColor(ECozyUiColor::Point, FLinearColor(.75f, .25f, .2f)) : ThemeColor(ECozyUiColor::Ink, FLinearColor(.2f, .14f, .1f))));
+		Buttons[I].Label->SetColorAndOpacity(FSlateColor(SelectedColor(bSel)));
 		Buttons[I].Button->SetIsEnabled(!bEntering);
 	}
 }
 
 void UCozyTitleWidget::ClickMain(int32 Index)
 {
-	if (!Buttons.IsValidIndex(Index) || Modal != EModal::None || SettingsScreen && SettingsLayer->IsVisible()) return;
+	if (!Buttons.IsValidIndex(Index) || Modal != EModal::None || SettingsLayer->IsVisible()) return;
 	SetSelected(Index);
 	FocusRoot();
 	Activate(Buttons[Index].Id);
@@ -558,9 +567,8 @@ void UCozyTitleWidget::UpdateModalVisuals()
 	for (int32 I = 0; I < ModalLabels.Num(); ++I)
 	{
 		const bool bSel = I == ModalSelected;
-		ModalLabels[I]->SetColorAndOpacity(FSlateColor(bSel ? ThemeColor(ECozyUiColor::Point, FLinearColor(.75f, .25f, .2f)) : ThemeColor(ECozyUiColor::Ink, FLinearColor(.2f, .14f, .1f))));
+		ModalLabels[I]->SetColorAndOpacity(FSlateColor(SelectedColor(bSel)));
 		ModalButtons[I]->GetParent()->SetRenderScale(bSel ? FVector2D(1.06f, 1.06f) : FVector2D(1.f, 1.f));
-		ModalButtons[I]->GetParent()->SetRenderTransformPivot(FVector2D(.5f, .5f));
 	}
 }
 

@@ -28,8 +28,8 @@ public:
 	/** 선택 표시 (바닥 오라 + 테두리 외곽선) */
 	void SetSelected(bool bInSelected);
 
-	/** 배치 모드 미리보기: 시설이 차지하는 칸 바닥을 초록(놓을 수 있음) / 빨강(놓을 수 없음)으로 */
-	void SetPlacementPreview(bool bActive, bool bValid);
+	/** 배치 모드 미리보기: 시설이 차지하는 칸 바닥을 초록(놓을 수 있음) / 빨강(놓을 수 없음)으로 (미리보기 전용 액터에만 씀) */
+	void SetPlacementPreview(bool bValid);
 
 	const FGuid& GetFacilityId() const { return FacilityId; }
 

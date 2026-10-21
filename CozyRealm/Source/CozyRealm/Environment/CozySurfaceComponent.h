@@ -59,4 +59,6 @@ namespace CozySurface
 	COZYREALM_API bool Trace(const UWorld* World, const FVector& Start, const FVector& End, FCozySurfaceHit& Out, const FGuid* RequiredSurface = nullptr);
 	COZYREALM_API bool GroundAt(const UWorld* World, const FVector& Position, FCozySurfaceHit& Out, const FGuid* RequiredSurface = nullptr);
 	COZYREALM_API bool CheckFootprint(const UWorld* World, const FVector& Min, const FVector2D& Size, float Spacing, FCozySurfaceHit& Out, FText& Reason, const FGuid* RequiredSurface = nullptr);
+	/** 지면 법선의 경사 (도 · 평지 0) */
+	inline double SlopeDegrees(const FVector& Normal) { return FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(Normal.Z, -1.f, 1.f))); }
 }

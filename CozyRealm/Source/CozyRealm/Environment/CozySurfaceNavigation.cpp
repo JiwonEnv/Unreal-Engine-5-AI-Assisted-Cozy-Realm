@@ -19,6 +19,12 @@ namespace CozyWalk
 		// 그 높이까지 올린 몸통 공간을 검사하되 벽·천장은 계속 충돌 검사한다.
 		return HalfHeight + Radius * (1.f / FMath::Max(.72f, NormalZ) - 1.f) + 4.f + StepHeight;
 	}
+	/** 몸통 공간 검사에서 시설·캐릭터는 빼고 지형·벽만 본다 */
+	void IgnoreFacilitiesAndCharacters(UWorld* World, FCollisionQueryParams& Params)
+	{
+		for (TActorIterator<AActor> It(World); It; ++It)
+			if (It->IsA<ACozyFacilityActor>() || It->IsA<ACharacter>()) Params.AddIgnoredActor(*It);
+	}
 }
 
 bool UCozySurfaceNavigation::IsFree(const FVector& Feet, const FGuid& IgnoreFacility) const
@@ -83,8 +89,7 @@ void UCozySurfaceNavigation::Build()
 	}
 	const float Step = Config.CellSize * .5f;
 	FCollisionQueryParams Clearance(SCENE_QUERY_STAT(CozySurfaceWalkClearance), false);
-	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
-		if (It->IsA<ACozyFacilityActor>() || It->IsA<ACharacter>()) Clearance.AddIgnoredActor(*It);
+	CozyWalk::IgnoreFacilitiesAndCharacters(GetWorld(), Clearance);
 	for (int32 Y = 0; Y < Config.GridSize.Y * 2; ++Y)
 	for (int32 X = 0; X < Config.GridSize.X * 2; ++X)
 	for (const FGuid& Id : Surfaces)
@@ -119,8 +124,7 @@ bool UCozySurfaceNavigation::FindPath(const FVector& StartFeet, const FVector& G
 	if (!FindSupportingSurface(StartFeet, StartSurface) || !FindSupportingSurface(GoalFeet, GoalSurface)
 		|| !IsFree(StartSurface.Position, IgnoreFacility) || !IsFree(GoalSurface.Position, IgnoreFacility)) return false;
 	FCollisionQueryParams EndpointClearance(SCENE_QUERY_STAT(CozyPathEndpoints), false);
-	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
-		if (It->IsA<ACozyFacilityActor>() || It->IsA<ACharacter>()) EndpointClearance.AddIgnoredActor(*It);
+	CozyWalk::IgnoreFacilitiesAndCharacters(GetWorld(), EndpointClearance);
 	int32 Start = INDEX_NONE, Goal = INDEX_NONE;
 	double StartDistance = TNumericLimits<double>::Max(), GoalDistance = StartDistance;
 	TArray<bool> Free; Free.Init(false, Nodes.Num());

@@ -22,9 +22,6 @@ public:
 
 	ACozyRealmEstatePlayerController();
 
-	/** 지금 선택된 시설 (없으면 nullptr) */
-	ACozyFacilityActor* GetSelectedFacility() const { return SelectedFacility.Get(); }
-
 	/** 화면 UI (편집 가능한 화면이 기존 기능을 부를 때 씀) */
 	UCozyHudWidget* GetHud() const { return Hud; }
 
@@ -98,7 +95,9 @@ private:
 	/** 지금 칠하는 표면의 기록을 닫음 (드래그는 계속) */
 	void EndPaintSegment();
 	/** 표면 ID·주인공 발 높이 디버그 표시 (콘솔 Cozy.SurfaceDebug 1) */
-	void DrawSurfaceDebug(const struct FCozySurfaceHit* Hit) const;
+	void DrawSurfaceDebug() const;
+	/** 마우스 커서 아래 표면 (화면 → 월드 광선 → CozySurface::Trace) · bSkipFlatRay면 수평에 가까운 광선은 실패로 봄 */
+	bool TraceSurfaceUnderCursor(FCozySurfaceHit& Out, bool bSkipFlatRay = false) const;
 	int32 GroundMode = 0;
 	int32 GroundStyle = 1;
 	int32 GroundRotation = 0;
@@ -113,8 +112,8 @@ private:
 	/** 드래그 단위 되돌리기 · 다시 실행 (각 표면 기록 16회와 같은 한도) */
 	TArray<TArray<TWeakObjectPtr<class UCozySurfaceComponent>>> PaintUndoGroups, PaintRedoGroups;
 	bool bFloorPreview = false;
-	FVector FloorPreviewPosition = FVector::ZeroVector;
-	FGuid FloorPreviewSurface;
 	FGuid MovingFloorId;
+	/** 바닥 타일 미리보기 · 옮기던 타일 취소 */
+	void CancelFloorPreview() { bFloorPreview = false; MovingFloorId.Invalidate(); }
 	FString LastRecoveryNotice;
 };

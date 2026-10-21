@@ -7,8 +7,6 @@
 #include "UI/Kit/CozyUiScale.h"
 #include "CozyUiTheme.generated.h"
 
-class UCozyUiTheme;
-class UCozyUiScreenConfig;
 class UCozyUiScreen;
 class UTexture2D;
 
@@ -103,10 +101,6 @@ public:
 	/** 에디터 드롭다운용 이름 목록 (모든 테마 에셋의 이름을 모음) */
 	UFUNCTION()
 	static TArray<FName> GetImageNameOptions();
-	UFUNCTION()
-	static TArray<FName> GetButtonStyleOptions();
-	UFUNCTION()
-	static TArray<FName> GetGaugeStyleOptions();
 
 	FOnCozyUiAssetChanged OnChanged;
 
@@ -133,14 +127,14 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "1 테마 (Theme)", meta = (DisplayName = "Default Theme (기본 테마)"))
 	TSoftObjectPtr<UCozyUiTheme> DefaultTheme;
 
-	/** 위쪽 HUD 화면 (비우면 기존 임시 HUD) */
+	/** 위쪽 HUD 화면 (비우면 HUD가 뜨지 않고 오류 로그·알림으로 알려 줌) */
 	UPROPERTY(Config, EditAnywhere, Category = "2 화면 (Screens)", meta = (DisplayName = "HUD Screen (위쪽 HUD 화면)"))
 	TSoftClassPtr<UCozyUiScreen> HudScreenClass;
 
 	/**
-	 *  창 화면 (창 이름 → Widget Blueprint). 지정한 창은 예전 창 대신 이 화면을 띄운다 (틀 · 제목 · 닫기까지 화면이 그림).
-	 *  창 이름: Storage · FacilityInfo · Processing · Sales · Upgrade · FieldManagement · Nagaya · OfflineReport · Placeholder
-	 *  배치 모드 왼쪽 위 패널: Placement
+	 *  창 화면 (창 이름 → Widget Blueprint). 창은 이 화면으로만 뜬다 (틀 · 제목 · 닫기까지 화면이 그림 · 비어 있으면 오류 로그·알림).
+	 *  창 이름: Storage · FacilityInfo · Processing · Sales · Upgrade · FieldManagement · Nagaya · OfflineReport · Shrine · Settings
+	 *  그 밖의 화면: Placement (배치 모드 왼쪽 위 패널) · PlacementActions (배치 버튼) · FacilityMenu (시설 기능 아이콘)
 	 */
 	UPROPERTY(Config, EditAnywhere, Category = "2 화면 (Screens)", meta = (DisplayName = "Window Screens (창별 화면)"))
 	TMap<FName, TSoftClassPtr<UCozyUiScreen>> WindowScreens;
