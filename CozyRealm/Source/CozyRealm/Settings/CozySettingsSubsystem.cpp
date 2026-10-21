@@ -773,8 +773,16 @@ bool UCozySettingsSubsystem::ToggleCompact(APlayerController* Controller, FText&
 		{
 			// 전체 화면 · 테두리 없는 창이어도 창 모드 작은 창으로 (r.setres와 같은 방법 · 다음 프레임에 적용)
 			MaximizeFrames = 0;
-			if (Window->IsWindowMaximized()) Window->Restore();
-			FSystemResolution::RequestResolutionChange(CompactWidth, CompactHeight, EWindowMode::Windowed);
+			WindowStateFrames = 0;
+			if (Window->IsWindowMaximized())
+			{
+				Window->Restore();
+				CompactRequestFrames = 3;
+			}
+			else
+			{
+				FSystemResolution::RequestResolutionChange(CompactWidth, CompactHeight, EWindowMode::Windowed);
+			}
 		}
 		else
 		{
@@ -938,6 +946,12 @@ void UCozySettingsSubsystem::ApplyAudioToWorld(const UObject* WorldContext, floa
 
 void UCozySettingsSubsystem::Tick(float DeltaTime)
 {
+	if (CompactRequestFrames > 0 && --CompactRequestFrames == 0 && bCompact)
+	{
+		FSystemResolution::RequestResolutionChange(CompactWidth, CompactHeight, EWindowMode::Windowed);
+		CompactMoveFrames = 8;
+		UE_LOG(LogCozyRealm, Log, TEXT("[작은 창] 최대화를 푼 뒤 %dx%d 요청"), CompactWidth, CompactHeight);
+	}
 	if (WindowStateFrames > 0 && --WindowStateFrames == 0)
 	{
 		ApplyWindowStateNow(MaximizeWorld.Get());

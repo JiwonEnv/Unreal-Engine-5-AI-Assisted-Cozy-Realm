@@ -651,6 +651,11 @@ void UCozyTitleWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 	TickPetals(InDeltaTime);
+	// 설정 창 버튼은 누른 뒤 키보드 입력을 게임 화면으로 돌려보냄 → 타이틀에는 게임 화면 입력이 없으므로 다시 이 화면으로 (Esc·방향키가 계속 되게)
+	if (!HasKeyboardFocus() && !HasFocusedDescendants())
+	{
+		FocusRoot();
+	}
 	// 배경(실제 영지 풍경)이 보이면 종이 바탕을 천천히 걷는다
 	const ACozyTitlePlayerController* Controller = Cast<ACozyTitlePlayerController>(GetOwningPlayer());
 	if (CoverAlpha > 0.f && Controller && Controller->IsBackgroundVisible())

@@ -71,7 +71,7 @@ public:
 	// FTickableGameObject
 	virtual void Tick(float DeltaTime) override;
 	virtual TStatId GetStatId() const override { RETURN_QUICK_DECLARE_CYCLE_STAT(UCozySettingsSubsystem, STATGROUP_Tickables); }
-	virtual bool IsTickable() const override { return bConfirmActive || CompactMoveFrames > 0 || MaximizeFrames > 0 || WindowStateFrames > 0; }
+	virtual bool IsTickable() const override { return bConfirmActive || CompactMoveFrames > 0 || MaximizeFrames > 0 || WindowStateFrames > 0 || CompactRequestFrames > 0; }
 	virtual bool IsTickableWhenPaused() const override { return true; }
 	virtual ETickableTickType GetTickableTickType() const override { return IsTemplate() ? ETickableTickType::Never : ETickableTickType::Conditional; }
 
@@ -99,6 +99,8 @@ private:
 	int32 MaximizeFrames = 0;
 	/** 레벨 시작 직후에는 창이 아직 자리를 잡기 전일 수 있어 몇 프레임 뒤에 다시 적용 */
 	int32 WindowStateFrames = 0;
+	/** 최대화된 창에서 작은 창으로: 최대화를 푼 크기 변경이 끝난 뒤에 작은 창 크기를 요청 (바로 요청하면 덮어써짐) */
+	int32 CompactRequestFrames = 0;
 	void ApplyWindowStateNow(UWorld* World);
 	FIntPoint MaximizeResolution = FIntPoint::ZeroValue;
 	TWeakObjectPtr<UWorld> MaximizeWorld;
