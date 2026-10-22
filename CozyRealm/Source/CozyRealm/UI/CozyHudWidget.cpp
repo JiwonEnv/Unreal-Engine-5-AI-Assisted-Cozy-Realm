@@ -16,6 +16,8 @@
 #include "Components/CanvasPanelSlot.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
+#include "Components/Image.h"
+#include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
@@ -34,6 +36,12 @@ namespace CozyHud
 	constexpr float HudTopSafe = 100.f;
 	/** 시설 메뉴를 화면 가장자리에서 띄우는 거리 (화면 단위) */
 	constexpr float MenuEdgeMargin = 12.f;
+	/** 시설 위 수령 배지: 테마 버튼 모양 · 아이콘 칸 · 이름표 위로 띄우는 높이 (화면 단위) */
+	const FName BadgeButtonStyle(TEXT("Round"));
+	constexpr float BadgeIconSize = 26.f;
+	constexpr float BadgeLift = 24.f;
+	/** 시설 이름표 아래 진행 막대 크기 (화면 단위) */
+	const FVector2D FacilityBarSize(64.f, 7.f);
 	/** 고칠 프로젝트 설정 항목 (WarnMissingScreen 안내 글) */
 	const TCHAR* const HudScreenSetting = TEXT("HUD Screen (위쪽 HUD 화면)");
 	const TCHAR* const WindowScreensSetting = TEXT("Window Screens (창별 화면)");
@@ -93,9 +101,9 @@ void UCozyHudWidget::BuildLayout()
 		}
 	}
 
-	// 시설 이름표 (3D 글자 기본 글꼴에 한글이 없어 UI 글자로 그림)
+	// 시설 이름표 (3D 글자 기본 글꼴에 한글이 없어 UI 글자로 그림) · 층은 클릭을 통과시키고 수령 배지만 눌림
 	LabelLayer = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("LabelLayer"));
-	LabelLayer->SetVisibility(ESlateVisibility::HitTestInvisible);
+	LabelLayer->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	if (UCanvasPanelSlot* LabelSlot = RootCanvas->AddChildToCanvas(LabelLayer))
 	{
 		LabelSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
@@ -566,18 +574,55 @@ void UCozyHudWidget::RefreshNameLabels()
 
 	LabelLayer->ClearChildren();
 	NameLabels.Reset();
+	CollectBadges.Reset();
+	BadgeActions.Reset();
+	BadgeIcons.Reset();
+	BadgeCounts.Reset();
+	BadgeItems.Reset();
+	ProgressBars.Reset();
 	LabelFacilities = Current;
+	const UCozyUiTheme* Theme = HudScreen ? HudScreen->GetTheme() : nullptr;
 	for (const TWeakObjectPtr<ACozyFacilityActor>& Facility : LabelFacilities)
 	{
 		UTextBlock* Label = MakeText(Estate->GetFacilityDisplayName(Facility->GetFacilityId()), 16, FLinearColor(0.12f, 0.1f, 0.09f));
 		Label->SetShadowOffset(FVector2D(1.f, 1.f));
 		Label->SetShadowColorAndOpacity(FLinearColor(1.f, 1.f, 1.f, 0.8f));
+		Label->SetVisibility(ESlateVisibility::HitTestInvisible);
 		if (UCanvasPanelSlot* LabelSlot = LabelLayer->AddChildToCanvas(Label))
 		{
 			LabelSlot->SetAutoSize(true);
 			LabelSlot->SetAlignment(FVector2D(0.5f, 1.f));
 		}
 		NameLabels.Add(Label);
+
+		// 진행 막대 (이름표 바로 아래 · 테마 기본 게이지 모양)
+		UProgressBar* Bar = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass());
+		if (const FCozyUiGaugeStyle* Gauge = Theme ? Theme->FindGaugeStyle(NAME_None) : nullptr)
+		{
+			Bar->SetWidgetStyle(Gauge->Style);
+		}
+		Bar->SetFillColorAndOpacity(HudScreen ? HudScreen->GetColor(ECozyUiColor::Progress) : FLinearColor(0.35f, 0.7f, 0.35f));
+		Bar->SetVisibility(ESlateVisibility::Collapsed);
+		if (UCanvasPanelSlot* BarSlot = LabelLayer->AddChildToCanvas(Bar))
+		{
+			BarSlot->SetSize(CozyHud::FacilityBarSize);
+			BarSlot->SetAlignment(FVector2D(0.5f, 0.f));
+		}
+		ProgressBars.Add(Bar);
+
+		// 수령 배지 (이름표 위)
+		UImage* Icon = nullptr;
+		UTextBlock* Count = nullptr;
+		UButton* Badge = MakeCollectBadge(Facility->GetFacilityId(), Icon, Count);
+		if (UCanvasPanelSlot* BadgeSlot = LabelLayer->AddChildToCanvas(Badge))
+		{
+			BadgeSlot->SetAutoSize(true);
+			BadgeSlot->SetAlignment(FVector2D(0.5f, 1.f));
+		}
+		CollectBadges.Add(Badge);
+		BadgeIcons.Add(Icon);
+		BadgeCounts.Add(Count);
+		BadgeItems.Add(NAME_None);
 	}
 	UpdateNameLabelPositions();
 }
@@ -599,6 +644,124 @@ void UCozyHudWidget::UpdateNameLabelPositions()
 			{
 				LabelSlot->SetPosition(ScreenPosition);
 			}
+			UpdateFacilityBadges(Index, Facility->GetFacilityId(), ScreenPosition);
+		}
+	}
+}
+
+UButton* UCozyHudWidget::MakeCollectBadge(const FGuid& FacilityId, UImage*& OutIcon, UTextBlock*& OutCount)
+{
+	UButton* Button = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass());
+	if (const UCozyUiTheme* Theme = HudScreen ? HudScreen->GetTheme() : nullptr)
+	{
+		if (const FButtonStyle* Style = Theme->FindButtonStyle(CozyHud::BadgeButtonStyle))
+		{
+			Button->SetStyle(*Style);
+		}
+	}
+	UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+	USizeBox* IconBoxSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+	IconBoxSize->SetWidthOverride(CozyHud::BadgeIconSize);
+	IconBoxSize->SetHeightOverride(CozyHud::BadgeIconSize);
+	OutIcon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
+	IconBoxSize->SetContent(OutIcon);
+	Row->AddChildToHorizontalBox(IconBoxSize)->SetVerticalAlignment(VAlign_Center);
+	OutCount = MakeText(FText::GetEmpty(), 15, FLinearColor(0.12f, 0.1f, 0.09f));
+	if (HudScreen)
+	{
+		const FSlateFontInfo Font = HudScreen->GetFont(ECozyUiTextRole::Button);
+		if (Font.HasValidFont())
+		{
+			OutCount->SetFont(Font);
+		}
+	}
+	if (UHorizontalBoxSlot* CountSlot = Row->AddChildToHorizontalBox(OutCount))
+	{
+		CountSlot->SetVerticalAlignment(VAlign_Center);
+		CountSlot->SetPadding(FMargin(4.f, 0.f, 0.f, 0.f));
+	}
+	Button->SetContent(Row);
+	Button->SetToolTipText(LOCTEXT("BadgeTip", "눌러서 이 시설의 생산물을 창고로"));
+	Button->SetVisibility(ESlateVisibility::Collapsed);
+
+	UCozyUiAction* Action = NewObject<UCozyUiAction>(this);
+	Action->Callback = [this, FacilityId]()
+	{
+		HandleCollectClicked(FacilityId);
+		// 버튼에 포커스가 남으면 Space(전부 수확)가 이 버튼을 다시 누름
+		if (FSlateApplication::IsInitialized())
+		{
+			FSlateApplication::Get().SetAllUserFocusToGameViewport();
+		}
+	};
+	Button->OnClicked.AddDynamic(Action, &UCozyUiAction::Fire);
+	BadgeActions.Add(Action);
+	return Button;
+}
+
+void UCozyHudWidget::UpdateFacilityBadges(int32 Index, const FGuid& FacilityId, const FVector2D& ScreenPosition)
+{
+	const UCozyEstateSubsystem* Estate = GetEstate();
+	if (!Estate || !CollectBadges.IsValidIndex(Index) || !ProgressBars.IsValidIndex(Index))
+	{
+		return;
+	}
+
+	// 수령 배지: 미수령분이 있을 때만 · 품목 아이콘(테마 'Icon.<품목>') + 개수 · 한도에 차면 경고색 글자
+	const FCozyUnclaimedView Unclaimed = Estate->GetUnclaimedView(FacilityId);
+	UButton* Badge = CollectBadges[Index];
+	const bool bShowBadge = Unclaimed.Amount > 0;
+	Badge->SetVisibility(bShowBadge ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	if (bShowBadge)
+	{
+		if (BadgeItems[Index] != Unclaimed.ItemId && BadgeIcons[Index])
+		{
+			BadgeItems[Index] = Unclaimed.ItemId;
+			const FSlateBrush* Brush = HudScreen ? HudScreen->FindImage(FName(*FString::Printf(TEXT("Icon.%s"), *Unclaimed.ItemId.ToString()))) : nullptr;
+			if (Brush)
+			{
+				BadgeIcons[Index]->SetBrush(*Brush);
+			}
+			BadgeIcons[Index]->SetVisibility(Brush ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		}
+		if (UTextBlock* Count = BadgeCounts[Index])
+		{
+			Count->SetText(FText::Format(LOCTEXT("BadgeCount", "×{0}"), FText::AsNumber(Unclaimed.Amount)));
+			const bool bFull = Unclaimed.Capacity > 0 && Unclaimed.Amount >= Unclaimed.Capacity;
+			Count->SetColorAndOpacity(FSlateColor(bFull && HudScreen ? HudScreen->GetColor(ECozyUiColor::Warning) : FLinearColor(0.12f, 0.1f, 0.09f)));
+		}
+		if (UCanvasPanelSlot* BadgeSlot = Cast<UCanvasPanelSlot>(Badge->Slot))
+		{
+			BadgeSlot->SetPosition(ScreenPosition - FVector2D(0.f, CozyHud::BadgeLift));
+		}
+	}
+
+	// 진행 막대: 생산 중이면 그 주기 · 아니면 진행 중인 첫 가공 작업의 이번 회차
+	float Progress = -1.f;
+	const FCozyProductionView Production = Estate->GetProductionView(FacilityId);
+	if (Production.bHasProduction && Production.bWorking)
+	{
+		Progress = Production.Progress01;
+	}
+	else
+	{
+		for (const FCozyProcessingJobView& Job : Estate->GetProcessingJobs(FacilityId))
+		{
+			if (!Job.bQueued && !Job.bPaused)
+			{
+				Progress = Job.RunProgress01;
+				break;
+			}
+		}
+	}
+	UProgressBar* Bar = ProgressBars[Index];
+	Bar->SetVisibility(Progress >= 0.f ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	if (Progress >= 0.f)
+	{
+		Bar->SetPercent(FMath::Clamp(Progress, 0.f, 1.f));
+		if (UCanvasPanelSlot* BarSlot = Cast<UCanvasPanelSlot>(Bar->Slot))
+		{
+			BarSlot->SetPosition(ScreenPosition + FVector2D(0.f, 3.f));
 		}
 	}
 }
@@ -793,7 +956,7 @@ void UCozyHudWidget::SetCompactMode(bool bEnable)
 	}
 	if (LabelLayer)
 	{
-		LabelLayer->SetVisibility(bEnable ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		LabelLayer->SetVisibility(bEnable ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
 	}
 	if (HudScreen)
 	{
