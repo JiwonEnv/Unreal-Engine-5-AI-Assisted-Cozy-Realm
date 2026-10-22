@@ -7,6 +7,7 @@
 class UStaticMeshComponent;
 class UMaterialInstanceDynamic;
 class UPointLightComponent;
+class UProceduralMeshComponent;
 struct FCozyFacilityRow;
 
 /**
@@ -44,6 +45,18 @@ protected:
 	/** 회색 상자 */
 	UPROPERTY(VisibleAnywhere, Category = "Facility")
 	TObjectPtr<UStaticMeshComponent> GreyboxMesh;
+
+	/** 회색 상자 위 박공 지붕 (높이가 처마보다 높은 시설만 · 삼각기둥) */
+	UPROPERTY(VisibleAnywhere, Category = "Facility")
+	TObjectPtr<UProceduralMeshComponent> RoofMesh;
+
+	/** 벽(처마) 높이 cm · 시설 높이(Facilities.csv GreyboxHeight)가 이보다 높으면 벽은 여기까지, 나머지는 지붕 (2026-10-22 크기 기준: 처마 240) */
+	UPROPERTY(EditAnywhere, Category = "Facility")
+	float EaveHeight = 240.f;
+
+	/** 지붕이 벽 밖으로 나오는 길이 cm (처마 끝) */
+	UPROPERTY(EditAnywhere, Category = "Facility")
+	float RoofOverhang = 20.f;
 
 	/** 선택했을 때 시설이 차지하는 칸 바닥에 깔리는 오라 */
 	UPROPERTY(VisibleAnywhere, Category = "Facility")
@@ -96,4 +109,7 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> GreyboxMaterial;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> RoofMaterial;
 };

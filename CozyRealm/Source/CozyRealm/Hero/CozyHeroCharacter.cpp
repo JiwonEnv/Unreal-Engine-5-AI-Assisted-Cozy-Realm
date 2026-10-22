@@ -218,6 +218,48 @@ void ACozyHeroCharacter::SpawnCompareDolls()
 			}
 		}
 	}
+	// 비교용 오니비는 한 칸 앞줄에 (인형 줄과 겹치지 않게)
+	Placed = 0;
+	for (int32 Step = 0; Step <= Estate->GetGridSize().X && Placed < Config.CompareOnibi.Num(); ++Step)
+	{
+		for (const int32 Dir : { 1, -1 })
+		{
+			const FIntPoint Cell(HeroCell.X - 1, HeroCell.Y + Step * Dir);
+			if (Placed >= Config.CompareOnibi.Num() || (Step == 0 && Dir < 0) || !Estate->IsCellWalkable(Cell))
+			{
+				continue;
+			}
+			FActorSpawnParameters Params;
+			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			if (ACozyScaleOnibi* Onibi = GetWorld()->SpawnActor<ACozyScaleOnibi>(Estate->GetCellCenter(Cell), FRotator::ZeroRotator, Params))
+			{
+				Onibi->Setup(Config.CompareOnibi[Placed]);
+				CompareDolls.Add(Onibi);
+				++Placed;
+			}
+		}
+	}
+	// 비교용 문 벽은 한 칸 뒷줄에 두 칸 간격으로 (벽 너비 300cm가 한 칸 200cm보다 넓어서)
+	Placed = 0;
+	for (int32 Step = 0; Step <= Estate->GetGridSize().X && Placed < Config.CompareDoors.Num(); Step += 2)
+	{
+		for (const int32 Dir : { 1, -1 })
+		{
+			const FIntPoint Cell(HeroCell.X + 1, HeroCell.Y + Step * Dir);
+			if (Placed >= Config.CompareDoors.Num() || (Step == 0 && Dir < 0) || !Estate->IsCellWalkable(Cell))
+			{
+				continue;
+			}
+			FActorSpawnParameters Params;
+			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			if (ACozyScaleDoor* Door = GetWorld()->SpawnActor<ACozyScaleDoor>(Estate->GetCellCenter(Cell), FRotator::ZeroRotator, Params))
+			{
+				Door->Setup(Config.CompareDoors[Placed]);
+				CompareDolls.Add(Door);
+				++Placed;
+			}
+		}
+	}
 }
 
 void ACozyHeroCharacter::DestroyCompareDolls()
@@ -437,5 +479,89 @@ void ACozyScaleDoll::Setup(const FCozyHeroConfig& Config, float Height)
 	Label->SetWorldSize(FMath::Clamp(Height * 0.25f, 24.f, 60.f));
 	Label->SetRelativeLocation(FVector(0.f, 0.f, Height + 15.f));
 	// 글자가 항상 카메라 쪽을 보게 (쿼터뷰 기본 방향 · 회전하면 비스듬히 보일 수 있음)
+	Label->SetWorldRotation(FRotator(45.f, 225.f, 0.f));
+}
+
+// ---------------------------------------------------------------------------
+
+namespace CozyHero
+{
+	/** 비교용 문 벽 너비 · 두께 (cm) */
+	constexpr float DoorWallWidth = 300.f;
+	constexpr float DoorWallThickness = 20.f;
+}
+
+ACozyScaleDoor::ACozyScaleDoor()
+{
+	PrimaryActorTick.bCanEverTick = false;
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> Cube(TEXT("/Engine/BasicShapes/Cube.Cube"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ShapeMaterial(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+	Wall = CozyHero::MakePart(this, RootComponent, TEXT("WallShape"), Cube.Object, ShapeMaterial.Object);
+	Door = CozyHero::MakePart(this, RootComponent, TEXT("DoorShape"), Cube.Object, ShapeMaterial.Object);
+	Label = CreateDefaultSubobject<UTextRenderComponent>(TEXT("SizeLabel"));
+	Label->SetupAttachment(RootComponent);
+	Label->SetHorizontalAlignment(EHTA_Center);
+	Label->SetVerticalAlignment(EVRTA_TextBottom);
+	Label->SetTextRenderColor(FColor::White);
+	Label->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void ACozyScaleDoor::Setup(const FVector& Size)
+{
+	const float S = CozyHero::BasicShapeSize;
+	const float Eave = FMath::Max(Size.Z, Size.X + 10.f);
+	// 벽은 쿼터뷰 카메라 쪽을 보게 45도 돌림 · 문은 벽 양면으로 조금 튀어나오게 (어느 쪽에서 봐도 보임)
+	SetActorRotation(FRotator(0.f, 45.f, 0.f));
+	Wall->SetRelativeScale3D(FVector(CozyHero::DoorWallThickness / S, CozyHero::DoorWallWidth / S, Eave / S));
+	Wall->SetRelativeLocation(FVector(0.f, 0.f, Eave * 0.5f));
+	Door->SetRelativeScale3D(FVector((CozyHero::DoorWallThickness + 4.f) / S, Size.Y / S, Size.X / S));
+	Door->SetRelativeLocation(FVector(0.f, 0.f, Size.X * 0.5f));
+	if (UMaterialInstanceDynamic* WallMaterial = Wall->CreateDynamicMaterialInstance(0))
+	{
+		WallMaterial->SetVectorParameterValue(CozyHero::ColorParam, FLinearColor(0.85f, 0.8f, 0.7f));
+	}
+	if (UMaterialInstanceDynamic* DoorMaterial = Door->CreateDynamicMaterialInstance(0))
+	{
+		DoorMaterial->SetVectorParameterValue(CozyHero::ColorParam, FLinearColor(0.22f, 0.15f, 0.1f));
+	}
+	// 숫자만 (문 높이 x 너비 / 처마) · 기본 글꼴에 한글 없음
+	Label->SetText(FText::FromString(FString::Printf(TEXT("%.0f x %.0f / %.0f"), Size.X, Size.Y, Eave)));
+	Label->SetWorldSize(30.f);
+	Label->SetRelativeLocation(FVector(0.f, 0.f, Eave + 15.f));
+	Label->SetWorldRotation(FRotator(45.f, 225.f, 0.f));
+}
+
+// ---------------------------------------------------------------------------
+
+ACozyScaleOnibi::ACozyScaleOnibi()
+{
+	PrimaryActorTick.bCanEverTick = false;
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> Sphere(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ShapeMaterial(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+	Orb = CozyHero::MakePart(this, RootComponent, TEXT("OnibiShape"), Sphere.Object, ShapeMaterial.Object);
+	Label = CreateDefaultSubobject<UTextRenderComponent>(TEXT("SizeLabel"));
+	Label->SetupAttachment(RootComponent);
+	Label->SetHorizontalAlignment(EHTA_Center);
+	Label->SetVerticalAlignment(EVRTA_TextBottom);
+	Label->SetTextRenderColor(FColor(170, 210, 255));
+	Label->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void ACozyScaleOnibi::Setup(const FVector2D& Size)
+{
+	const float Diameter = FMath::Max(Size.X, 5.f);
+	Orb->SetRelativeScale3D(FVector(Diameter / CozyHero::BasicShapeSize));
+	Orb->SetRelativeLocation(FVector(0.f, 0.f, Size.Y));
+	if (UMaterialInstanceDynamic* Material = Orb->CreateDynamicMaterialInstance(0))
+	{
+		// 오니비 빛 색과 같은 푸른색
+		Material->SetVectorParameterValue(CozyHero::ColorParam, FLinearColor(0.5f, 0.69f, 1.f));
+	}
+	// 글자 부품(TextRender) 기본 글꼴에 한글이 없어 숫자만 (지름 / 높이)
+	Label->SetText(FText::FromString(FString::Printf(TEXT("%.0f / %.0f"), Diameter, Size.Y)));
+	Label->SetWorldSize(24.f);
+	Label->SetRelativeLocation(FVector(0.f, 0.f, Size.Y + Diameter * 0.5f + 12.f));
 	Label->SetWorldRotation(FRotator(45.f, 225.f, 0.f));
 }

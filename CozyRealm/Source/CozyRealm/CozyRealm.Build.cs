@@ -18,7 +18,7 @@ public class CozyRealm : ModuleRules
 			"DeveloperSettings"
 		});
 
-		PrivateDependencyModuleNames.AddRange(new string[] { "SlateCore", "Landscape", "AssetRegistry", "ApplicationCore", "RenderCore", "RHI" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "SlateCore", "Landscape", "AssetRegistry", "ApplicationCore", "RenderCore", "RHI", "ProceduralMeshComponent" });
 
 		PublicIncludePaths.AddRange(new string[] {
 			"CozyRealm"

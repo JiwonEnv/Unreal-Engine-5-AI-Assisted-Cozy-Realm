@@ -124,3 +124,48 @@ private:
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UTextRenderComponent> Label;
 };
+
+/** 비교용 문 벽 (크기 기준 시험 · 벽 앞면에 어두운 문 · 위에 문 높이 숫자) */
+UCLASS(NotPlaceable)
+class ACozyScaleDoor : public AActor
+{
+	GENERATED_BODY()
+
+public:
+
+	ACozyScaleDoor();
+	/** Size.X = 문 높이 · Size.Y = 문 너비 · Size.Z = 처마(벽) 높이 cm */
+	void Setup(const FVector& Size);
+
+private:
+
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UStaticMeshComponent> Wall;
+
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UStaticMeshComponent> Door;
+
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UTextRenderComponent> Label;
+};
+
+/** 비교용 오니비 구슬 (크기 기준 시험 · 떠 있는 푸른 구 · 위에 지름·높이 숫자) */
+UCLASS(NotPlaceable)
+class ACozyScaleOnibi : public AActor
+{
+	GENERATED_BODY()
+
+public:
+
+	ACozyScaleOnibi();
+	/** Size.X = 지름 cm · Size.Y = 땅에서 구 가운데까지 높이 cm */
+	void Setup(const FVector2D& Size);
+
+private:
+
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UStaticMeshComponent> Orb;
+
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UTextRenderComponent> Label;
+};
