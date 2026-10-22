@@ -30,6 +30,14 @@ struct FCozyHeroConfig
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="1 크기", meta=(DisplayName="Compare Heights (비교용 인형 키 cm)"))
 	TArray<float> CompareHeights = { 90.f, 160.f };
 
+	/** 비교용 오니비 구슬 (크기 기준 시험 · X = 지름 cm · Y = 땅에서 구슬 가운데까지 높이 cm) · 주인공 앞줄 빈 칸에 하나씩 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="1 크기", meta=(DisplayName="Compare Onibi (비교용 오니비 · X 지름 · Y 떠 있는 높이 cm)"))
+	TArray<FVector2D> CompareOnibi = { FVector2D(40.f, 100.f), FVector2D(50.f, 100.f), FVector2D(60.f, 120.f) };
+
+	/** 비교용 문 벽 (크기 기준 시험 · X = 문 높이 · Y = 문 너비 · Z = 처마(벽) 높이 cm) · 주인공 뒷줄에 한 칸씩 띄워 세움 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="1 크기", meta=(DisplayName="Compare Doors (비교용 문 · X 문 높이 · Y 문 너비 · Z 처마 cm)"))
+	TArray<FVector> CompareDoors = { FVector(170.f, 90.f, 220.f), FVector(190.f, 100.f, 250.f), FVector(210.f, 110.f, 270.f) };
+
 	/** 몸통 색 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="1 크기", meta=(DisplayName="Body Color (몸통 색)"))
 	FLinearColor BodyColor = FLinearColor(0.78f, 0.35f, 0.26f);

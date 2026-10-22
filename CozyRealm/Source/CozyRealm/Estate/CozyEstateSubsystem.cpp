@@ -10,6 +10,10 @@
 #include "Estate/CozyEstateSaveGame.h"
 #include "Kismet/GameplayStatics.h"
 #include "HAL/FileManager.h"
+#include "Misc/EngineVersion.h"
+#include "Serialization/CustomVersion.h"
+#include "Serialization/MemoryReader.h"
+#include "UObject/ObjectVersion.h"
 #include "EngineUtils.h"
 #include "Environment/CozyFloorTiles.h"
 #include "Environment/CozySurfaceNavigation.h"
@@ -114,9 +118,33 @@ namespace CozyEstate
 	}
 
 	/**
+	 *  엔진 저장 머리글(FSaveGameHeader · GameplayStatics.cpp와 같은 순서)의 길이 · 읽을 수 없으면 INDEX_NONE.
+	 *  머리글의 사용자 정의 버전 목록은 실행 파일마다 다르다 (에디터 실행 파일이 패키지보다 한 칸 = 20바이트 많음).
+	 */
+	static int64 GetSaveHeaderSize(const TArray<uint8>& Bytes)
+	{
+		FMemoryReader Reader(Bytes);
+		int32 FileTypeTag = 0, SaveGameFileVersion = 0, CustomVersionFormat = 0;
+		Reader << FileTypeTag << SaveGameFileVersion;
+		// 3 = PackageFileSummaryVersionChange (엔진 FSaveGameFileVersion) · 그보다 오래된 머리글은 다루지 않음
+		if (SaveGameFileVersion < 3) return INDEX_NONE;
+		FPackageFileVersion PackageVersion;
+		FEngineVersion EngineVersion;
+		FCustomVersionContainer CustomVersions;
+		FString ClassName;
+		Reader << PackageVersion;
+		Reader << EngineVersion;
+		Reader << CustomVersionFormat;
+		CustomVersions.Serialize(Reader, static_cast<ECustomVersionSerializationFormat>(CustomVersionFormat));
+		Reader << ClassName;
+		return Reader.IsError() ? INDEX_NONE : Reader.Tell();
+	}
+
+	/**
 	 *  저장 파일을 읽어 끝까지 온전한지 확인한 뒤 돌려준다 (못 읽거나 덜 들어 있으면 nullptr · 2026-10-21 타이틀 검증에서 발견한 두 경우).
 	 *  - 언리얼 저장 머리글('GVAS')이 없으면 읽지 않음: 엉뚱한 바이트를 그대로 역직렬화하면 엔진이 이름 길이 검사에서 강제 종료한다.
-	 *  - 엔진은 중간에 잘린 파일도 오류 없이 반쯤 채워 돌려주므로, 현재 형식이면 다시 직렬화한 크기가 파일 크기와 같은지 본다.
+	 *  - 엔진은 중간에 잘린 파일도 오류 없이 반쯤 채워 돌려주므로, 현재 형식이면 다시 직렬화한 내용 크기가 파일 내용 크기와 같은지 본다.
+	 *    머리글은 빼고 비교 (머리글 길이가 실행 파일마다 달라, 패키지에서 만든 저장을 에디터에서 읽으면 잘린 것으로 잘못 판정했음 · 2026-10-22).
 	 */
 	static UCozyEstateSaveGame* ReadCompleteSave(const FString& Slot)
 	{
@@ -132,9 +160,15 @@ namespace CozyEstate
 		if (Save->FileVersion == CurrentSaveFileVersion)
 		{
 			TArray<uint8> Again;
-			if (!UGameplayStatics::SaveGameToMemory(Save, Again) || Again.Num() != Bytes.Num())
+			const int64 FileHeader = GetSaveHeaderSize(Bytes);
+			const bool bSaved = UGameplayStatics::SaveGameToMemory(Save, Again);
+			const int64 AgainHeader = bSaved ? GetSaveHeaderSize(Again) : INDEX_NONE;
+			const int64 FileBody = Bytes.Num() - FileHeader;
+			const int64 AgainBody = Again.Num() - AgainHeader;
+			if (FileHeader == INDEX_NONE || AgainHeader == INDEX_NONE || FileBody != AgainBody)
 			{
-				UE_LOG(LogCozyRealm, Warning, TEXT("저장 파일 %s: 내용이 덜 들어 있어 읽지 않음 (파일 %d바이트 · 읽은 내용 %d바이트)"), *Slot, Bytes.Num(), Again.Num());
+				UE_LOG(LogCozyRealm, Warning, TEXT("저장 파일 %s: 내용이 덜 들어 있어 읽지 않음 (파일 내용 %lld바이트 · 읽은 내용 %lld바이트 · 머리글 %lld/%lld)"),
+					*Slot, FileBody, AgainBody, FileHeader, AgainHeader);
 				return nullptr;
 			}
 		}
