@@ -208,6 +208,9 @@ private:
 	TArray<TObjectPtr<UImage>> BadgeIcons;
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTextBlock>> BadgeCounts;
+	/** 배지 클릭 동작 객체 (여기서 붙잡아 두지 않으면 메모리 정리로 사라져 클릭이 안 됨) */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UCozyUiAction>> BadgeActions;
 	/** 배지 아이콘이 지금 보여 주는 품목 (바뀔 때만 그림을 다시 찾음) */
 	TArray<FName> BadgeItems;
 	/** 시설마다 이름표 아래 진행 막대 (생산·가공 진행 중일 때만) */

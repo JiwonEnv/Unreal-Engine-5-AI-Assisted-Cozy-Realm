@@ -575,6 +575,7 @@ void UCozyHudWidget::RefreshNameLabels()
 	LabelLayer->ClearChildren();
 	NameLabels.Reset();
 	CollectBadges.Reset();
+	BadgeActions.Reset();
 	BadgeIcons.Reset();
 	BadgeCounts.Reset();
 	BadgeItems.Reset();
@@ -694,10 +695,7 @@ UButton* UCozyHudWidget::MakeCollectBadge(const FGuid& FacilityId, UImage*& OutI
 		}
 	};
 	Button->OnClicked.AddDynamic(Action, &UCozyUiAction::Fire);
-	if (ActionSink)
-	{
-		ActionSink->Add(Action);
-	}
+	BadgeActions.Add(Action);
 	return Button;
 }
 
