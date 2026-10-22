@@ -77,7 +77,11 @@ bool FCozyUiAtlasActiveThemeTest::RunTest(const FString& Parameters)
 		SharedTextures.Add(Brush->GetResourceObject());
 	}
 	TestEqual(TEXT("아이콘 텍스처는 3장이다"), SharedTextures.Num(), 3);
-	TestEqual(TEXT("기존 배경 이름 5개를 유지한다"), Theme->Images.Num(), 5);
+	// 기존 배경 이름 5개는 그대로 (개수가 아니라 이름으로 · 공유 시트 밖 아이콘이 더 붙을 수 있음 · 예: 작은 창 핀 Icon.PinTop/PinTopOff 2026-10-22)
+	for (const TCHAR* Name : { TEXT("Chip"), TEXT("Header"), TEXT("Highlight"), TEXT("Panel"), TEXT("Window") })
+	{
+		TestTrue(FString::Printf(TEXT("기존 배경 이름 유지: %s"), Name), Theme->Images.Contains(FName(Name)));
+	}
 	TestTrue(TEXT("시설 메뉴 줄별 선택 이름을 유지한다"), UCozyUiTheme::GetImageNameOptions().Contains(TEXT("Menu.@Row")));
 	return true;
 }

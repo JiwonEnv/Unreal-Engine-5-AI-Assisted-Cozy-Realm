@@ -386,7 +386,9 @@ enum class ECozyUiAction : uint8
 	/** 작은 창 모드 켜기/끄기 (M · 화면 구석의 작은 창 · 원래 크기·화면 설정은 그대로 두었다가 되돌림) */
 	ToggleCompactWindow UMETA(DisplayName = "Toggle Compact Window (작은 창)"),
 	/** 작은 창을 항상 위에 켜기/끄기 (화면 탭 · 적용을 눌러야 저장) */
-	ToggleCompactTop UMETA(DisplayName = "Toggle Compact On Top (작은 창 항상 위)")
+	ToggleCompactTop UMETA(DisplayName = "Toggle Compact On Top (작은 창 항상 위)"),
+	/** 작은 창을 항상 위에 바로 켜기/끄기 + 저장 (작은 창의 핀 버튼 · 꺼져 있으면 버튼 그림은 Image 이름 + 'Off') */
+	ToggleCompactTopNow UMETA(DisplayName = "Toggle Compact On Top Now (작은 창 항상 위 바로 켜기·끄기)")
 };
 
 /** 미리보기 상태 · 실제 값 대신 보여 줄 가짜 상태 */
