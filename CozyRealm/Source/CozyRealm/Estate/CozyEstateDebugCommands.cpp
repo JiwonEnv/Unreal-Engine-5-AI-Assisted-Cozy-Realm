@@ -92,7 +92,21 @@ namespace CozyDebug
 			}
 		}
 		Estate->DebugSetResource(TEXT("Flour"), 100);
-		UE_LOG(LogCozyRealm, Log, TEXT("[디버그] 상태 칩 시험: 밭 주민 빼기 %d · 판매소 업그레이드 %d · %s"), bUnassigned ? 1 : 0, bUpgrade ? 1 : 0, *Reason.ToString());
+		// -CozyStatePause: 제분소 주민도 빼서 가공 일시 정지 (창고 공간 부족 대신 일시 정지 표시를 보려고 · 밀가루는 비움)
+		bool bMillPaused = false;
+		if (FParse::Param(FCommandLine::Get(), TEXT("CozyStatePause")))
+		{
+			Estate->DebugSetResource(TEXT("Flour"), 0);
+			for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
+			{
+				if (Facility.DefinitionId == TEXT("Mill") && Facility.AssignedResidents.Num() > 0)
+				{
+					bMillPaused = Estate->UnassignResident(Facility.AssignedResidents[0], Reason);
+					break;
+				}
+			}
+		}
+		UE_LOG(LogCozyRealm, Log, TEXT("[디버그] 상태 칩 시험: 밭 주민 빼기 %d · 판매소 업그레이드 %d · 제분소 주민 빼기 %d · %s"), bUnassigned ? 1 : 0, bUpgrade ? 1 : 0, bMillPaused ? 1 : 0, *Reason.ToString());
 	}
 }
 
