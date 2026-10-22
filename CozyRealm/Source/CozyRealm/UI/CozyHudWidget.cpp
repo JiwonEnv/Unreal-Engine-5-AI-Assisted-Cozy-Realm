@@ -580,6 +580,8 @@ void UCozyHudWidget::RefreshNameLabels()
 	BadgeCounts.Reset();
 	BadgeItems.Reset();
 	ProgressBars.Reset();
+	StateChips.Reset();
+	StateTexts.Reset();
 	LabelFacilities = Current;
 	const UCozyUiTheme* Theme = HudScreen ? HudScreen->GetTheme() : nullptr;
 	for (const TWeakObjectPtr<ACozyFacilityActor>& Facility : LabelFacilities)
@@ -609,6 +611,32 @@ void UCozyHudWidget::RefreshNameLabels()
 			BarSlot->SetAlignment(FVector2D(0.5f, 0.f));
 		}
 		ProgressBars.Add(Bar);
+
+		// 상태 칩 (진행 막대 아래 · 테마 칩 배경 + 상태색 글자)
+		UBorder* Chip = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
+		if (const FSlateBrush* ChipBrush = Theme ? Theme->FindImage(TEXT("Chip")) : nullptr)
+		{
+			Chip->SetBrush(*ChipBrush);
+		}
+		Chip->SetPadding(FMargin(8.f, 2.f));
+		UTextBlock* StateText = MakeText(FText::GetEmpty(), 13);
+		if (HudScreen)
+		{
+			const FSlateFontInfo Font = HudScreen->GetFont(ECozyUiTextRole::Small);
+			if (Font.HasValidFont())
+			{
+				StateText->SetFont(Font);
+			}
+		}
+		Chip->SetContent(StateText);
+		Chip->SetVisibility(ESlateVisibility::Collapsed);
+		if (UCanvasPanelSlot* ChipSlot = LabelLayer->AddChildToCanvas(Chip))
+		{
+			ChipSlot->SetAutoSize(true);
+			ChipSlot->SetAlignment(FVector2D(0.5f, 0.f));
+		}
+		StateChips.Add(Chip);
+		StateTexts.Add(StateText);
 
 		// 수령 배지 (이름표 위)
 		UImage* Icon = nullptr;
@@ -736,22 +764,42 @@ void UCozyHudWidget::UpdateFacilityBadges(int32 Index, const FGuid& FacilityId, 
 		}
 	}
 
-	// 진행 막대: 생산 중이면 그 주기 · 아니면 진행 중인 첫 가공 작업의 이번 회차
+	// 진행 막대: 생산 중이면 그 주기 · 아니면 진행 중인 첫 가공 작업의 이번 회차 · 업그레이드 중이면 업그레이드 진행
 	float Progress = -1.f;
+	ECozyUiColor BarColor = ECozyUiColor::Progress;
+	bool bPaused = false;
 	const FCozyProductionView Production = Estate->GetProductionView(FacilityId);
-	if (Production.bHasProduction && Production.bWorking)
+	const bool bUpgrading = Estate->IsFacilityUpgrading(FacilityId);
+	if (bUpgrading)
+	{
+		for (const FCozyUpgradeJobView& Job : Estate->GetUpgradeJobs())
+		{
+			if (Job.FacilityId == FacilityId)
+			{
+				Progress = Job.Progress01;
+				BarColor = ECozyUiColor::Locked;
+				break;
+			}
+		}
+	}
+	else if (Production.bHasProduction && Production.bWorking)
 	{
 		Progress = Production.Progress01;
 	}
 	else
 	{
+		bPaused = Production.bHasProduction;
 		for (const FCozyProcessingJobView& Job : Estate->GetProcessingJobs(FacilityId))
 		{
-			if (!Job.bQueued && !Job.bPaused)
+			if (Job.bQueued)
 			{
-				Progress = Job.RunProgress01;
-				break;
+				continue;
 			}
+			// 일시 정지된 가공은 멈춘 자리에서 일시 정지색으로
+			Progress = Job.RunProgress01;
+			bPaused = Job.bPaused;
+			BarColor = Job.bPaused ? ECozyUiColor::Paused : ECozyUiColor::Progress;
+			break;
 		}
 	}
 	UProgressBar* Bar = ProgressBars[Index];
@@ -759,9 +807,62 @@ void UCozyHudWidget::UpdateFacilityBadges(int32 Index, const FGuid& FacilityId, 
 	if (Progress >= 0.f)
 	{
 		Bar->SetPercent(FMath::Clamp(Progress, 0.f, 1.f));
+		if (HudScreen)
+		{
+			Bar->SetFillColorAndOpacity(HudScreen->GetColor(BarColor));
+		}
 		if (UCanvasPanelSlot* BarSlot = Cast<UCanvasPanelSlot>(Bar->Slot))
 		{
 			BarSlot->SetPosition(ScreenPosition + FVector2D(0.f, 3.f));
+		}
+	}
+
+	// 상태 칩: 진행·수령 가능은 막대·배지가 보여 주므로, 멈춘 이유만 짧게 (우선순위: 업그레이드 > 창고 부족 > 가득 참 > 주민 없음·일시 정지)
+	FText StateLabel;
+	ECozyUiColor StateColor = ECozyUiColor::Ink;
+	const FCozyFacilityState* State = Estate->FindFacility(FacilityId);
+	const FCozyFacilityRow* Def = State ? Estate->GetFacilityDef(State->DefinitionId) : nullptr;
+	const bool bNeedsResident = Def && Def->bRequiresResidents && State->AssignedResidents.Num() < FMath::Max(1, Def->MinResidents);
+	if (bUpgrading)
+	{
+		StateLabel = LOCTEXT("ChipUpgrading", "업그레이드 중");
+		StateColor = ECozyUiColor::Locked;
+	}
+	else if (Unclaimed.Amount > 0 && Unclaimed.CollectableNow <= 0)
+	{
+		StateLabel = LOCTEXT("ChipStorageFull", "창고 공간 부족");
+		StateColor = ECozyUiColor::Warning;
+	}
+	else if (Unclaimed.Capacity > 0 && Unclaimed.Amount >= Unclaimed.Capacity)
+	{
+		StateLabel = LOCTEXT("ChipFull", "가득 참 · 수령 필요");
+		StateColor = ECozyUiColor::Warning;
+	}
+	else if (bNeedsResident && (Production.bHasProduction || bPaused))
+	{
+		StateLabel = LOCTEXT("ChipNoResident", "주민 없음");
+		StateColor = ECozyUiColor::Paused;
+	}
+	else if (bPaused)
+	{
+		StateLabel = LOCTEXT("ChipPaused", "일시 정지");
+		StateColor = ECozyUiColor::Paused;
+	}
+	UBorder* Chip = StateChips.IsValidIndex(Index) ? StateChips[Index].Get() : nullptr;
+	if (Chip)
+	{
+		Chip->SetVisibility(StateLabel.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		if (!StateLabel.IsEmpty())
+		{
+			if (UTextBlock* Text = StateTexts[Index])
+			{
+				Text->SetText(StateLabel);
+				Text->SetColorAndOpacity(FSlateColor(HudScreen ? HudScreen->GetColor(StateColor) : FLinearColor::Black));
+			}
+			if (UCanvasPanelSlot* ChipSlot = Cast<UCanvasPanelSlot>(Chip->Slot))
+			{
+				ChipSlot->SetPosition(ScreenPosition + FVector2D(0.f, Progress >= 0.f ? 14.f : 3.f));
+			}
 		}
 	}
 }

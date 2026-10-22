@@ -53,6 +53,53 @@ namespace CozyDebug
 	}
 }
 
+namespace CozyDebug
+{
+	/** 상태 칩 시험: 밭 주민 빼기(주민 없음) · 창고 밀가루 가득(제분소 창고 공간 부족) · 판매소 업그레이드 시작(업그레이드 중 · 재료를 채워 줌) */
+	void RunStateTest(UWorld* World)
+	{
+		if (!FParse::Param(FCommandLine::Get(), TEXT("CozyDebugCommands")))
+		{
+			return;
+		}
+		UCozyEstateSubsystem* Estate = World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
+		if (!Estate || !Estate->IsStarted())
+		{
+			return;
+		}
+		FText Reason;
+		bool bUnassigned = false;
+		for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
+		{
+			if (Facility.DefinitionId == TEXT("Field") && Facility.AssignedResidents.Num() > 0)
+			{
+				bUnassigned = Estate->UnassignResident(Facility.AssignedResidents[0], Reason);
+				break;
+			}
+		}
+		Estate->DebugSetResource(TEXT("Flour"), 100);
+		for (const TCHAR* Item : { TEXT("Gold"), TEXT("Wheat"), TEXT("Flour"), TEXT("TimeTalisman"), TEXT("MindShard") })
+		{
+			Estate->DebugAddResource(Item, 50);
+		}
+		bool bUpgrade = false;
+		for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
+		{
+			if (Facility.DefinitionId == TEXT("Shop"))
+			{
+				bUpgrade = Estate->StartUpgrade(Facility.InstanceId, Reason);
+				break;
+			}
+		}
+		Estate->DebugSetResource(TEXT("Flour"), 100);
+		UE_LOG(LogCozyRealm, Log, TEXT("[디버그] 상태 칩 시험: 밭 주민 빼기 %d · 판매소 업그레이드 %d · %s"), bUnassigned ? 1 : 0, bUpgrade ? 1 : 0, *Reason.ToString());
+	}
+}
+
+static FAutoConsoleCommandWithWorld CozyStateTest(
+	TEXT("Cozy.StateTest"), TEXT("상태 칩 시험: 밭 주민 빼기 · 창고 밀가루 가득 · 판매소 업그레이드 시작 (-CozyDebugCommands 필요)"),
+	FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World) { CozyDebug::RunStateTest(World); }));
+
 static FAutoConsoleCommandWithWorldAndArgs CozyBadgeTest(
 	TEXT("Cozy.BadgeTest"), TEXT("수령 배지 시험: 주민을 밭·제분소에 배치 · 밀 30 · 밀가루 3회 가공 시작 · [초]만큼 방치 시간 건너뛰기 (기본 120 · -CozyDebugCommands 필요)"),
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
@@ -81,6 +128,10 @@ static struct FCozyBadgeTestOnStart
 					if (Estate && Estate->IsStarted())
 					{
 						CozyDebug::RunBadgeTest(World, Seconds);
+						if (FParse::Param(FCommandLine::Get(), TEXT("CozyStateTest")))
+						{
+							CozyDebug::RunStateTest(World);
+						}
 						return false;
 					}
 				}
