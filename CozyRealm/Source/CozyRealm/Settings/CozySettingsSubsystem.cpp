@@ -61,7 +61,7 @@ UCozySettingsSubsystem* UCozySettingsSubsystem::Get(const UObject* WorldContext)
 
 bool UCozySettingsSubsystem::IsSettingsAction(ECozyUiAction Action)
 {
-	return Action >= ECozyUiAction::OpenSettings && Action <= ECozyUiAction::ToggleCompactTop;
+	return Action >= ECozyUiAction::OpenSettings && Action <= ECozyUiAction::ToggleCompactTopNow;
 }
 
 bool UCozySettingsSubsystem::IsSettingsValue(ECozyUiValue Value)
@@ -385,6 +385,7 @@ bool UCozySettingsSubsystem::CanRun(ECozyUiAction Action, FName Param, FText& Ou
 	case ECozyUiAction::ConfirmQuit:
 		return QuitState != EQuit::None;
 	case ECozyUiAction::OpenSettings:
+	case ECozyUiAction::ToggleCompactTopNow:
 		return true;
 	case ECozyUiAction::ToggleCompactWindow:
 		if (bDialog)
@@ -503,6 +504,30 @@ void UCozySettingsSubsystem::Run(ECozyUiAction Action, FName Param, APlayerContr
 			{
 				Hud->ShowToast(Reason);
 			}
+		}
+		break;
+	}
+	case ECozyUiAction::ToggleCompactTopNow:
+	{
+		// 작은 창의 핀 버튼: 설정 창의 '적용' 없이 바로 바꾸고 저장 (작은 창 크기가 설정 파일에 남지 않게 작은 창이면 원래 값으로 저장)
+		if (UCozyGameUserSettings* Settings = UCozyGameUserSettings::Get())
+		{
+			Settings->bCompactAlwaysOnTop = !Settings->bCompactAlwaysOnTop;
+			PendingDisplay.bCompactTop = Settings->bCompactAlwaysOnTop;
+			if (bCompact)
+			{
+				ApplyCompactTopmost(Settings->bCompactAlwaysOnTop);
+				SaveRestoredSettings();
+			}
+			else
+			{
+				Settings->SaveSettings();
+			}
+			if (UCozyHudWidget* Hud = CozySettings::FindHud(Controller))
+			{
+				Hud->ShowToast(Settings->bCompactAlwaysOnTop ? LOCTEXT("CompactTopOn", "작은 창 항상 위: 켬") : LOCTEXT("CompactTopOff", "작은 창 항상 위: 끔"));
+			}
+			Touch();
 		}
 		break;
 	}

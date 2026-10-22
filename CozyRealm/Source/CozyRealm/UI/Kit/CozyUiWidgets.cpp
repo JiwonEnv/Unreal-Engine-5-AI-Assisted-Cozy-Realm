@@ -1,6 +1,7 @@
 ﻿#include "UI/Kit/CozyUiWidgets.h"
 #include "UI/Kit/CozyUiScreen.h"
 #include "UI/Kit/CozyUiTheme.h"
+#include "Settings/CozyGameUserSettings.h"
 #include "Components/Button.h"
 #include "Components/ProgressBar.h"
 #include "Components/Slider.h"
@@ -258,6 +259,11 @@ void UCozyUiElementWidget::HandleClicked()
 	if (UCozyUiScreen* Screen = GetTypedOuter<UCozyUiScreen>())
 	{
 		Screen->RunAction(Entry);
+		// 상태에 따라 그림이 바뀌는 버튼(작은 창 핀)은 누른 뒤 바로 다시 그림
+		if (Entry.Action == ECozyUiAction::ToggleCompactTopNow)
+		{
+			ApplyCozyTheme(*Screen);
+		}
 	}
 	if (FSlateApplication::IsInitialized())
 	{
@@ -320,7 +326,17 @@ void UCozyUiElementWidget::ApplyCozyTheme(const UCozyUiScreen& Screen)
 	}
 
 	// 이미지: 칸 크기는 고정, 이미지는 칸 안에 맞춤 방법대로 (비율이 다른 이미지로 바꿔도 줄이 흐트러지지 않음)
-	const FSlateBrush* ImageBrush = Screen.FindImage(Entry.Image);
+	// 작은 창 핀 버튼: '항상 위'가 꺼져 있으면 '이름 + Off' 그림 (예: Icon.PinTop → Icon.PinTopOff · 핀에 X)
+	FName ImageName = Entry.Image;
+	if (Entry.Action == ECozyUiAction::ToggleCompactTopNow && !ImageName.IsNone())
+	{
+		const UCozyGameUserSettings* UserSettings = UCozyGameUserSettings::Get();
+		if (UserSettings && !UserSettings->bCompactAlwaysOnTop)
+		{
+			ImageName = FName(ImageName.ToString() + TEXT("Off"));
+		}
+	}
+	const FSlateBrush* ImageBrush = Screen.FindImage(ImageName);
 	const FVector2D Box = Entry.ImageBox.IsNearlyZero() ? Theme->Metrics.IconSize : Entry.ImageBox;
 	// 이미지 이름은 있는데 테마에 없으면 Hidden (칸 유지 · 목록 줄의 정렬 유지) · 이름이 없으면 Collapsed
 	const ESlateVisibility ImageVisibility = ImageBrush ? ESlateVisibility::HitTestInvisible : (Entry.Image.IsNone() ? ESlateVisibility::Collapsed : ESlateVisibility::Hidden);
