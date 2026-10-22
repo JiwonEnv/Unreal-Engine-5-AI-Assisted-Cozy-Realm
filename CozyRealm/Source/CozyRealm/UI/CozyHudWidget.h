@@ -213,6 +213,11 @@ private:
 	TArray<TObjectPtr<UCozyUiAction>> BadgeActions;
 	/** 배지 아이콘이 지금 보여 주는 품목 (바뀔 때만 그림을 다시 찾음) */
 	TArray<FName> BadgeItems;
+	/** 시설마다 진행 막대 아래 상태 칩 (주민 없음·일시 정지 · 가득 참·창고 부족 · 업그레이드 중) · 색은 창 안 상태색과 같음 */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UBorder>> StateChips;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> StateTexts;
 	/** 시설마다 이름표 아래 진행 막대 (생산·가공 진행 중일 때만) */
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UProgressBar>> ProgressBars;
