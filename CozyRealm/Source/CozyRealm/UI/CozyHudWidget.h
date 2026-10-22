@@ -13,6 +13,8 @@ class UButton;
 class UHorizontalBox;
 class UTextBlock;
 class UVerticalBox;
+class UImage;
+class UProgressBar;
 class UCozyEstateSubsystem;
 class ACozyFacilityActor;
 
@@ -199,6 +201,22 @@ private:
 	TObjectPtr<UCanvasPanel> LabelLayer;
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTextBlock>> NameLabels;
+	/** 시설마다 이름표 위 수령 배지 (미수령분이 있을 때만 · 누르면 그 시설만 수령) · 이름표와 같은 순서 */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UButton>> CollectBadges;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> BadgeIcons;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> BadgeCounts;
+	/** 배지 아이콘이 지금 보여 주는 품목 (바뀔 때만 그림을 다시 찾음) */
+	TArray<FName> BadgeItems;
+	/** 시설마다 이름표 아래 진행 막대 (생산·가공 진행 중일 때만) */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UProgressBar>> ProgressBars;
+	/** 수령 배지 하나를 만든다 (테마 둥근 버튼 · 아이콘 + 개수) */
+	UButton* MakeCollectBadge(const FGuid& FacilityId, UImage*& OutIcon, UTextBlock*& OutCount);
+	/** 배지·진행 막대의 표시와 값 (매 프레임 · 이름표 위치와 함께) */
+	void UpdateFacilityBadges(int32 Index, const FGuid& FacilityId, const FVector2D& ScreenPosition);
 	/** 시설 메뉴 화면을 담는 상자 (선택한 시설 위를 따라다님) */
 	UPROPERTY(Transient)
 	TObjectPtr<UHorizontalBox> IconBox;
