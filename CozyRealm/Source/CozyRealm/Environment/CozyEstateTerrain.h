@@ -106,6 +106,13 @@ public:
 	void SyncLayers();
 #endif
 
+protected:
+#if WITH_EDITOR
+	/** 새 레이아웃에서 높이와 칠하기만 바꾸고 Landscape 임포트·계절 처리는 재사용한다. */
+	virtual float HeightAt(float X, float Y) const;
+	virtual float LayerWeightAt(float X, float Y, float Height, float Slope, FName Layer) const;
+#endif
+
 private:
 
 	void ApplySeason();
@@ -115,6 +122,5 @@ private:
 
 #if WITH_EDITOR
 	class ULandscapeLayerInfoObject* FindOrCreateLayerInfo(FName LayerName) const;
-	float HeightAt(float X, float Y) const;
 #endif
 };

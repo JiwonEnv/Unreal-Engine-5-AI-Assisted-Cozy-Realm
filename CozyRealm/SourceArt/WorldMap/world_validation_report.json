@@ -1,0 +1,40 @@
+{
+  "verified_at": "2026-10-24",
+  "scope": "레벨디자인 초안",
+  "editor_build_seconds": 35.93,
+  "game_build_seconds": 48.57,
+  "package_seconds": 193.01,
+  "collision_samples": 926,
+  "collision_failures": 0,
+  "route_max_slopes_degrees": [
+    22.0,
+    16.2,
+    18.1,
+    21.8,
+    19.2
+  ],
+  "terrain_regression_passed": 3,
+  "walk_demo_distance_cm": 1848.8,
+  "walk_demo_grounded": true,
+  "original_saves_unchanged": 3,
+  "video_seconds": 143.2,
+  "video_local_path": "C:\\Users\\ljw13\\OneDrive\\바탕 화면\\CozyRealm\\Reocode\\2026-10-24_월드맵_시작확장구역과실제보행_패키지검증_01.mp4",
+  "video_bytes": 49780630,
+  "video_sha256": "1511D9B0483729737FC76B352E88409EFBD3C662BB74DA867A9A3DFCC3B09012",
+  "video_frames_verified_seconds": [
+    3,
+    20,
+    40,
+    60,
+    80,
+    110,
+    135
+  ],
+  "unverified": [
+    "모든 길의 캐릭터 완주",
+    "장시간 WASD 보행",
+    "NPC 길찾기",
+    "전 월드 생산·건설·해금 연동",
+    "최종 아트"
+  ]
+}
