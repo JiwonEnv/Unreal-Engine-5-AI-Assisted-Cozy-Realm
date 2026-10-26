@@ -48,7 +48,10 @@ namespace CozyHud
 	/** 첫 실행 안내 칸 폭 · 화면 아래에서 띄우는 거리 · 화살표를 이름표 위로 띄우는 높이 · 단계 최소 표시 시간(초) */
 	constexpr float TutorialWidth = 520.f;
 	constexpr float TutorialBottom = 24.f;
-	constexpr float TutorialArrowLift = 58.f;
+	constexpr float TutorialArrowLift = 96.f;
+	/** 창이 열렸을 때 왼쪽 아래로 옮긴 안내 칸 폭 · 왼쪽 여백 (가운데 창과 겹치지 않게) */
+	constexpr float TutorialSideWidth = 300.f;
+	constexpr float TutorialSideMargin = 16.f;
 	constexpr float TutorialMinSeconds = 1.5f;
 	/** 시설 이름표 아래 진행 막대 크기 (화면 단위) */
 	const FVector2D FacilityBarSize(64.f, 7.f);
@@ -1374,6 +1377,8 @@ void UCozyHudWidget::BuildTutorialWidgets()
 	UVerticalBox* Column = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
 	TutorialTitle = MakeText(FText::GetEmpty(), 20);
 	ApplyFont(TutorialTitle, ECozyUiTextRole::Title, ECozyUiColor::Ink);
+	// 창이 열려 좁아진 칸에서도 제목이 칸 밖으로 나가지 않게
+	TutorialTitle->SetAutoWrapText(true);
 	Column->AddChildToVerticalBox(TutorialTitle);
 	TutorialBody = MakeText(FText::GetEmpty(), 16);
 	ApplyFont(TutorialBody, ECozyUiTextRole::Body, ECozyUiColor::Ink);
@@ -1416,9 +1421,10 @@ void UCozyHudWidget::BuildTutorialWidgets()
 	}
 
 	// 대상 시설 위 화살표 (위아래로 흔들림 · 기본 글꼴의 ▼)
-	TutorialArrow = MakeText(FText::FromString(TEXT("▼")), 34, HudScreen ? HudScreen->GetColor(ECozyUiColor::Point) : FLinearColor(1.f, 0.5f, 0.2f));
-	TutorialArrow->SetShadowOffset(FVector2D(1.f, 2.f));
-	TutorialArrow->SetShadowColorAndOpacity(FLinearColor(0.f, 0.f, 0.f, 0.4f));
+	// 흰 테두리 같은 그림자를 둔 주황 화살표 (밤에도 보이게)
+	TutorialArrow = MakeText(FText::FromString(TEXT("▼")), 52, FLinearColor(1.f, 0.55f, 0.15f));
+	TutorialArrow->SetShadowOffset(FVector2D(0.f, 3.f));
+	TutorialArrow->SetShadowColorAndOpacity(FLinearColor(1.f, 1.f, 1.f, 0.85f));
 	TutorialArrow->SetVisibility(ESlateVisibility::Collapsed);
 	if (UCanvasPanelSlot* ArrowSlot = RootCanvas->AddChildToCanvas(TutorialArrow))
 	{
@@ -1539,6 +1545,22 @@ void UCozyHudWidget::UpdateTutorial(float DeltaTime)
 	TutorialTime += DeltaTime;
 	// 작은 창에서는 숨김 (크게 보기로 돌아오면 이어서)
 	TutorialPanel->SetVisibility(bCompactMode ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+	// 창이 열려 있으면 창 버튼을 가리지 않게 왼쪽 아래로 좁혀서 · 닫히면 가운데로
+	const bool bSide = WindowKind != ECozyWindowKind::None;
+	if (UCanvasPanelSlot* PanelSlot = Cast<UCanvasPanelSlot>(TutorialPanel->Slot))
+	{
+		const float AnchorX = bSide ? 0.f : 0.5f;
+		if (!FMath::IsNearlyEqual(PanelSlot->GetAnchors().Minimum.X, AnchorX))
+		{
+			PanelSlot->SetAnchors(FAnchors(AnchorX, 1.f));
+			PanelSlot->SetAlignment(FVector2D(AnchorX, 1.f));
+			PanelSlot->SetPosition(FVector2D(bSide ? CozyHud::TutorialSideMargin : 0.f, -CozyHud::TutorialBottom));
+			if (USizeBox* Width = Cast<USizeBox>(TutorialPanel->GetContent()))
+			{
+				Width->SetWidthOverride(bSide ? CozyHud::TutorialSideWidth : CozyHud::TutorialWidth);
+			}
+		}
+	}
 
 	const FTutorialStep& Step = TutorialSteps[TutorialIndex];
 	// 이미 이룬 단계(다시 보기에서 주민이 이미 배치됨 등)는 잠깐 보여 준 뒤 다음으로
@@ -1555,9 +1577,10 @@ void UCozyHudWidget::UpdateTutorial(float DeltaTime)
 		return;
 	}
 
-	// 화살표: 대상 시설(첫 번째) 이름표 위 · 창이 열려 있거나 작은 창이면 숨김
+	// 화살표: 대상 시설(첫 번째) 이름표 위 · 창 · 시설 메뉴가 열려 있거나 작은 창이면 숨김 (메뉴 버튼을 가리지 않게)
 	bool bArrow = false;
-	if (!bCompactMode && WindowKind == ECozyWindowKind::None && !Step.Target.IsNone())
+	const bool bMenuOpen = IconBox && IconBox->GetVisibility() != ESlateVisibility::Collapsed;
+	if (!bCompactMode && !bMenuOpen && WindowKind == ECozyWindowKind::None && !Step.Target.IsNone())
 	{
 		for (const TWeakObjectPtr<ACozyFacilityActor>& Facility : LabelFacilities)
 		{
