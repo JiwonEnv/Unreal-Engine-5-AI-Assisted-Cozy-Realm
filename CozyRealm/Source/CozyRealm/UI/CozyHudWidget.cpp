@@ -8,6 +8,11 @@
 #include "Environment/CozyEstateTerrain.h"
 #include "Environment/CozySeasonPreset.h"
 #include "Settings/CozySettingsSubsystem.h"
+#include "Settings/CozyGameUserSettings.h"
+#include "Data/CozyRealmDataTypes.h"
+#include "Engine/DataTable.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 #include "Blueprint/WidgetTree.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Components/Border.h"
@@ -40,6 +45,11 @@ namespace CozyHud
 	const FName BadgeButtonStyle(TEXT("Round"));
 	constexpr float BadgeIconSize = 26.f;
 	constexpr float BadgeLift = 24.f;
+	/** 첫 실행 안내 칸 폭 · 화면 아래에서 띄우는 거리 · 화살표를 이름표 위로 띄우는 높이 · 단계 최소 표시 시간(초) */
+	constexpr float TutorialWidth = 520.f;
+	constexpr float TutorialBottom = 24.f;
+	constexpr float TutorialArrowLift = 58.f;
+	constexpr float TutorialMinSeconds = 1.5f;
 	/** 시설 이름표 아래 진행 막대 크기 (화면 단위) */
 	const FVector2D FacilityBarSize(64.f, 7.f);
 	/** 고칠 프로젝트 설정 항목 (WarnMissingScreen 안내 글) */
@@ -1296,6 +1306,278 @@ void UCozyHudWidget::HandleCollectClicked(const FGuid& FacilityId)
 		// 클릭 결과는 '방금 한 일'로 따로 · 현재 상태 줄은 알림을 받아 최신 값으로 바뀜
 		SetFeedback(Estate->CollectUnclaimed(FacilityId).Message);
 	}
+}
+
+// ---------------------------------------------------------------------------
+// 첫 실행 안내 (사용자 결정 2026-10-22: 배치 → 수확 → 가공 → 판매 · 건너뛰기 · 설정에서 다시 보기)
+
+void UCozyHudWidget::StartTutorial()
+{
+	// 단계 문구는 Data/GameData/Tutorial.csv (행 이름 순서) · 코드 없이 고칠 수 있게
+	TutorialSteps.Reset();
+	FString Csv;
+	if (FFileHelper::LoadFileToString(Csv, *FPaths::Combine(FPaths::ProjectDir(), TEXT("Data"), TEXT("GameData"), TEXT("Tutorial.csv"))))
+	{
+		UDataTable* Table = NewObject<UDataTable>(this, NAME_None, RF_Transient);
+		Table->RowStruct = FCozyTutorialRow::StaticStruct();
+		Table->CreateTableFromCSVString(Csv);
+		TArray<FName> Names = Table->GetRowNames();
+		Names.Sort([](const FName& A, const FName& B) { return A.LexicalLess(B); });
+		for (const FName& Name : Names)
+		{
+			if (const FCozyTutorialRow* Row = Table->FindRow<FCozyTutorialRow>(Name, TEXT("Tutorial")))
+			{
+				TutorialSteps.Add({ Row->Goal, Row->TargetFacility, Row->Title, Row->Body });
+			}
+		}
+	}
+	if (TutorialSteps.Num() == 0)
+	{
+		UE_LOG(LogCozyRealm, Warning, TEXT("[안내] Tutorial.csv를 읽지 못해 첫 실행 안내를 띄우지 않음"));
+		return;
+	}
+	BuildTutorialWidgets();
+	ShowTutorialStep(0);
+	UE_LOG(LogCozyRealm, Log, TEXT("[안내] 시작 (%d단계)"), TutorialSteps.Num());
+}
+
+void UCozyHudWidget::BuildTutorialWidgets()
+{
+	if (TutorialPanel || !RootCanvas || !WidgetTree)
+	{
+		return;
+	}
+	const UCozyUiTheme* Theme = HudScreen ? HudScreen->GetTheme() : nullptr;
+	auto ApplyFont = [this](UTextBlock* Text, ECozyUiTextRole Role, ECozyUiColor Color)
+	{
+		if (!HudScreen)
+		{
+			return;
+		}
+		const FSlateFontInfo Font = HudScreen->GetFont(Role);
+		if (Font.HasValidFont())
+		{
+			Text->SetFont(Font);
+		}
+		Text->SetColorAndOpacity(FSlateColor(HudScreen->GetColor(Color)));
+	};
+
+	// 화면 아래 가운데 안내 칸 (테마 창 배경)
+	TutorialPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("TutorialPanel"));
+	if (const FSlateBrush* Brush = Theme ? Theme->FindImage(TEXT("Window")) : nullptr)
+	{
+		TutorialPanel->SetBrush(*Brush);
+	}
+	TutorialPanel->SetPadding(Theme ? Theme->Metrics.WindowPadding : FMargin(16.f));
+	USizeBox* Width = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+	Width->SetWidthOverride(CozyHud::TutorialWidth);
+	UVerticalBox* Column = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
+	TutorialTitle = MakeText(FText::GetEmpty(), 20);
+	ApplyFont(TutorialTitle, ECozyUiTextRole::Title, ECozyUiColor::Ink);
+	Column->AddChildToVerticalBox(TutorialTitle);
+	TutorialBody = MakeText(FText::GetEmpty(), 16);
+	ApplyFont(TutorialBody, ECozyUiTextRole::Body, ECozyUiColor::Ink);
+	TutorialBody->SetAutoWrapText(true);
+	if (UVerticalBoxSlot* BodySlot = Column->AddChildToVerticalBox(TutorialBody))
+	{
+		BodySlot->SetPadding(FMargin(0.f, 6.f, 0.f, 8.f));
+	}
+	UButton* Skip = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass());
+	if (const FButtonStyle* Style = Theme ? Theme->FindButtonStyle(NAME_None) : nullptr)
+	{
+		Skip->SetStyle(*Style);
+	}
+	UTextBlock* SkipLabel = MakeText(LOCTEXT("TutorialSkip", "안내 건너뛰기"), 15);
+	ApplyFont(SkipLabel, ECozyUiTextRole::Button, ECozyUiColor::Ink);
+	Skip->SetContent(SkipLabel);
+	Skip->SetToolTipText(LOCTEXT("TutorialSkipTip", "안내를 닫습니다 · 설정 창의 '안내 다시 보기'로 다시 볼 수 있습니다"));
+	UCozyUiAction* SkipAction = NewObject<UCozyUiAction>(this);
+	SkipAction->Callback = [this]()
+	{
+		FinishTutorial(false);
+		if (FSlateApplication::IsInitialized())
+		{
+			FSlateApplication::Get().SetAllUserFocusToGameViewport();
+		}
+	};
+	Skip->OnClicked.AddDynamic(SkipAction, &UCozyUiAction::Fire);
+	TutorialActions.Add(SkipAction);
+	Column->AddChildToVerticalBox(Skip)->SetHorizontalAlignment(HAlign_Right);
+	Width->SetContent(Column);
+	TutorialPanel->SetContent(Width);
+	TutorialPanel->SetVisibility(ESlateVisibility::Collapsed);
+	if (UCanvasPanelSlot* PanelSlot = RootCanvas->AddChildToCanvas(TutorialPanel))
+	{
+		PanelSlot->SetAnchors(FAnchors(0.5f, 1.f));
+		PanelSlot->SetAlignment(FVector2D(0.5f, 1.f));
+		PanelSlot->SetPosition(FVector2D(0.f, -CozyHud::TutorialBottom));
+		PanelSlot->SetAutoSize(true);
+		PanelSlot->SetZOrder(4);
+	}
+
+	// 대상 시설 위 화살표 (위아래로 흔들림 · 기본 글꼴의 ▼)
+	TutorialArrow = MakeText(FText::FromString(TEXT("▼")), 34, HudScreen ? HudScreen->GetColor(ECozyUiColor::Point) : FLinearColor(1.f, 0.5f, 0.2f));
+	TutorialArrow->SetShadowOffset(FVector2D(1.f, 2.f));
+	TutorialArrow->SetShadowColorAndOpacity(FLinearColor(0.f, 0.f, 0.f, 0.4f));
+	TutorialArrow->SetVisibility(ESlateVisibility::Collapsed);
+	if (UCanvasPanelSlot* ArrowSlot = RootCanvas->AddChildToCanvas(TutorialArrow))
+	{
+		ArrowSlot->SetAutoSize(true);
+		ArrowSlot->SetAlignment(FVector2D(0.5f, 1.f));
+		ArrowSlot->SetZOrder(3);
+	}
+}
+
+void UCozyHudWidget::ShowTutorialStep(int32 Index)
+{
+	if (!TutorialSteps.IsValidIndex(Index) || !TutorialPanel)
+	{
+		return;
+	}
+	TutorialIndex = Index;
+	TutorialTime = 0.f;
+	TutorialWheatStart = GetStoredAmount(TEXT("Wheat"));
+	TutorialFlourStart = GetStoredAmount(TEXT("Flour"));
+	TutorialGoldStart = GetStoredAmount(TEXT("Gold"));
+	const FTutorialStep& Step = TutorialSteps[Index];
+	TutorialTitle->SetText(FText::Format(LOCTEXT("TutorialTitle", "안내 {0}/{1} · {2}"), FText::AsNumber(Index + 1), FText::AsNumber(TutorialSteps.Num()), Step.Title));
+	TutorialBody->SetText(Step.Body);
+	TutorialPanel->SetVisibility(ESlateVisibility::Visible);
+	UE_LOG(LogCozyRealm, Log, TEXT("[안내] %d단계: %s"), Index + 1, *Step.Title.ToString());
+}
+
+void UCozyHudWidget::FinishTutorial(bool bCompleted)
+{
+	if (TutorialIndex == INDEX_NONE)
+	{
+		return;
+	}
+	TutorialIndex = INDEX_NONE;
+	if (TutorialPanel)
+	{
+		TutorialPanel->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	if (TutorialArrow)
+	{
+		TutorialArrow->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	if (UCozyGameUserSettings* Settings = UCozyGameUserSettings::Get())
+	{
+		Settings->bTutorialDone = true;
+		Settings->SaveSettings();
+	}
+	ShowToast(bCompleted ? LOCTEXT("TutorialDone", "안내를 모두 마쳤습니다 · 설정 창에서 다시 볼 수 있습니다")
+		: LOCTEXT("TutorialSkipped", "안내를 건너뛰었습니다 · 설정 창의 '안내 다시 보기'로 다시 볼 수 있습니다"));
+	UE_LOG(LogCozyRealm, Log, TEXT("[안내] %s"), bCompleted ? TEXT("완료") : TEXT("건너뜀"));
+}
+
+int32 UCozyHudWidget::GetStoredAmount(FName ItemId) const
+{
+	const UCozyEstateSubsystem* Estate = GetEstate();
+	const int32* Amount = Estate ? Estate->GetState().Resources.Find(ItemId) : nullptr;
+	return Amount ? *Amount : 0;
+}
+
+bool UCozyHudWidget::IsTutorialGoalDone(FName Goal) const
+{
+	const UCozyEstateSubsystem* Estate = GetEstate();
+	if (!Estate)
+	{
+		return false;
+	}
+	auto AnyFacility = [Estate](FName DefinitionId, TFunctionRef<bool(const FCozyFacilityState&)> Test)
+	{
+		for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
+		{
+			if (Facility.DefinitionId == DefinitionId && !Facility.bStored && Test(Facility))
+			{
+				return true;
+			}
+		}
+		return false;
+	};
+	if (Goal == TEXT("AssignField"))
+	{
+		return AnyFacility(TEXT("Field"), [](const FCozyFacilityState& F) { return F.AssignedResidents.Num() > 0; });
+	}
+	if (Goal == TEXT("CollectField"))
+	{
+		return GetStoredAmount(TEXT("Wheat")) > TutorialWheatStart;
+	}
+	if (Goal == TEXT("StartProcessing"))
+	{
+		return GetStoredAmount(TEXT("Flour")) > TutorialFlourStart
+			|| AnyFacility(TEXT("Mill"), [Estate](const FCozyFacilityState& F) { return Estate->GetProcessingJobs(F.InstanceId).Num() > 0; });
+	}
+	if (Goal == TEXT("Sell"))
+	{
+		return GetStoredAmount(TEXT("Gold")) > TutorialGoldStart;
+	}
+	return false;
+}
+
+void UCozyHudWidget::UpdateTutorial(float DeltaTime)
+{
+	// 새 게임이면 한 번 자동으로 (이미 끝냈거나 건너뛰었으면 안 띄움)
+	if (!bTutorialChecked && TutorialIndex == INDEX_NONE)
+	{
+		const UCozyEstateSubsystem* Estate = GetEstate();
+		const UCozyGameUserSettings* Settings = UCozyGameUserSettings::Get();
+		if (Estate && Estate->IsStarted())
+		{
+			bTutorialChecked = true;
+			if (Estate->IsNewGameSession() && Settings && !Settings->bTutorialDone)
+			{
+				StartTutorial();
+			}
+		}
+	}
+	if (TutorialIndex == INDEX_NONE || !TutorialSteps.IsValidIndex(TutorialIndex))
+	{
+		return;
+	}
+	TutorialTime += DeltaTime;
+	// 작은 창에서는 숨김 (크게 보기로 돌아오면 이어서)
+	TutorialPanel->SetVisibility(bCompactMode ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+
+	const FTutorialStep& Step = TutorialSteps[TutorialIndex];
+	// 이미 이룬 단계(다시 보기에서 주민이 이미 배치됨 등)는 잠깐 보여 준 뒤 다음으로
+	if (TutorialTime > CozyHud::TutorialMinSeconds && IsTutorialGoalDone(Step.Goal))
+	{
+		if (TutorialIndex + 1 < TutorialSteps.Num())
+		{
+			ShowTutorialStep(TutorialIndex + 1);
+		}
+		else
+		{
+			FinishTutorial(true);
+		}
+		return;
+	}
+
+	// 화살표: 대상 시설(첫 번째) 이름표 위 · 창이 열려 있거나 작은 창이면 숨김
+	bool bArrow = false;
+	if (!bCompactMode && WindowKind == ECozyWindowKind::None && !Step.Target.IsNone())
+	{
+		for (const TWeakObjectPtr<ACozyFacilityActor>& Facility : LabelFacilities)
+		{
+			const UCozyEstateSubsystem* Estate = GetEstate();
+			const FCozyFacilityState* State = Facility.IsValid() && Estate ? Estate->FindFacility(Facility->GetFacilityId()) : nullptr;
+			FVector2D ScreenPosition;
+			if (State && State->DefinitionId == Step.Target && !State->bStored
+				&& UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(GetOwningPlayer(), Facility->GetNameAnchorLocation(), ScreenPosition, false))
+			{
+				if (UCanvasPanelSlot* ArrowSlot = Cast<UCanvasPanelSlot>(TutorialArrow->Slot))
+				{
+					const float Bob = FMath::Sin(TutorialTime * 4.f) * 6.f;
+					ArrowSlot->SetPosition(ScreenPosition - FVector2D(0.f, CozyHud::TutorialArrowLift + Bob));
+				}
+				bArrow = true;
+				break;
+			}
+		}
+	}
+	TutorialArrow->SetVisibility(bArrow ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 }
 
 // ---------------------------------------------------------------------------

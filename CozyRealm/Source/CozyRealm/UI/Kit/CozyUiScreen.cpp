@@ -1424,6 +1424,7 @@ FText UCozyUiScreen::GetActionName(ECozyUiAction Action)
 	case ECozyUiAction::ToggleCompactWindow: return LOCTEXT("ActCompact", "작은 창으로 띄워 두기 / 크게 보기 (M)");
 	case ECozyUiAction::ToggleCompactTop: return LOCTEXT("ActCompactTop", "작은 창을 항상 위에 켜기·끄기 (적용을 눌러야 저장)");
 	case ECozyUiAction::ToggleCompactTopNow: return LOCTEXT("ActCompactTopNow", "작은 창 항상 위 켜기·끄기 (핀만 = 켬 · 핀에 X = 끔)");
+	case ECozyUiAction::RestartTutorial: return LOCTEXT("ActTutorial", "첫 실행 안내를 처음부터 다시 봅니다");
 	case ECozyUiAction::StartUpgrade: return LOCTEXT("ActUpStart", "업그레이드 시작");
 	case ECozyUiAction::GoToFacility: return LOCTEXT("ActGoTo", "그 시설로 이동");
 	case ECozyUiAction::TakeOutStored: return LOCTEXT("ActTakeOut", "보관함에서 꺼내기");
@@ -1742,6 +1743,7 @@ void UCozyUiScreen::RunAction(const FCozyUiElementEntry& Entry)
 	case ECozyUiAction::CollectAll: Hud->ShowToast(Estate->CollectAllProduction()); break;
 	case ECozyUiAction::ToggleDebug: Hud->ToggleDebugPanel(); break;
 	case ECozyUiAction::CloseWindow: Hud->CloseWindow(); break;
+	case ECozyUiAction::RestartTutorial: Hud->CloseWindow(); Hud->StartTutorial(); break;
 	case ECozyUiAction::ConfirmOfflineReport: Estate->DismissOfflineReport(); Hud->CloseWindow(); break;
 	case ECozyUiAction::CollectWindow: Hud->CollectFromWindow(ContextFacility); break;
 	case ECozyUiAction::OpenNagayaForWindow: Hud->OpenWindow(ECozyWindowKind::Nagaya, FGuid(), ContextFacility); break;

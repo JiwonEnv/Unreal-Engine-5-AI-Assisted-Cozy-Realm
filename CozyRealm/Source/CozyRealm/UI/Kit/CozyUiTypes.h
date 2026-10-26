@@ -388,7 +388,9 @@ enum class ECozyUiAction : uint8
 	/** 작은 창을 항상 위에 켜기/끄기 (화면 탭 · 적용을 눌러야 저장) */
 	ToggleCompactTop UMETA(DisplayName = "Toggle Compact On Top (작은 창 항상 위)"),
 	/** 작은 창을 항상 위에 바로 켜기/끄기 + 저장 (작은 창의 핀 버튼 · 꺼져 있으면 버튼 그림은 Image 이름 + 'Off') */
-	ToggleCompactTopNow UMETA(DisplayName = "Toggle Compact On Top Now (작은 창 항상 위 바로 켜기·끄기)")
+	ToggleCompactTopNow UMETA(DisplayName = "Toggle Compact On Top Now (작은 창 항상 위 바로 켜기·끄기)"),
+	/** 첫 실행 안내를 처음 단계부터 다시 (설정 창 · 누르면 설정 창을 닫고 안내 시작) */
+	RestartTutorial UMETA(DisplayName = "Restart Tutorial (안내 다시 보기)")
 };
 
 /** 미리보기 상태 · 실제 값 대신 보여 줄 가짜 상태 */
