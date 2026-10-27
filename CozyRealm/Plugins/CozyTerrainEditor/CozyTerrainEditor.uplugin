@@ -1,0 +1,12 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "0.1",
+  "FriendlyName": "CozyRealm 지형 편집기",
+  "Description": "현재 레벨에서 평지·산·길을 설계하고 Landscape 편집 레이어로 적용하는 제작 도구",
+  "Category": "Editor",
+  "EnabledByDefault": true,
+  "CanContainContent": false,
+  "Modules": [{"Name":"CozyTerrainEditor","Type":"Editor","LoadingPhase":"PostEngineInit"}],
+  "Plugins": [{"Name":"ProceduralMeshComponent","Enabled":true}]
+}
