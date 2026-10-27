@@ -37,6 +37,10 @@ bool FCozyTerrainRecipeTest::RunTest(const FString&)
     FCozyTerrainRecipe Peaks;FCozyLandform Peak;Peak.Type=ECozyLandform::Mountain;Peak.Size=FVector2D(40,40);Peak.Height=25;Peaks.Landforms.Add(Peak);Peaks.Landforms.Add(Peak);
     TestTrue(TEXT("겹친 산이 두 배로 솟지 않음"),Peaks.Evaluate(FVector2D(0,0),0)<=26.1f);
     TestTrue(TEXT("산에서 먼 바닥은 그대로"),FMath::Abs(Peaks.Evaluate(FVector2D(200,200),0))<.01f);
+    FCozyTerrainRecipe Mesa;FCozyLandform Top;Top.Type=ECozyLandform::Mountain;Top.Size=FVector2D(40,40);Top.Height=20;Mesa.Landforms.Add(Top);
+    TestTrue(TEXT("뾰족한 산은 중심에서 조금만 벗어나도 낮아짐"),Mesa.Evaluate(FVector2D(8,0),0)<19);
+    Mesa.Landforms[0].PeakFlat=50;
+    TestTrue(TEXT("꼭대기 넓이 50%면 반지름 40% 지점도 꼭대기 높이"),FMath::Abs(Mesa.Evaluate(FVector2D(8,0),0)-20)<.01f);
     Loaded.Landforms[0].Size.X=0;TestFalse(TEXT("영 크기 거부"),Loaded.Validate(Error));
     Loaded=R;Loaded.Version=99;TestFalse(TEXT("미지원 설정 버전 거부"),Loaded.Validate(Error));
     Loaded=R;Loaded.Routes[0].Width=-1;TestFalse(TEXT("음수 길 폭 거부"),Loaded.Validate(Error));

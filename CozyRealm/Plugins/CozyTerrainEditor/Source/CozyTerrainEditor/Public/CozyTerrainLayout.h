@@ -21,6 +21,8 @@ struct FCozyLandform
     UPROPERTY(EditAnywhere, meta=(DisplayName="높이 (m)",ClampMin="-200",ClampMax="200")) float Height=0;
     UPROPERTY(EditAnywhere, meta=(DisplayName="주변 연결 폭 (m)",ClampMin="1",ClampMax="200")) float Blend=8;
     UPROPERTY(EditAnywhere, meta=(DisplayName="방향 (도)")) float Rotation=0;
+    /** 산만: 꼭대기가 평평하게 넓은 정도 · 0%는 뾰족한 봉우리, 클수록 윗부분이 넓고 옆면이 가파름 */
+    UPROPERTY(EditAnywhere, meta=(DisplayName="꼭대기 넓이 (%)",ClampMin="0",ClampMax="90")) float PeakFlat=0;
 };
 
 USTRUCT()

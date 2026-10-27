@@ -23,7 +23,7 @@ bool FCozyTerrainRecipe::Validate(FString& Reason) const
     if(Version!=1||Components<1||Components>8||!Finite(MapSize.X)||!Finite(MapSize.Y)||MapSize.X<63||MapSize.Y<63||MapSize.X>1008||MapSize.Y>1008||!Finite(BaseHeight)||FMath::Abs(BaseHeight)>200||Landforms.Num()>128||Routes.Num()>64)
     {Reason=TEXT("영역은 63~1008m, 구획은 1~8, 기본 높이는 ±200m 범위여야 합니다.");return false;}
     for(const auto& F:Landforms)
-        if(!Finite(F.Center.X)||!Finite(F.Center.Y)||!Finite(F.Size.X)||!Finite(F.Size.Y)||F.Size.X<2||F.Size.Y<2||F.Size.X>2000||F.Size.Y>2000||!Finite(F.Height)||FMath::Abs(F.Height)>200||!Finite(F.Blend)||F.Blend<1||F.Blend>200||!Finite(F.Rotation)||uint8(F.Type)>1)
+        if(!Finite(F.Center.X)||!Finite(F.Center.Y)||!Finite(F.Size.X)||!Finite(F.Size.Y)||F.Size.X<2||F.Size.Y<2||F.Size.X>2000||F.Size.Y>2000||!Finite(F.Height)||FMath::Abs(F.Height)>200||!Finite(F.Blend)||F.Blend<1||F.Blend>200||!Finite(F.Rotation)||!Finite(F.PeakFlat)||F.PeakFlat<0||F.PeakFlat>90||uint8(F.Type)>1)
         {Reason=TEXT("평지·산의 크기·높이·주변 연결 수치를 확인하세요.");return false;}
     for(const auto& R:Routes)
     {
@@ -46,7 +46,9 @@ float FCozyTerrainRecipe::Evaluate(FVector2D P,float Base) const
         if(F.Type!=ECozyLandform::Mountain) continue;
         const FVector2D Q=(P-F.Center).GetRotated(-F.Rotation);
         const double D=FMath::Sqrt(FMath::Square(Q.X/FMath::Max(1.,F.Size.X*.5))+FMath::Square(Q.Y/FMath::Max(1.,F.Size.Y*.5)));
-        const float Bump=F.Height*FMath::Exp(-2*D*D);
+        // 꼭대기 넓이 T 안은 꼭대기 높이 그대로, 그 바깥부터 줄어듦 (T가 클수록 옆면이 가파름)
+        const double T=FMath::Clamp(F.PeakFlat,0.f,90.f)/100.,R=FMath::Max(0.,D-T)/(1-T);
+        const float Bump=F.Height*FMath::Exp(-2*R*R);
         if(Bump>=0)Up=SmoothMax(Up,Bump);else Down=-SmoothMax(-Down,-Bump);
     }
     float H=Base+Up+Down;

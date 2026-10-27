@@ -238,6 +238,8 @@ public:
                 // 세부 정보 칸에서 원본 목록을 숨긴 대신 거기서만 고칠 수 있던 값을 여기로
                 +SVerticalBox::Slot().AutoHeight()[Number(TEXT("방향 (도)"),0,360,[this]()->TOptional<float>{auto* P=GetPlan();if(P&&P->Recipe.Landforms.IsValidIndex(Selected))return P->Recipe.Landforms[Selected].Rotation;return {};},[this](float V){Mutate([this,V](auto& P){if(P.Recipe.Landforms.IsValidIndex(Selected))P.Recipe.Landforms[Selected].Rotation=FMath::Fmod(V,360.f);});})]
                 +SVerticalBox::Slot().AutoHeight()[Number(TEXT("주변 연결 폭 (m)"),1,60,[this]()->TOptional<float>{auto* P=GetPlan();if(P&&P->Recipe.Landforms.IsValidIndex(Selected))return P->Recipe.Landforms[Selected].Blend;if(P&&P->Recipe.Routes.IsValidIndex(Route))return P->Recipe.Routes[Route].Blend;return {};},[this](float V){Mutate([this,V](auto& P){if(P.Recipe.Landforms.IsValidIndex(Selected))P.Recipe.Landforms[Selected].Blend=FMath::Clamp(V,1.f,200.f);else if(P.Recipe.Routes.IsValidIndex(Route))P.Recipe.Routes[Route].Blend=FMath::Clamp(V,1.f,80.f);});})]
+                // 산만: 0%는 뾰족한 봉우리, 클수록 꼭대기가 넓고 옆면이 가파름
+                +SVerticalBox::Slot().AutoHeight()[Number(TEXT("꼭대기 넓이 (%)"),0,90,[this]()->TOptional<float>{auto* P=GetPlan();if(P&&P->Recipe.Landforms.IsValidIndex(Selected)&&P->Recipe.Landforms[Selected].Type==ECozyLandform::Mountain)return P->Recipe.Landforms[Selected].PeakFlat;return {};},[this](float V){Mutate([this,V](auto& P){if(P.Recipe.Landforms.IsValidIndex(Selected)&&P.Recipe.Landforms[Selected].Type==ECozyLandform::Mountain)P.Recipe.Landforms[Selected].PeakFlat=FMath::Clamp(V,0.f,90.f);});})]
                 +SVerticalBox::Slot().AutoHeight().Padding(4,8,4,2)[SNew(STextBlock).Text_Lambda([this](){return FText::FromString(FString::Printf(TEXT("요소 목록 (%d개)"),Items.Num()));})]
                 +SVerticalBox::Slot().AutoHeight().Padding(2)[SNew(SBox).HeightOverride(150)[SAssignNew(List,SListView<TSharedPtr<int32>>).ListItemsSource(&Items).SelectionMode(ESelectionMode::Single)
                     .OnGenerateRow_Lambda([this](TSharedPtr<int32> Item,const TSharedRef<STableViewBase>& Owner){const int32 Id=*Item;return SNew(STableRow<TSharedPtr<int32>>,Owner)[SNew(STextBlock).Text_Lambda([this,Id](){return ItemText(Id);})];})
@@ -261,16 +263,19 @@ public:
     }
 };
 
-static FVector2D ToMap(FVector2D P,const FVector2D& Size,const FVector2D& Span){return FVector2D((P.X/Span.X+.5)*Size.X,(.5-P.Y/Span.Y)*Size.Y);}
-static FVector2D FromMap(FVector2D P,const FVector2D& Size,const FVector2D& Span){return FVector2D((P.X/Size.X-.5)*Span.X,(.5-P.Y/Size.Y)*Span.Y);}
+// 지도는 실제 지형 비율 그대로 창 가운데에 그린다 (창을 늘리고 줄여도 찌그러지지 않게 · 남는 곳은 빈 여백)
+static void FitMap(const FVector2D& Size,const FVector2D& Span,FVector2D& Origin,FVector2D& Drawn){const double S=FMath::Min(Size.X/FMath::Max(1.,Span.X),Size.Y/FMath::Max(1.,Span.Y));Drawn=Span*S;Origin=(Size-Drawn)*.5;}
+static FVector2D ToMap(FVector2D P,const FVector2D& Size,const FVector2D& Span){FVector2D O,D;FitMap(Size,Span,O,D);return O+FVector2D((P.X/Span.X+.5)*D.X,(.5-P.Y/Span.Y)*D.Y);}
+static FVector2D FromMap(FVector2D P,const FVector2D& Size,const FVector2D& Span){FVector2D O,D;FitMap(Size,Span,O,D);P-=O;return FVector2D((P.X/D.X-.5)*Span.X,(.5-P.Y/D.Y)*Span.Y);}
 int32 SMap::OnPaint(const FPaintArgs&,const FGeometry& G,const FSlateRect&,FSlateWindowElementList& Out,int32 L,const FWidgetStyle&,bool) const
 {
     const auto Owner=Panel.Pin();const auto* P=Owner?Owner->GetPlan():nullptr;const FVector2D Size=G.GetLocalSize();
     const FSlateBrush* Brush=FAppStyle::GetBrush("WhiteBrush");
     FSlateDrawElement::MakeBox(Out,L,G.ToPaintGeometry(),Brush,ESlateDrawEffect::None,FLinearColor(.025,.04,.05));
     if(!P){FSlateDrawElement::MakeText(Out,L+1,G.ToPaintGeometry(),TEXT("새 설계 또는 선택 Landscape 연결로 시작"),FAppStyle::GetFontStyle("NormalFont"),ESlateDrawEffect::None,FLinearColor::White);return L+1;}
+    FVector2D MO,MD;FitMap(Size,P->Recipe.MapSize,MO,MD);
     constexpr int N=48;float Heights[N+1][N+1];float Low=FLT_MAX,High=-FLT_MAX;
-    for(int Y=0;Y<=N;++Y)for(int X=0;X<=N;++X){float Z=P->Sample(FromMap(FVector2D(double(X)/N*Size.X,double(Y)/N*Size.Y),Size,P->Recipe.MapSize));Heights[Y][X]=Z;Low=FMath::Min(Low,Z);High=FMath::Max(High,Z);}
+    for(int Y=0;Y<=N;++Y)for(int X=0;X<=N;++X){float Z=P->Sample(FromMap(MO+FVector2D(double(X)/N*MD.X,double(Y)/N*MD.Y),Size,P->Recipe.MapSize));Heights[Y][X]=Z;Low=FMath::Min(Low,Z);High=FMath::Max(High,Z);}
     auto Line=[&](FVector2D A,FVector2D B,FLinearColor C,float Width=1.f){TArray<FVector2D> V={A,B};FSlateDrawElement::MakeLines(Out,L+2,G.ToPaintGeometry(),V,ESlateDrawEffect::None,C,true,Width);};
     for(int Y=0;Y<N;++Y)for(int X=0;X<N;++X)
     {
@@ -278,12 +283,12 @@ int32 SMap::OnPaint(const FPaintArgs&,const FGeometry& G,const FSlateRect&,FSlat
         FLinearColor C=FMath::Lerp(FLinearColor(.04,.25,.25),FLinearColor(.88,.65,.25),T);
         const float DX=(Heights[Y][X+1]-Z)/(P->Recipe.MapSize.X/N),DY=(Heights[Y+1][X]-Z)/(P->Recipe.MapSize.Y/N);
         if(Owner->bSlope&&FMath::RadiansToDegrees(FMath::Atan(FMath::Sqrt(DX*DX+DY*DY)))>P->SlopeLimit)C=FLinearColor(.75,.12,.07);
-        const FVector2D A(double(X)/N*Size.X,double(Y)/N*Size.Y),Cell(Size.X/N+1,Size.Y/N+1);
+        const FVector2D A=MO+FVector2D(double(X)/N*MD.X,double(Y)/N*MD.Y),Cell(MD.X/N+1,MD.Y/N+1);
         FSlateDrawElement::MakeBox(Out,L+1,G.ToPaintGeometry(FVector2f(Cell),FSlateLayoutTransform(FVector2f(A))),Brush,ESlateDrawEffect::None,C);
         if(Owner->bContours)
         {
             // 정사각 셀 변의 등고선 교점을 선형 보간한다.
-            const FVector2D Corners[]={A,A+FVector2D(Size.X/N,0),A+FVector2D(Size.X/N,Size.Y/N),A+FVector2D(0,Size.Y/N)};
+            const FVector2D Corners[]={A,A+FVector2D(MD.X/N,0),A+FVector2D(MD.X/N,MD.Y/N),A+FVector2D(0,MD.Y/N)};
             const float Values[]={Z,Heights[Y][X+1],Heights[Y+1][X+1],Heights[Y+1][X]};
             float Min=Z,Max=Z;for(float V:Values){Min=FMath::Min(Min,V);Max=FMath::Max(Max,V);}
             const float Gap=FMath::Max(.5f,P->ContourInterval);
@@ -328,6 +333,8 @@ FReply SMap::OnMouseButtonDown(const FGeometry& G,const FPointerEvent& E)
 {
     const auto O=Panel.Pin();auto* P=O?O->GetPlan():nullptr;if(!P||E.GetEffectingButton()!=EKeys::LeftMouseButton||GEditor->PlayWorld)return FReply::Unhandled();
     const FVector2D Mouse=G.AbsoluteToLocal(E.GetScreenSpacePosition()),Pos=FromMap(Mouse,G.GetLocalSize(),P->Recipe.MapSize);
+    // 지도 밖 여백을 누르면 아무것도 하지 않음
+    if(FMath::Abs(Pos.X)>P->Recipe.MapSize.X*.5+1||FMath::Abs(Pos.Y)>P->Recipe.MapSize.Y*.5+1)return FReply::Handled();
     if(O->Mode==3)
     {
         O->Mutate([&](auto& A){if(!A.Recipe.Routes.IsValidIndex(O->Route)){O->Route=A.Recipe.Routes.AddDefaulted();O->Selected=INDEX_NONE;}auto& R=A.Recipe.Routes[O->Route];if(R.Points.Num()<256){R.Points.Add(FVector(Pos.X,Pos.Y,A.Sample(Pos)));O->Node=R.Points.Num()-1;}});return FReply::Handled();
