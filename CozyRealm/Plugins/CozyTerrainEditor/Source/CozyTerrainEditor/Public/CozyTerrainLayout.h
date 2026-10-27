@@ -61,6 +61,10 @@ public:
     UPROPERTY(EditAnywhere, Category="01 지형 설계", meta=(DisplayName="설계")) FCozyTerrainRecipe Recipe;
     UPROPERTY(EditAnywhere, Category="02 표시", meta=(DisplayName="3D 미리보기 표시")) bool bShowPreview=true;
     UPROPERTY(EditAnywhere, Category="02 표시", meta=(DisplayName="급경사 기준 (도)",ClampMin="5",ClampMax="60")) float SlopeLimit=30;
+    /** 지도에 같은 높이를 잇는 선을 몇 m마다 그을지 */
+    UPROPERTY(EditAnywhere, Category="02 표시", meta=(DisplayName="등고선 간격 (m)",ClampMin="0.5",ClampMax="50")) float ContourInterval=5;
+    /** 켜 두면 적용할 때 평지·산·길 원형을 지형에 굳히고 목록을 비운다 (복구하면 원형이 돌아옴) */
+    UPROPERTY(EditAnywhere, Category="02 표시", meta=(DisplayName="적용하면 원형 정리")) bool bBakeOnApply=true;
     UPROPERTY(EditAnywhere, Category="03 재사용", meta=(DisplayName="저장·불러올 설정 이름")) FString PresetName=TEXT("지형설정_01");
     UPROPERTY(EditAnywhere, Category="04 재질", meta=(DisplayName="적용할 지면 재질 (선택)")) TObjectPtr<class UMaterialInterface> GroundMaterial;
     UPROPERTY(VisibleAnywhere, Category="05 적용 대상", meta=(DisplayName="선택한 Landscape")) TObjectPtr<class ALandscape> Target;
@@ -86,6 +90,12 @@ public:
     UPROPERTY() FCozyTerrainRecipe PrevAppliedRecipe;
     UPROPERTY() bool bHasApplied=false;
     UPROPERTY() bool bHasPrevApplied=false;
+    /** 지금까지 굳힌 전용 레이어 높이 (비어 있으면 없음) · 다음 설계는 이 위에서 시작 */
+    UPROPERTY() TArray<uint16> Baked;
+    /** 마지막 굳히기 직전 상태 (복구 때 원형과 레이어 기준을 되돌림) */
+    UPROPERTY() TArray<uint16> BakeUndoLayer;
+    UPROPERTY() FCozyTerrainRecipe BakeUndoRecipe;
+    UPROPERTY() bool bCanUndoBake=false;
     float Sample(FVector2D LocalMeters) const;
     /** 지금 실제 지형의 높이 추정 (적용한 설계가 있으면 그 설계 · 없으면 연결 당시 원래 높이) */
     float SampleApplied(FVector2D LocalMeters) const;

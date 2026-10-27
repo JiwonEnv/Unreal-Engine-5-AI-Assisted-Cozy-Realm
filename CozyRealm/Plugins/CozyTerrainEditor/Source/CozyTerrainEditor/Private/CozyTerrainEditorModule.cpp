@@ -74,7 +74,8 @@ public:
     }
     void Refresh()
     {
-        if(auto* P=GetPlan()){P->RebuildPreview();if(Details)Details->SetObject(P,true);}
+        // 막대를 끄는 중에는 세부 정보 칸을 다시 만들지 않음 (느려지고 스크롤이 튐)
+        if(auto* P=GetPlan()){P->RebuildPreview();if(Details&&!SliderTx)Details->SetObject(P,true);}
         if(Map)Map->Invalidate(EInvalidateWidgetReason::Paint);
         RebuildList();
     }
@@ -120,11 +121,20 @@ public:
     }
     TSharedRef<SWidget> Button(const TCHAR* Label,TFunction<void()> Action)
     {return SNew(SButton).Text(T(Label)).OnClicked_Lambda([Action](){Action();return FReply::Handled();});}
-    TSharedRef<SWidget> Number(const TCHAR* Label,TFunction<TOptional<float>()> Getter,TFunction<void(float)> Setter)
+    // 숫자 막대를 끄는 동안 한 번의 되돌리기로 묶음
+    TUniquePtr<FScopedTransaction> SliderTx;
+    /** 세부 정보 칸처럼 끌어서 바꾸는 막대 + 직접 입력 · 소수 한 자리 */
+    TSharedRef<SWidget> Number(const TCHAR* Label,float SliderMin,float SliderMax,TFunction<TOptional<float>()> Getter,TFunction<void(float)> Setter)
     {
+        auto Set=[Setter](float V){if(FMath::IsFinite(V))Setter(FMath::RoundToFloat(V*10)/10);};
         return SNew(SHorizontalBox)
         +SHorizontalBox::Slot().FillWidth(1).Padding(2)[SNew(STextBlock).Text(T(Label))]
-        +SHorizontalBox::Slot().FillWidth(1).Padding(2)[SNew(SNumericEntryBox<float>).AllowSpin(false).Value_Lambda([Getter](){return Getter();}).OnValueCommitted_Lambda([Setter](float V,ETextCommit::Type){if(FMath::IsFinite(V)) Setter(V);})];
+        +SHorizontalBox::Slot().FillWidth(1.4f).Padding(2)[SNew(SNumericEntryBox<float>).AllowSpin(true).MinSliderValue(SliderMin).MaxSliderValue(SliderMax).Delta(.1f).MaxFractionalDigits(1)
+            .Value_Lambda([Getter](){return Getter();})
+            .OnBeginSliderMovement_Lambda([this](){SliderTx=MakeUnique<FScopedTransaction>(T(TEXT("숫자 막대로 조절")));})
+            .OnValueChanged_Lambda([this,Set](float V){if(SliderTx)Set(V);})
+            .OnEndSliderMovement_Lambda([this](float){SliderTx.Reset();Refresh();})
+            .OnValueCommitted_Lambda([Set](float V,ETextCommit::Type){Set(V);})];
     }
     void SelectNone(){Selected=Route=Node=INDEX_NONE;}
     void FitView()
@@ -174,7 +184,8 @@ public:
             if(Root->GetOwnerStruct()!=ACozyTerrainLayout::StaticClass()||!Root->HasMetaData(TEXT("Category"))) return false;
             // 지도·위 숫자 칸과 겹치는 값은 숨김: 미리보기 체크(왼쪽 체크로) · 평지·산·길 원본 목록 · 설정 버전
             static const TSet<FName> Hidden={GET_MEMBER_NAME_CHECKED(ACozyTerrainLayout,Preview),GET_MEMBER_NAME_CHECKED(ACozyTerrainLayout,bShowPreview),
-                GET_MEMBER_NAME_CHECKED(FCozyTerrainRecipe,Landforms),GET_MEMBER_NAME_CHECKED(FCozyTerrainRecipe,Routes),GET_MEMBER_NAME_CHECKED(FCozyTerrainRecipe,Version)};
+                GET_MEMBER_NAME_CHECKED(FCozyTerrainRecipe,Landforms),GET_MEMBER_NAME_CHECKED(FCozyTerrainRecipe,Routes),GET_MEMBER_NAME_CHECKED(FCozyTerrainRecipe,Version),
+                GET_MEMBER_NAME_CHECKED(ACozyTerrainLayout,ContourInterval),GET_MEMBER_NAME_CHECKED(ACozyTerrainLayout,bBakeOnApply),GET_MEMBER_NAME_CHECKED(ACozyTerrainLayout,bSnapToEstateGrid)};
             if(Hidden.Contains(Root->GetFName())||Hidden.Contains(P.Property.GetFName())) return false;
             for(const FProperty* Parent:P.ParentProperties) if(Hidden.Contains(Parent->GetFName())) return false;
             return true;
@@ -204,21 +215,29 @@ public:
                 +SVerticalBox::Slot().AutoHeight().Padding(3)[Tool(TEXT("길 그리기"),3)]
                 +SVerticalBox::Slot().AutoHeight().Padding(3)[Button(TEXT("선택 요소 삭제"),[this](){DeleteSelected();})]
                 +SVerticalBox::Slot().AutoHeight().Padding(3)[Button(TEXT("모두 지우기"),[this](){Mutate([this](auto& P){P.Recipe.Landforms.Reset();P.Recipe.Routes.Reset();SelectNone();});Message(TEXT("평지·산·길을 모두 지웠습니다. 실제 지형은 적용 전까지 그대로입니다. 되돌리기로 복구할 수 있습니다."));})]
-                +SVerticalBox::Slot().AutoHeight().Padding(5)[SNew(SCheckBox).IsChecked(ECheckBoxState::Checked).OnCheckStateChanged_Lambda([this](ECheckBoxState S){bContours=S==ECheckBoxState::Checked;Refresh();})[SNew(STextBlock).Text(T(TEXT("등고선 5m")))]]
+                // 등고선: 같은 높이를 잇는 선 · 간격은 옆 숫자로
+                +SVerticalBox::Slot().AutoHeight().Padding(5)[SNew(SHorizontalBox)
+                    +SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[SNew(SCheckBox).IsChecked(ECheckBoxState::Checked).OnCheckStateChanged_Lambda([this](ECheckBoxState S){bContours=S==ECheckBoxState::Checked;Refresh();})[SNew(STextBlock).Text(T(TEXT("등고선"))).ToolTipText(T(TEXT("지도에 같은 높이를 잇는 흰 선을 정해진 간격(m)마다 긋습니다. 선이 촘촘하면 가파르고 넓으면 완만합니다. 실제 지형에는 영향이 없습니다.")))]]
+                    +SHorizontalBox::Slot().FillWidth(1).Padding(6,0,0,0)[SNew(SNumericEntryBox<float>).AllowSpin(true).MinSliderValue(1.f).MaxSliderValue(20.f).MinValue(.5f).MaxValue(50.f).Delta(.5f).MaxFractionalDigits(1)
+                        .Value_Lambda([this]()->TOptional<float>{auto* P=GetPlan();return P?TOptional<float>(P->ContourInterval):TOptional<float>();})
+                        .OnValueChanged_Lambda([this](float V){if(auto* P=GetPlan()){P->ContourInterval=FMath::Clamp(V,.5f,50.f);if(Map)Map->Invalidate(EInvalidateWidgetReason::Paint);}})
+                        .OnValueCommitted_Lambda([this](float V,ETextCommit::Type){if(auto* P=GetPlan()){P->Modify();P->ContourInterval=FMath::Clamp(V,.5f,50.f);P->MarkPackageDirty();if(Map)Map->Invalidate(EInvalidateWidgetReason::Paint);}})]
+                    +SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(3,0)[SNew(STextBlock).Text(T(TEXT("m")))]]
                 +SVerticalBox::Slot().AutoHeight().Padding(5)[SNew(SCheckBox).IsChecked(ECheckBoxState::Checked).OnCheckStateChanged_Lambda([this](ECheckBoxState S){bSlope=S==ECheckBoxState::Checked;Refresh();})[SNew(STextBlock).Text(T(TEXT("급경사 표시")))]]
                 // 3D 미리보기 켜기·끄기 (아래 따로 있던 '미리보기' 버튼과 세부 정보 칸의 같은 체크를 여기 하나로)
                 +SVerticalBox::Slot().AutoHeight().Padding(5)[SNew(SCheckBox).IsChecked_Lambda([this](){auto* P=GetPlan();return P&&P->bShowPreview?ECheckBoxState::Checked:ECheckBoxState::Unchecked;}).OnCheckStateChanged_Lambda([this](ECheckBoxState S){if(auto* P=GetPlan()){P->bShowPreview=S==ECheckBoxState::Checked;P->RebuildPreview();}})[SNew(STextBlock).Text(T(TEXT("3D 미리보기"))).ToolTipText(T(TEXT("설계를 바꾼 곳만 3D 화면에 색으로 표시합니다 (주황 올라감 · 파랑 내려감 · 빨강 급경사)")))]]
                 +SVerticalBox::Slot().AutoHeight().Padding(5)[SNew(SCheckBox).IsChecked_Lambda([this](){auto* P=GetPlan();return P&&P->bSnapToEstateGrid?ECheckBoxState::Checked:ECheckBoxState::Unchecked;}).OnCheckStateChanged_Lambda([this](ECheckBoxState S){if(auto* P=GetPlan()){const FScopedTransaction Tx(T(TEXT("영지 칸 맞춤 전환")));P->Modify();P->bSnapToEstateGrid=S==ECheckBoxState::Checked;P->MarkPackageDirty();Refresh();}})[SNew(STextBlock).Text(T(TEXT("영지 칸 맞춤"))).ToolTipText(T(TEXT("초록 격자(영지) 안의 평지를 칸 크기와 층 높이에 맞춥니다. 영지 위치·칸 수·층 높이는 아래 '06 영지 칸'에서 바꿉니다.")))]]
+                +SVerticalBox::Slot().AutoHeight().Padding(5)[SNew(SCheckBox).IsChecked_Lambda([this](){auto* P=GetPlan();return P&&P->bBakeOnApply?ECheckBoxState::Checked:ECheckBoxState::Unchecked;}).OnCheckStateChanged_Lambda([this](ECheckBoxState S){if(auto* P=GetPlan()){P->Modify();P->bBakeOnApply=S==ECheckBoxState::Checked;P->MarkPackageDirty();}})[SNew(STextBlock).Text(T(TEXT("적용하면 원형 정리"))).ToolTipText(T(TEXT("'지형에 적용'을 누르면 평지·산·길 원형을 지형에 굳히고 목록을 비웁니다. 다음 설계는 바뀐 지형 위에서 시작합니다. '적용 전 높이 복구'를 누르면 지형과 원형이 함께 돌아옵니다.")))]]
                 +SVerticalBox::Slot().AutoHeight().Padding(5)[SNew(STextBlock).AutoWrapText(true).Text(T(TEXT("청록 낮음\n노랑 높음\n빨강 급경사\n사각 손잡이 = 크기")))]]
             +SSplitter::Slot().Value(.53f)[SAssignNew(Map,SMap,SharedThis(this))]
             +SSplitter::Slot().Value(.32f)[SNew(SVerticalBox)
                 +SVerticalBox::Slot().AutoHeight().Padding(4)[SNew(STextBlock).Text_Lambda([this](){auto* P=GetPlan();if(P&&P->Recipe.Landforms.IsValidIndex(Selected))return FText::FromString(P->Recipe.Landforms[Selected].Name);if(P&&P->Recipe.Routes.IsValidIndex(Route))return FText::FromString(P->Recipe.Routes[Route].Name);return T(TEXT("선택 요소 / 전체 설계"));})]
-                +SVerticalBox::Slot().AutoHeight()[Number(TEXT("선택 높이 (m)"),[this]()->TOptional<float>{auto* P=GetPlan();if(P&&P->Recipe.Landforms.IsValidIndex(Selected))return P->Recipe.Landforms[Selected].Height;if(P&&P->Recipe.Routes.IsValidIndex(Route)&&P->Recipe.Routes[Route].Points.IsValidIndex(Node))return P->Recipe.Routes[Route].Points[Node].Z;return {};},[this](float V){Mutate([this,V](auto& P){if(P.Recipe.Landforms.IsValidIndex(Selected))P.Recipe.Landforms[Selected].Height=FMath::Clamp(V,-200.f,200.f);else if(P.Recipe.Routes.IsValidIndex(Route)&&P.Recipe.Routes[Route].Points.IsValidIndex(Node))P.Recipe.Routes[Route].Points[Node].Z=FMath::Clamp(V,-200.f,200.f);});})]
-                +SVerticalBox::Slot().AutoHeight()[Number(TEXT("가로 / 길 폭 (m)"),[this]()->TOptional<float>{auto* P=GetPlan();if(P&&P->Recipe.Landforms.IsValidIndex(Selected))return P->Recipe.Landforms[Selected].Size.X;if(P&&P->Recipe.Routes.IsValidIndex(Route))return P->Recipe.Routes[Route].Width;return {};},[this](float V){Mutate([this,V](auto& P){if(P.Recipe.Landforms.IsValidIndex(Selected))P.Recipe.Landforms[Selected].Size.X=FMath::Clamp(V,2.f,2000.f);else if(P.Recipe.Routes.IsValidIndex(Route))P.Recipe.Routes[Route].Width=FMath::Clamp(V,2.f,80.f);});})]
-                +SVerticalBox::Slot().AutoHeight()[Number(TEXT("세로 (m)"),[this]()->TOptional<float>{auto* P=GetPlan();if(P&&P->Recipe.Landforms.IsValidIndex(Selected))return P->Recipe.Landforms[Selected].Size.Y;return {};},[this](float V){Mutate([this,V](auto& P){if(P.Recipe.Landforms.IsValidIndex(Selected))P.Recipe.Landforms[Selected].Size.Y=FMath::Clamp(V,2.f,2000.f);});})]
+                +SVerticalBox::Slot().AutoHeight()[Number(TEXT("선택 높이 (m)"),-20,60,[this]()->TOptional<float>{auto* P=GetPlan();if(P&&P->Recipe.Landforms.IsValidIndex(Selected))return P->Recipe.Landforms[Selected].Height;if(P&&P->Recipe.Routes.IsValidIndex(Route)&&P->Recipe.Routes[Route].Points.IsValidIndex(Node))return P->Recipe.Routes[Route].Points[Node].Z;return {};},[this](float V){Mutate([this,V](auto& P){if(P.Recipe.Landforms.IsValidIndex(Selected))P.Recipe.Landforms[Selected].Height=FMath::Clamp(V,-200.f,200.f);else if(P.Recipe.Routes.IsValidIndex(Route)&&P.Recipe.Routes[Route].Points.IsValidIndex(Node))P.Recipe.Routes[Route].Points[Node].Z=FMath::Clamp(V,-200.f,200.f);});})]
+                +SVerticalBox::Slot().AutoHeight()[Number(TEXT("가로 / 길 폭 (m)"),2,200,[this]()->TOptional<float>{auto* P=GetPlan();if(P&&P->Recipe.Landforms.IsValidIndex(Selected))return P->Recipe.Landforms[Selected].Size.X;if(P&&P->Recipe.Routes.IsValidIndex(Route))return P->Recipe.Routes[Route].Width;return {};},[this](float V){Mutate([this,V](auto& P){if(P.Recipe.Landforms.IsValidIndex(Selected))P.Recipe.Landforms[Selected].Size.X=FMath::Clamp(V,2.f,2000.f);else if(P.Recipe.Routes.IsValidIndex(Route))P.Recipe.Routes[Route].Width=FMath::Clamp(V,2.f,80.f);});})]
+                +SVerticalBox::Slot().AutoHeight()[Number(TEXT("세로 (m)"),2,200,[this]()->TOptional<float>{auto* P=GetPlan();if(P&&P->Recipe.Landforms.IsValidIndex(Selected))return P->Recipe.Landforms[Selected].Size.Y;return {};},[this](float V){Mutate([this,V](auto& P){if(P.Recipe.Landforms.IsValidIndex(Selected))P.Recipe.Landforms[Selected].Size.Y=FMath::Clamp(V,2.f,2000.f);});})]
                 // 세부 정보 칸에서 원본 목록을 숨긴 대신 거기서만 고칠 수 있던 값을 여기로
-                +SVerticalBox::Slot().AutoHeight()[Number(TEXT("방향 (도)"),[this]()->TOptional<float>{auto* P=GetPlan();if(P&&P->Recipe.Landforms.IsValidIndex(Selected))return P->Recipe.Landforms[Selected].Rotation;return {};},[this](float V){Mutate([this,V](auto& P){if(P.Recipe.Landforms.IsValidIndex(Selected))P.Recipe.Landforms[Selected].Rotation=FMath::Fmod(V,360.f);});})]
-                +SVerticalBox::Slot().AutoHeight()[Number(TEXT("주변 연결 폭 (m)"),[this]()->TOptional<float>{auto* P=GetPlan();if(P&&P->Recipe.Landforms.IsValidIndex(Selected))return P->Recipe.Landforms[Selected].Blend;if(P&&P->Recipe.Routes.IsValidIndex(Route))return P->Recipe.Routes[Route].Blend;return {};},[this](float V){Mutate([this,V](auto& P){if(P.Recipe.Landforms.IsValidIndex(Selected))P.Recipe.Landforms[Selected].Blend=FMath::Clamp(V,1.f,200.f);else if(P.Recipe.Routes.IsValidIndex(Route))P.Recipe.Routes[Route].Blend=FMath::Clamp(V,1.f,80.f);});})]
+                +SVerticalBox::Slot().AutoHeight()[Number(TEXT("방향 (도)"),0,360,[this]()->TOptional<float>{auto* P=GetPlan();if(P&&P->Recipe.Landforms.IsValidIndex(Selected))return P->Recipe.Landforms[Selected].Rotation;return {};},[this](float V){Mutate([this,V](auto& P){if(P.Recipe.Landforms.IsValidIndex(Selected))P.Recipe.Landforms[Selected].Rotation=FMath::Fmod(V,360.f);});})]
+                +SVerticalBox::Slot().AutoHeight()[Number(TEXT("주변 연결 폭 (m)"),1,60,[this]()->TOptional<float>{auto* P=GetPlan();if(P&&P->Recipe.Landforms.IsValidIndex(Selected))return P->Recipe.Landforms[Selected].Blend;if(P&&P->Recipe.Routes.IsValidIndex(Route))return P->Recipe.Routes[Route].Blend;return {};},[this](float V){Mutate([this,V](auto& P){if(P.Recipe.Landforms.IsValidIndex(Selected))P.Recipe.Landforms[Selected].Blend=FMath::Clamp(V,1.f,200.f);else if(P.Recipe.Routes.IsValidIndex(Route))P.Recipe.Routes[Route].Blend=FMath::Clamp(V,1.f,80.f);});})]
                 +SVerticalBox::Slot().AutoHeight().Padding(4,8,4,2)[SNew(STextBlock).Text_Lambda([this](){return FText::FromString(FString::Printf(TEXT("요소 목록 (%d개)"),Items.Num()));})]
                 +SVerticalBox::Slot().AutoHeight().Padding(2)[SNew(SBox).HeightOverride(150)[SAssignNew(List,SListView<TSharedPtr<int32>>).ListItemsSource(&Items).SelectionMode(ESelectionMode::Single)
                     .OnGenerateRow_Lambda([this](TSharedPtr<int32> Item,const TSharedRef<STableViewBase>& Owner){const int32 Id=*Item;return SNew(STableRow<TSharedPtr<int32>>,Owner)[SNew(STextBlock).Text_Lambda([this,Id](){return ItemText(Id);})];})
@@ -230,8 +249,8 @@ public:
             +SHorizontalBox::Slot().AutoWidth().Padding(2)[Button(TEXT("다시 실행"),[this](){GEditor->RedoTransaction();SelectNone();Refresh();})]
             +SHorizontalBox::Slot().AutoWidth().Padding(2)[Button(TEXT("설정 저장"),[this](){if(auto* P=GetPlan()){FString R;P->SavePreset(R);Message(R);}})]
             +SHorizontalBox::Slot().AutoWidth().Padding(2)[Button(TEXT("설정 불러오기"),[this](){if(auto* P=GetPlan()){FString R;P->LoadPreset(R);SelectNone();Message(R);}})]
-            +SHorizontalBox::Slot().AutoWidth().Padding(2)[Button(TEXT("사본 보존 후 적용"),[this](){if(auto* P=GetPlan()){FString R;P->Apply(R);Message(R);}})]
-            +SHorizontalBox::Slot().AutoWidth().Padding(2)[Button(TEXT("적용 전 높이 복구"),[this](){if(auto* P=GetPlan()){FString R;P->Restore(R);Message(R);}})]]
+            +SHorizontalBox::Slot().AutoWidth().Padding(2)[Button(TEXT("지형에 적용"),[this](){if(auto* P=GetPlan()){FString R;if(P->Apply(R))SelectNone();Message(R);}})]
+            +SHorizontalBox::Slot().AutoWidth().Padding(2)[Button(TEXT("적용 전 높이 복구"),[this](){if(auto* P=GetPlan()){FString R;if(P->Restore(R))SelectNone();Message(R);}})]]
         +SVerticalBox::Slot().AutoHeight().Padding(8)[SNew(STextBlock).AutoWrapText(true).Text_Lambda([this](){return FText::FromString(Status);})]];
         LastWorld=GEditor->GetEditorWorldContext().World();LoadExisting();
     }
@@ -267,9 +286,10 @@ int32 SMap::OnPaint(const FPaintArgs&,const FGeometry& G,const FSlateRect&,FSlat
             const FVector2D Corners[]={A,A+FVector2D(Size.X/N,0),A+FVector2D(Size.X/N,Size.Y/N),A+FVector2D(0,Size.Y/N)};
             const float Values[]={Z,Heights[Y][X+1],Heights[Y+1][X+1],Heights[Y+1][X]};
             float Min=Z,Max=Z;for(float V:Values){Min=FMath::Min(Min,V);Max=FMath::Max(Max,V);}
-            for(int Band=FMath::CeilToInt(Min/5);Band<=FMath::FloorToInt(Max/5)&&Band<FMath::CeilToInt(Min/5)+50;++Band)
+            const float Gap=FMath::Max(.5f,P->ContourInterval);
+            for(int Band=FMath::CeilToInt(Min/Gap);Band<=FMath::FloorToInt(Max/Gap)&&Band<FMath::CeilToInt(Min/Gap)+50;++Band)
             {
-                TArray<FVector2D> Hits;float Level=Band*5;
+                TArray<FVector2D> Hits;float Level=Band*Gap;
                 for(int E=0;E<4;++E){int B=(E+1)%4;if((Values[E]<Level)!=(Values[B]<Level))Hits.Add(FMath::Lerp(Corners[E],Corners[B],double((Level-Values[E])/(Values[B]-Values[E]))));}
                 for(int I=1;I<Hits.Num();I+=2)Line(Hits[I-1],Hits[I],FLinearColor(1,1,1,.25));
             }

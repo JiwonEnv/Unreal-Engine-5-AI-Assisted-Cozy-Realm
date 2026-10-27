@@ -34,6 +34,9 @@ bool FCozyTerrainRecipeTest::RunTest(const FString&)
     FString Json;TestTrue(TEXT("재사용 설정 저장 형식"),FJsonObjectConverter::UStructToJsonObjectString(R,Json));
     FCozyTerrainRecipe Loaded;TestTrue(TEXT("다른 맵용 설정 복원"),FJsonObjectConverter::JsonObjectStringToUStruct(Json,&Loaded,0,0));
     TestEqual(TEXT("복원 후 형상 일치"),Loaded.Evaluate(FVector2D(0,25),0),R.Evaluate(FVector2D(0,25),0));
+    FCozyTerrainRecipe Peaks;FCozyLandform Peak;Peak.Type=ECozyLandform::Mountain;Peak.Size=FVector2D(40,40);Peak.Height=25;Peaks.Landforms.Add(Peak);Peaks.Landforms.Add(Peak);
+    TestTrue(TEXT("겹친 산이 두 배로 솟지 않음"),Peaks.Evaluate(FVector2D(0,0),0)<=26.1f);
+    TestTrue(TEXT("산에서 먼 바닥은 그대로"),FMath::Abs(Peaks.Evaluate(FVector2D(200,200),0))<.01f);
     Loaded.Landforms[0].Size.X=0;TestFalse(TEXT("영 크기 거부"),Loaded.Validate(Error));
     Loaded=R;Loaded.Version=99;TestFalse(TEXT("미지원 설정 버전 거부"),Loaded.Validate(Error));
     Loaded=R;Loaded.Routes[0].Width=-1;TestFalse(TEXT("음수 길 폭 거부"),Loaded.Validate(Error));
@@ -67,7 +70,7 @@ bool FCozyTerrainLandscapeTest::RunTest(const FString&)
     if(!FParse::Param(FCommandLine::Get(),TEXT("CozyTerrainValidation")))
     {AddInfo(TEXT("별도 검증 실행 인자가 없어 임시 맵 검사는 건너뜁니다."));return true;}
     auto* World=FAutomationEditorCommonUtils::CreateNewMap();
-    auto* Plan=World->SpawnActor<ACozyTerrainLayout>();
+    auto* Plan=World->SpawnActor<ACozyTerrainLayout>();Plan->bBakeOnApply=false;
     Plan->Recipe.MapSize=FVector2D(63,63);Plan->Recipe.Components=1;
     FCozyLandform Flat;Flat.Size=FVector2D(40,40);Flat.Height=12;Plan->Recipe.Landforms.Add(Flat);
     FString Result;
@@ -86,7 +89,7 @@ bool FCozyTerrainLandscapeTest::RunTest(const FString&)
     TestTrue(TEXT("높이 18m 실제 반영"),FMath::Abs(Height()-1800)<3);
     TestTrue(TEXT("마지막 적용 전 높이 복구"),Plan->Restore(Result));
     TestTrue(TEXT("복구된 높이 12m"),FMath::Abs(Height()-1200)<3);
-    auto* Connected=World->SpawnActor<ACozyTerrainLayout>();
+    auto* Connected=World->SpawnActor<ACozyTerrainLayout>();Connected->bBakeOnApply=false;
     TestTrue(TEXT("기존 Landscape 높이를 기준으로 연결"),Connected->BindLandscape(Target,Result));
     TestTrue(TEXT("연결된 원래 높이 읽기"),FMath::Abs(Connected->Sample(FVector2D::ZeroVector)-12)<.03);
     Flat.Height=20;Connected->Recipe.Landforms.Add(Flat);
@@ -99,8 +102,23 @@ bool FCozyTerrainLandscapeTest::RunTest(const FString&)
     // 다른 설계가 같은 지형 위에 새 Landscape를 중복 생성하면 안 된다.
     auto* Overlap=World->SpawnActor<ACozyTerrainLayout>();Overlap->Recipe.MapSize=FVector2D(63,63);Overlap->Recipe.Components=1;
     TestFalse(TEXT("기존 지형과 겹치는 새 생성 거부"),Overlap->Apply(Result));World->DestroyActor(Overlap);
+    // 굳히기: 적용하면 원형이 비고, 다음 설계는 굳힌 높이 위에서 시작, 복구하면 지형과 원형이 함께 돌아옴
+    World=FAutomationEditorCommonUtils::CreateNewMap();
+    auto* Bake=World->SpawnActor<ACozyTerrainLayout>();Bake->Recipe.MapSize=FVector2D(63,63);Bake->Recipe.Components=1;
+    Flat.Height=10;Bake->Recipe.Landforms.Add(Flat);
+    if(!TestTrue(TEXT("굳히며 적용"),Bake->Apply(Result))){AddError(Result);return false;}
+    Target=Bake->Target.Get();
+    TestEqual(TEXT("적용 뒤 원형 목록 비움"),Bake->Recipe.Landforms.Num(),0);
+    TestTrue(TEXT("굳힌 높이 10m 실제 반영"),FMath::Abs(Height()-1000)<3);
+    TestTrue(TEXT("다음 설계는 굳힌 높이 위에서 시작"),FMath::Abs(Bake->Sample(FVector2D::ZeroVector)-10)<.05);
+    FCozyLandform Bump;Bump.Type=ECozyLandform::Mountain;Bump.Size=FVector2D(30,30);Bump.Height=5;Bake->Recipe.Landforms.Add(Bump);
+    if(!TestTrue(TEXT("굳힌 뒤 두 번째 적용"),Bake->Apply(Result))){AddError(Result);return false;}
+    TestTrue(TEXT("굳힌 지형 위에 산 5m 더함"),FMath::Abs(Height()-1500)<5);
+    TestTrue(TEXT("두 번째 적용 복구"),Bake->Restore(Result));
+    TestTrue(TEXT("복구하면 첫 굳힌 높이 10m"),FMath::Abs(Height()-1000)<3);
+    TestEqual(TEXT("복구하면 원형이 돌아옴"),Bake->Recipe.Landforms.Num(),1);
     // 마지막에 별도 맵을 남겨 GUI 검증을 이어간다. 원본 프로젝트 맵은 저장하지 않는다.
-    World=FAutomationEditorCommonUtils::CreateNewMap();Plan=World->SpawnActor<ACozyTerrainLayout>();
+    World=FAutomationEditorCommonUtils::CreateNewMap();Plan=World->SpawnActor<ACozyTerrainLayout>();Plan->bBakeOnApply=false;
     Plan->PresetName=TEXT("자동검증_맵간재사용");TestTrue(TEXT("다른 맵에서 설정 불러오기"),Plan->LoadPreset(Result));
     TestTrue(TEXT("다른 맵에서도 같은 높이"),FMath::Abs(Plan->Sample(FVector2D::ZeroVector)-18)<.01);
     TestTrue(TEXT("다른 맵에 실제 지형 생성"),Plan->Apply(Result));
