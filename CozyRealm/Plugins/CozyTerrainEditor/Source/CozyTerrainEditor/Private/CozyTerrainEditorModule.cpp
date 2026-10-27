@@ -71,7 +71,13 @@ public:
     void Message(FString S){Status=MoveTemp(S);Refresh();}
     void Mutate(TFunction<void(ACozyTerrainLayout&)> Fn)
     {
-        if(auto* P=GetPlan()) {const FScopedTransaction Tx(T(TEXT("지형 설계 편집")));P->Modify();Fn(*P);P->bHasUnappliedChanges=true;P->bShowPreview=true;P->MarkPackageDirty();Refresh();}
+        if(auto* P=GetPlan()) {const FScopedTransaction Tx(T(TEXT("지형 설계 편집")));P->Modify();Fn(*P);SnapSelected(*P);P->bHasUnappliedChanges=true;P->bShowPreview=true;P->MarkPackageDirty();Refresh();}
+    }
+    // 영지 안 평지는 고칠 때마다 칸·층 높이에 맞춤
+    void SnapSelected(ACozyTerrainLayout& P)
+    {
+        if(P.Recipe.Landforms.IsValidIndex(Selected)&&P.SnapLandform(P.Recipe.Landforms[Selected]))
+            Status=FString::Printf(TEXT("영지 안 평지라 %.0fm 칸과 층 높이에 맞췄습니다. 끄려면 왼쪽 '영지 칸 맞춤' 체크를 해제하세요."),P.CellSize);
     }
     TSharedRef<SWidget> Button(const TCHAR* Label,TFunction<void()> Action)
     {return SNew(SButton).Text(T(Label)).OnClicked_Lambda([Action](){Action();return FReply::Handled();});}
@@ -156,6 +162,7 @@ public:
                 +SVerticalBox::Slot().AutoHeight().Padding(5)[SNew(SCheckBox).IsChecked(ECheckBoxState::Checked).OnCheckStateChanged_Lambda([this](ECheckBoxState S){bSlope=S==ECheckBoxState::Checked;Refresh();})[SNew(STextBlock).Text(T(TEXT("급경사 표시")))]]
                 // 3D 미리보기 켜기·끄기 (아래 따로 있던 '미리보기' 버튼과 세부 정보 칸의 같은 체크를 여기 하나로)
                 +SVerticalBox::Slot().AutoHeight().Padding(5)[SNew(SCheckBox).IsChecked_Lambda([this](){auto* P=GetPlan();return P&&P->bShowPreview?ECheckBoxState::Checked:ECheckBoxState::Unchecked;}).OnCheckStateChanged_Lambda([this](ECheckBoxState S){if(auto* P=GetPlan()){P->bShowPreview=S==ECheckBoxState::Checked;P->RebuildPreview();}})[SNew(STextBlock).Text(T(TEXT("3D 미리보기"))).ToolTipText(T(TEXT("설계를 바꾼 곳만 3D 화면에 색으로 표시합니다 (주황 올라감 · 파랑 내려감 · 빨강 급경사)")))]]
+                +SVerticalBox::Slot().AutoHeight().Padding(5)[SNew(SCheckBox).IsChecked_Lambda([this](){auto* P=GetPlan();return P&&P->bSnapToEstateGrid?ECheckBoxState::Checked:ECheckBoxState::Unchecked;}).OnCheckStateChanged_Lambda([this](ECheckBoxState S){if(auto* P=GetPlan()){const FScopedTransaction Tx(T(TEXT("영지 칸 맞춤 전환")));P->Modify();P->bSnapToEstateGrid=S==ECheckBoxState::Checked;P->MarkPackageDirty();Refresh();}})[SNew(STextBlock).Text(T(TEXT("영지 칸 맞춤"))).ToolTipText(T(TEXT("초록 격자(영지) 안의 평지를 칸 크기와 층 높이에 맞춥니다. 영지 위치·칸 수·층 높이는 아래 '06 영지 칸'에서 바꿉니다.")))]]
                 +SVerticalBox::Slot().AutoHeight().Padding(5)[SNew(STextBlock).AutoWrapText(true).Text(T(TEXT("청록 낮음\n노랑 높음\n빨강 급경사\n사각 손잡이 = 크기")))]]
             +SSplitter::Slot().Value(.53f)[SAssignNew(Map,SMap,SharedThis(this))]
             +SSplitter::Slot().Value(.32f)[SNew(SVerticalBox)
@@ -218,6 +225,14 @@ int32 SMap::OnPaint(const FPaintArgs&,const FGeometry& G,const FSlateRect&,FSlat
             }
         }
     }
+    if(P->bSnapToEstateGrid&&P->CellSize>0)
+    {
+        // 영지 칸 격자: 칸 선은 옅게, 테두리는 진하게
+        const FBox2D Estate=P->EstateBounds();const FLinearColor Grid(.55,1,.55,.22),Edge(.55,1,.55,.9);
+        for(int X=0;X<=P->EstateCells.X;++X){const double W=Estate.Min.X+X*P->CellSize;Line(ToMap(FVector2D(W,Estate.Min.Y),Size,P->Recipe.MapSize),ToMap(FVector2D(W,Estate.Max.Y),Size,P->Recipe.MapSize),X%P->EstateCells.X?Grid:Edge,X%P->EstateCells.X?1.f:2.f);}
+        for(int Y=0;Y<=P->EstateCells.Y;++Y){const double H=Estate.Min.Y+Y*P->CellSize;Line(ToMap(FVector2D(Estate.Min.X,H),Size,P->Recipe.MapSize),ToMap(FVector2D(Estate.Max.X,H),Size,P->Recipe.MapSize),Y%P->EstateCells.Y?Grid:Edge,Y%P->EstateCells.Y?1.f:2.f);}
+        FSlateDrawElement::MakeText(Out,L+3,G.ToPaintGeometry(FVector2f(Size),FSlateLayoutTransform(FVector2f(ToMap(FVector2D(Estate.Min.X,Estate.Max.Y),Size,P->Recipe.MapSize)+FVector2D(2,-16)))),FString::Printf(TEXT("영지 %d×%d칸"),P->EstateCells.X,P->EstateCells.Y),FAppStyle::GetFontStyle("SmallFont"),ESlateDrawEffect::None,Edge);
+    }
     for(int I=0;I<P->Recipe.Landforms.Num();++I)
     {
         const auto& F=P->Recipe.Landforms[I];const FLinearColor C=Owner->Selected==I?FLinearColor(.1,.9,1):FLinearColor(.95,.95,.85);
@@ -267,7 +282,7 @@ FReply SMap::OnMouseMove(const FGeometry& G,const FPointerEvent& E)
     const auto O=Panel.Pin();auto* P=O?O->GetPlan():nullptr;if(!Drag||!P||!HasMouseCapture())return FReply::Unhandled();
     FVector2D Pos=FromMap(G.AbsoluteToLocal(E.GetScreenSpacePosition()),G.GetLocalSize(),P->Recipe.MapSize);
     Pos.X=FMath::Clamp(Pos.X,-P->Recipe.MapSize.X*.5,P->Recipe.MapSize.X*.5);Pos.Y=FMath::Clamp(Pos.Y,-P->Recipe.MapSize.Y*.5,P->Recipe.MapSize.Y*.5);
-    if(P->Recipe.Landforms.IsValidIndex(O->Selected)){auto& F=P->Recipe.Landforms[O->Selected];if(bResize)F.Size=FVector2D(FMath::Clamp(FMath::Abs(Pos.X-F.Center.X)*2,2.,2000.),FMath::Clamp(FMath::Abs(Pos.Y-F.Center.Y)*2,2.,2000.));else F.Center=Pos;}
+    if(P->Recipe.Landforms.IsValidIndex(O->Selected)){auto& F=P->Recipe.Landforms[O->Selected];if(bResize)F.Size=FVector2D(FMath::Clamp(FMath::Abs(Pos.X-F.Center.X)*2,2.,2000.),FMath::Clamp(FMath::Abs(Pos.Y-F.Center.Y)*2,2.,2000.));else F.Center=Pos;O->SnapSelected(*P);}
     else if(P->Recipe.Routes.IsValidIndex(O->Route)&&P->Recipe.Routes[O->Route].Points.IsValidIndex(O->Node)){auto& V=P->Recipe.Routes[O->Route].Points[O->Node];V.X=Pos.X;V.Y=Pos.Y;}
     P->bHasUnappliedChanges=true;P->bShowPreview=true;P->RebuildPreview();Invalidate(EInvalidateWidgetReason::Paint);return FReply::Handled();
 }

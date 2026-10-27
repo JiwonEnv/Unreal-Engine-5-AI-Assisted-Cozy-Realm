@@ -65,6 +65,13 @@ public:
     UPROPERTY(EditAnywhere, Category="04 재질", meta=(DisplayName="적용할 지면 재질 (선택)")) TObjectPtr<class UMaterialInterface> GroundMaterial;
     UPROPERTY(VisibleAnywhere, Category="05 적용 대상", meta=(DisplayName="선택한 Landscape")) TObjectPtr<class ALandscape> Target;
     UPROPERTY(VisibleAnywhere, Category="05 적용 대상", meta=(DisplayName="최근 적용 전 높이 사본")) FString LastBackup;
+    /** 영지(시설 놓는 곳) 안의 평지만 칸·층 높이에 맞춘다. 영지 바깥 산·숲은 자유롭게. */
+    UPROPERTY(EditAnywhere, Category="06 영지 칸", meta=(DisplayName="영지 칸 맞춤 사용")) bool bSnapToEstateGrid=true;
+    UPROPERTY(EditAnywhere, Category="06 영지 칸", meta=(DisplayName="영지 중심 (m)")) FVector2D EstateCenter=FVector2D::ZeroVector;
+    UPROPERTY(EditAnywhere, Category="06 영지 칸", meta=(DisplayName="영지 칸 수 (가로·세로)",ClampMin="1",ClampMax="200")) FIntPoint EstateCells=FIntPoint(12,12);
+    UPROPERTY(EditAnywhere, Category="06 영지 칸", meta=(DisplayName="칸 한 변 (m)",ClampMin="0.5",ClampMax="20")) float CellSize=2;
+    /** 영지 평지가 맞춰질 높이들 (임시값 · 최종값은 아트 방향 확정 뒤) */
+    UPROPERTY(EditAnywhere, Category="06 영지 칸", meta=(DisplayName="층 높이 목록 (m)")) TArray<float> TierHeights={0.f,2.4f,4.8f};
     UPROPERTY(VisibleAnywhere) TObjectPtr<class UProceduralMeshComponent> Preview;
     UPROPERTY() FGuid EditLayerGuid;
     UPROPERTY() TArray<uint16> Baseline;
@@ -89,6 +96,10 @@ public:
     bool SavePreset(FString& Result) const;
     bool LoadPreset(FString& Result);
     void AddDemo();
+    /** 영지 범위 (설계 기준 m) */
+    FBox2D EstateBounds() const;
+    /** 영지 안 평지면 크기·위치를 칸에, 높이를 가장 가까운 층에, 방향을 0도로 맞춘다 · 맞췄으면 true */
+    bool SnapLandform(FCozyLandform& Landform) const;
 private:
     /** 연결 당시 원래 지형 높이 (m · 설계 기준) · 연결 전이면 0 */
     float BaselineHeight(FVector2D LocalMeters) const;

@@ -40,6 +40,26 @@ bool FCozyTerrainRecipeTest::RunTest(const FString&)
     Loaded=R;Loaded.MapSize.X=100000;TestFalse(TEXT("과도한 편집 영역 거부"),Loaded.Validate(Error));
     return true;
 }
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCozyTerrainSnapTest,"CozyRealm.TerrainEditor.EstateGridSnap",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FCozyTerrainSnapTest::RunTest(const FString&)
+{
+    // 기본값: 영지 중심 0,0 · 12×12칸 · 2m · 층 0/2.4/4.8m
+    const ACozyTerrainLayout* Plan=GetDefault<ACozyTerrainLayout>();
+    FCozyLandform Flat;Flat.Center=FVector2D(3.3,-1.2);Flat.Size=FVector2D(7,5.1);Flat.Height=3;
+    TestTrue(TEXT("영지 안 평지 맞춤"),Plan->SnapLandform(Flat));
+    TestEqual(TEXT("크기는 2m 배수"),Flat.Size,FVector2D(8,6));
+    TestEqual(TEXT("모서리가 칸 선 위"),Flat.Center,FVector2D(4,-1));
+    TestEqual(TEXT("가장 가까운 층 높이"),Flat.Height,2.4f);
+    FCozyLandform Turned;Turned.Center=FVector2D(0,0);Turned.Size=FVector2D(4,10);Turned.Rotation=85;
+    Plan->SnapLandform(Turned);
+    TestTrue(TEXT("90도 가까우면 가로·세로 바꿔 0도"),Turned.Rotation==0&&Turned.Size==FVector2D(10,4));
+    FCozyLandform Hill=Flat;Hill.Type=ECozyLandform::Mountain;Hill.Height=3;
+    TestFalse(TEXT("산은 맞추지 않음"),Plan->SnapLandform(Hill));
+    FCozyLandform Outside=Flat;Outside.Center=FVector2D(50,50);Outside.Height=3;
+    TestFalse(TEXT("영지 밖 평지는 자유"),Plan->SnapLandform(Outside));
+    TestEqual(TEXT("영지 밖 높이 유지"),Outside.Height,3.f);
+    return true;
+}
 // 별도 검증 프로세스에서만 새 임시 맵을 만든다. 일반 전체 검사에서는 현재 맵을 건드리지 않는다.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCozyTerrainLandscapeTest,"CozyRealm.TerrainEditor.LandscapeApplyRestore",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
 bool FCozyTerrainLandscapeTest::RunTest(const FString&)

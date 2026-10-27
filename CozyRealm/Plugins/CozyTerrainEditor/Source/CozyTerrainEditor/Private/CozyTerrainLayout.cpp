@@ -279,6 +279,32 @@ bool ACozyTerrainLayout::LoadPreset(FString& Result)
     const FScopedTransaction Transaction(NSLOCTEXT("CozyTerrain","Load","지형 설정 불러오기"));Modify();Recipe=MoveTemp(Candidate);bHasUnappliedChanges=true;bShowPreview=true;RebuildPreview();MarkPackageDirty();
     Result=TEXT("설정을 불러왔습니다. 실제 지형은 적용 버튼을 누르기 전까지 바뀌지 않습니다.");return true;
 }
+FBox2D ACozyTerrainLayout::EstateBounds() const
+{
+    const FVector2D Half=FVector2D(EstateCells)*CellSize*.5;
+    return FBox2D(EstateCenter-Half,EstateCenter+Half);
+}
+bool ACozyTerrainLayout::SnapLandform(FCozyLandform& F) const
+{
+    const FBox2D Estate=EstateBounds();
+    if(!bSnapToEstateGrid||F.Type!=ECozyLandform::Plateau||CellSize<=0||!Estate.IsInside(F.Center))return false;
+    // 90·270도는 가로·세로를 바꿔 0도로 (타원은 180도 돌려도 같음)
+    const int Quarter=(FMath::RoundToInt(F.Rotation/90.f)%4+4)%4;
+    if(Quarter%2)F.Size=FVector2D(F.Size.Y,F.Size.X);
+    F.Rotation=0;
+    F.Size.X=FMath::Max(1.,FMath::RoundToDouble(F.Size.X/CellSize))*CellSize;
+    F.Size.Y=FMath::Max(1.,FMath::RoundToDouble(F.Size.Y/CellSize))*CellSize;
+    // 왼쪽 아래 모서리를 칸 선에 맞춘 뒤 중심을 다시 계산
+    const FVector2D Corner=F.Center-F.Size*.5-Estate.Min;
+    F.Center=Estate.Min+FVector2D(FMath::RoundToDouble(Corner.X/CellSize),FMath::RoundToDouble(Corner.Y/CellSize))*CellSize+F.Size*.5;
+    if(TierHeights.Num())
+    {
+        float Best=TierHeights[0];
+        for(float Tier:TierHeights)if(FMath::Abs(Tier-F.Height)<FMath::Abs(Best-F.Height))Best=Tier;
+        F.Height=Best;
+    }
+    return true;
+}
 void ACozyTerrainLayout::AddDemo()
 {
     Recipe.Landforms.Reset();Recipe.Routes.Reset();
