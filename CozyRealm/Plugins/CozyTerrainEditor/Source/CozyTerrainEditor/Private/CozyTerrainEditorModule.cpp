@@ -37,7 +37,8 @@ public:
     SLATE_BEGIN_ARGS(SMap){} SLATE_END_ARGS()
     TWeakPtr<SPanel> Panel;
     void Construct(const FArguments&,TSharedRef<SPanel> InPanel){Panel=InPanel;SetClipping(EWidgetClipping::ClipToBounds);}
-    virtual FVector2D ComputeDesiredSize(float) const override{return FVector2D(620,600);}
+    // 작게 시작해 창이 화면 밖으로 나가지 않게 (창을 키우면 지도도 같이 커짐)
+    virtual FVector2D ComputeDesiredSize(float) const override{return FVector2D(460,380);}
     virtual int32 OnPaint(const FPaintArgs&,const FGeometry&,const FSlateRect&,FSlateWindowElementList&,int32,const FWidgetStyle&,bool) const override;
     virtual FReply OnMouseButtonDown(const FGeometry&,const FPointerEvent&) override;
     virtual FReply OnMouseMove(const FGeometry&,const FPointerEvent&) override;
@@ -83,14 +84,19 @@ public:
     void SelectNone(){Selected=Route=Node=INDEX_NONE;}
     void FitView()
     {
-        if(auto* P=GetPlan())
-        {
-            const FVector Center=P->GetComponentsBoundingBox(true).GetCenter();
-            const double Span=FMath::Max(P->Recipe.MapSize.X,P->Recipe.MapSize.Y)*100;
-            const FVector Eye=Center+FVector(-.9*Span,-1.1*Span,.9*Span);
-            for(auto* Client:GEditor->GetLevelViewportClients())if(Client&&Client->IsPerspective())
-            {Client->SetViewLocation(Eye);Client->SetViewRotation((Center-Eye).Rotation());Client->SetLookAtLocation(Center);Client->EngineShowFlags.SetEyeAdaptation(false);Client->Invalidate();break;}
-        }
+        auto* P=GetPlan();
+        if(!P){Message(TEXT("먼저 설계를 열거나 만드세요."));return;}
+        // 연결된 Landscape가 있으면 그 범위, 없으면 설계 영역 중심 (미리보기를 꺼 두면 설계 액터의 범위가 비어 원점을 보던 문제)
+        const FBox Box=P->Target?P->Target->GetComponentsBoundingBox(true):FBox();
+        const FVector Center=Box.IsValid?Box.GetCenter():P->GetActorLocation();
+        const double Span=FMath::Max(P->Recipe.MapSize.X,P->Recipe.MapSize.Y)*100;
+        const FVector Eye=Center+FVector(-.55*Span,-.7*Span,.6*Span);
+        // 지금 쓰는 레벨 뷰포트 → 없으면 첫 원근 뷰포트 · 자동 밝기 보정은 그대로 둠 (끄면 화면이 검게 됐음)
+        FLevelEditorViewportClient* Client=GCurrentLevelEditingViewportClient&&GCurrentLevelEditingViewportClient->IsPerspective()?GCurrentLevelEditingViewportClient:nullptr;
+        if(!Client)for(auto* Each:GEditor->GetLevelViewportClients())if(Each&&Each->IsPerspective()){Client=Each;break;}
+        if(!Client){Message(TEXT("원근 레벨 뷰포트를 찾지 못했습니다."));return;}
+        Client->SetViewLocation(Eye);Client->SetViewRotation((Center-Eye).Rotation());Client->Invalidate();
+        Message(TEXT("레벨 뷰포트를 설계 영역에 맞췄습니다."));
     }
     void LoadExisting()
     {
@@ -120,7 +126,13 @@ public:
         Details->SetIsPropertyVisibleDelegate(FIsPropertyVisible::CreateLambda([](const FPropertyAndParent& P)
         {
             const FProperty* Root=P.ParentProperties.IsEmpty()?&P.Property:P.ParentProperties.Last();
-            return Root->GetOwnerStruct()==ACozyTerrainLayout::StaticClass()&&Root->HasMetaData(TEXT("Category"))&&Root->GetFName()!=GET_MEMBER_NAME_CHECKED(ACozyTerrainLayout,Preview);
+            if(Root->GetOwnerStruct()!=ACozyTerrainLayout::StaticClass()||!Root->HasMetaData(TEXT("Category"))) return false;
+            // 지도·위 숫자 칸과 겹치는 값은 숨김: 미리보기 체크(왼쪽 체크로) · 평지·산·길 원본 목록 · 설정 버전
+            static const TSet<FName> Hidden={GET_MEMBER_NAME_CHECKED(ACozyTerrainLayout,Preview),GET_MEMBER_NAME_CHECKED(ACozyTerrainLayout,bShowPreview),
+                GET_MEMBER_NAME_CHECKED(FCozyTerrainRecipe,Landforms),GET_MEMBER_NAME_CHECKED(FCozyTerrainRecipe,Routes),GET_MEMBER_NAME_CHECKED(FCozyTerrainRecipe,Version)};
+            if(Hidden.Contains(Root->GetFName())||Hidden.Contains(P.Property.GetFName())) return false;
+            for(const FProperty* Parent:P.ParentProperties) if(Hidden.Contains(Parent->GetFName())) return false;
+            return true;
         }));
         Details->OnFinishedChangingProperties().AddLambda([this](const FPropertyChangedEvent&){if(auto* P=GetPlan())P->RebuildPreview();if(Map)Map->Invalidate(EInvalidateWidgetReason::Paint);});
         auto Tool=[this](const TCHAR* Label,int M){return Button(Label,[this,M](){Mode=M;if(M==3){Route=Node=INDEX_NONE;Selected=INDEX_NONE;}Message(M==3?TEXT("지도에 경유점을 차례로 클릭하세요. 선택 도구로 바꾸면 길이 끝납니다."):TEXT("도구 선택됨 · 지도에서 클릭하거나 선택한 요소를 드래그하세요."));});};
@@ -140,21 +152,25 @@ public:
                 +SVerticalBox::Slot().AutoHeight().Padding(3)[Tool(TEXT("산·능선 추가"),2)]
                 +SVerticalBox::Slot().AutoHeight().Padding(3)[Tool(TEXT("길 그리기"),3)]
                 +SVerticalBox::Slot().AutoHeight().Padding(3)[Button(TEXT("선택 요소 삭제"),[this](){Mutate([this](auto& P){if(P.Recipe.Landforms.IsValidIndex(Selected))P.Recipe.Landforms.RemoveAt(Selected);else if(P.Recipe.Routes.IsValidIndex(Route)){if(P.Recipe.Routes[Route].Points.IsValidIndex(Node))P.Recipe.Routes[Route].Points.RemoveAt(Node);else P.Recipe.Routes.RemoveAt(Route);}SelectNone();});})]
-                +SVerticalBox::Slot().AutoHeight().Padding(3)[Button(TEXT("예제 구성 추가"),[this](){if(GetPlan()&&(GetPlan()->Recipe.Landforms.Num()||GetPlan()->Recipe.Routes.Num())){Message(TEXT("예제는 비어 있는 설계에만 추가합니다."));return;}Mutate([](auto& P){P.AddDemo();});})]
-                +SVerticalBox::Slot().AutoHeight().Padding(5)[SNew(SCheckBox).IsChecked(ECheckBoxState::Checked).OnCheckStateChanged_Lambda([this](ECheckBoxState S){bContours=S==ECheckBoxState::Checked;})[SNew(STextBlock).Text(T(TEXT("등고선 5m")))]]
-                +SVerticalBox::Slot().AutoHeight().Padding(5)[SNew(SCheckBox).IsChecked(ECheckBoxState::Checked).OnCheckStateChanged_Lambda([this](ECheckBoxState S){bSlope=S==ECheckBoxState::Checked;})[SNew(STextBlock).Text(T(TEXT("급경사 표시")))]]
-                +SVerticalBox::Slot().AutoHeight().Padding(5)[SNew(STextBlock).AutoWrapText(true).Text(T(TEXT("청록: 낮은 땅\n노랑: 높은 땅\n빨강: 급경사\n\n이름·테두리: 평지와 산\n파란 점: 길 경유점\n사각 손잡이: 크기\n\n실제 3D 미리보기는 옆의 레벨 뷰포트에 표시됩니다.")))]]
+                +SVerticalBox::Slot().AutoHeight().Padding(5)[SNew(SCheckBox).IsChecked(ECheckBoxState::Checked).OnCheckStateChanged_Lambda([this](ECheckBoxState S){bContours=S==ECheckBoxState::Checked;Refresh();})[SNew(STextBlock).Text(T(TEXT("등고선 5m")))]]
+                +SVerticalBox::Slot().AutoHeight().Padding(5)[SNew(SCheckBox).IsChecked(ECheckBoxState::Checked).OnCheckStateChanged_Lambda([this](ECheckBoxState S){bSlope=S==ECheckBoxState::Checked;Refresh();})[SNew(STextBlock).Text(T(TEXT("급경사 표시")))]]
+                // 3D 미리보기 켜기·끄기 (아래 따로 있던 '미리보기' 버튼과 세부 정보 칸의 같은 체크를 여기 하나로)
+                +SVerticalBox::Slot().AutoHeight().Padding(5)[SNew(SCheckBox).IsChecked_Lambda([this](){auto* P=GetPlan();return P&&P->bShowPreview?ECheckBoxState::Checked:ECheckBoxState::Unchecked;}).OnCheckStateChanged_Lambda([this](ECheckBoxState S){if(auto* P=GetPlan()){P->bShowPreview=S==ECheckBoxState::Checked;P->RebuildPreview();}})[SNew(STextBlock).Text(T(TEXT("3D 미리보기 (바뀌는 곳만)")))]]
+                +SVerticalBox::Slot().AutoHeight().Padding(5)[SNew(STextBlock).AutoWrapText(true).Text(T(TEXT("청록 낮음 · 노랑 높음 · 빨강 급경사\n사각 손잡이 = 크기")))]]
             +SSplitter::Slot().Value(.53f)[SAssignNew(Map,SMap,SharedThis(this))]
             +SSplitter::Slot().Value(.32f)[SNew(SVerticalBox)
                 +SVerticalBox::Slot().AutoHeight().Padding(4)[SNew(STextBlock).Text_Lambda([this](){auto* P=GetPlan();if(P&&P->Recipe.Landforms.IsValidIndex(Selected))return FText::FromString(P->Recipe.Landforms[Selected].Name);if(P&&P->Recipe.Routes.IsValidIndex(Route))return FText::FromString(P->Recipe.Routes[Route].Name);return T(TEXT("선택 요소 / 전체 설계"));})]
                 +SVerticalBox::Slot().AutoHeight()[Number(TEXT("선택 높이 (m)"),[this]()->TOptional<float>{auto* P=GetPlan();if(P&&P->Recipe.Landforms.IsValidIndex(Selected))return P->Recipe.Landforms[Selected].Height;if(P&&P->Recipe.Routes.IsValidIndex(Route)&&P->Recipe.Routes[Route].Points.IsValidIndex(Node))return P->Recipe.Routes[Route].Points[Node].Z;return {};},[this](float V){Mutate([this,V](auto& P){if(P.Recipe.Landforms.IsValidIndex(Selected))P.Recipe.Landforms[Selected].Height=FMath::Clamp(V,-200.f,200.f);else if(P.Recipe.Routes.IsValidIndex(Route)&&P.Recipe.Routes[Route].Points.IsValidIndex(Node))P.Recipe.Routes[Route].Points[Node].Z=FMath::Clamp(V,-200.f,200.f);});})]
                 +SVerticalBox::Slot().AutoHeight()[Number(TEXT("가로 / 길 폭 (m)"),[this]()->TOptional<float>{auto* P=GetPlan();if(P&&P->Recipe.Landforms.IsValidIndex(Selected))return P->Recipe.Landforms[Selected].Size.X;if(P&&P->Recipe.Routes.IsValidIndex(Route))return P->Recipe.Routes[Route].Width;return {};},[this](float V){Mutate([this,V](auto& P){if(P.Recipe.Landforms.IsValidIndex(Selected))P.Recipe.Landforms[Selected].Size.X=FMath::Clamp(V,2.f,2000.f);else if(P.Recipe.Routes.IsValidIndex(Route))P.Recipe.Routes[Route].Width=FMath::Clamp(V,2.f,80.f);});})]
                 +SVerticalBox::Slot().AutoHeight()[Number(TEXT("세로 (m)"),[this]()->TOptional<float>{auto* P=GetPlan();if(P&&P->Recipe.Landforms.IsValidIndex(Selected))return P->Recipe.Landforms[Selected].Size.Y;return {};},[this](float V){Mutate([this,V](auto& P){if(P.Recipe.Landforms.IsValidIndex(Selected))P.Recipe.Landforms[Selected].Size.Y=FMath::Clamp(V,2.f,2000.f);});})]
+                // 세부 정보 칸에서 원본 목록을 숨긴 대신 거기서만 고칠 수 있던 값을 여기로
+                +SVerticalBox::Slot().AutoHeight()[Number(TEXT("방향 (도)"),[this]()->TOptional<float>{auto* P=GetPlan();if(P&&P->Recipe.Landforms.IsValidIndex(Selected))return P->Recipe.Landforms[Selected].Rotation;return {};},[this](float V){Mutate([this,V](auto& P){if(P.Recipe.Landforms.IsValidIndex(Selected))P.Recipe.Landforms[Selected].Rotation=FMath::Fmod(V,360.f);});})]
+                +SVerticalBox::Slot().AutoHeight()[Number(TEXT("주변 연결 폭 (m)"),[this]()->TOptional<float>{auto* P=GetPlan();if(P&&P->Recipe.Landforms.IsValidIndex(Selected))return P->Recipe.Landforms[Selected].Blend;if(P&&P->Recipe.Routes.IsValidIndex(Route))return P->Recipe.Routes[Route].Blend;return {};},[this](float V){Mutate([this,V](auto& P){if(P.Recipe.Landforms.IsValidIndex(Selected))P.Recipe.Landforms[Selected].Blend=FMath::Clamp(V,1.f,200.f);else if(P.Recipe.Routes.IsValidIndex(Route))P.Recipe.Routes[Route].Blend=FMath::Clamp(V,1.f,80.f);});})]
+                +SVerticalBox::Slot().AutoHeight().Padding(4,8,4,2)[SNew(STextBlock).Text(T(TEXT("전체 설계 · 재질 · 설정 이름")))]
                 +SVerticalBox::Slot().FillHeight(1)[Details.ToSharedRef()]]]
         +SVerticalBox::Slot().AutoHeight().Padding(4)[SNew(SHorizontalBox)
             +SHorizontalBox::Slot().AutoWidth().Padding(2)[Button(TEXT("되돌리기"),[this](){GEditor->UndoTransaction();SelectNone();Refresh();})]
             +SHorizontalBox::Slot().AutoWidth().Padding(2)[Button(TEXT("다시 실행"),[this](){GEditor->RedoTransaction();SelectNone();Refresh();})]
-            +SHorizontalBox::Slot().AutoWidth().Padding(2)[Button(TEXT("미리보기"),[this](){if(auto* P=GetPlan()){P->bShowPreview=!P->bShowPreview;P->RebuildPreview();}})]
             +SHorizontalBox::Slot().AutoWidth().Padding(2)[Button(TEXT("설정 저장"),[this](){if(auto* P=GetPlan()){FString R;P->SavePreset(R);Message(R);}})]
             +SHorizontalBox::Slot().AutoWidth().Padding(2)[Button(TEXT("설정 불러오기"),[this](){if(auto* P=GetPlan()){FString R;P->LoadPreset(R);SelectNone();Message(R);}})]
             +SHorizontalBox::Slot().AutoWidth().Padding(2)[Button(TEXT("사본 보존 후 적용"),[this](){if(auto* P=GetPlan()){FString R;P->Apply(R);Message(R);}})]
@@ -265,19 +281,13 @@ class FCozyTerrainEditorModule : public IModuleInterface
 public:
     virtual void StartupModule() override
     {
-        FGlobalTabmanager::Get()->RegisterNomadTabSpawner(CozyTerrainUI::TabName,FOnSpawnTab::CreateLambda([](const FSpawnTabArgs&){return SNew(SDockTab).TabRole(ETabRole::NomadTab)[SNew(CozyTerrainUI::SPanel)];})).SetDisplayName(CozyTerrainUI::T(TEXT("지형 편집기")));
-        UToolMenus::RegisterStartupCallback(FSimpleMulticastDelegate::FDelegate::CreateRaw(this,&FCozyTerrainEditorModule::Menus));
+        FGlobalTabmanager::Get()->RegisterNomadTabSpawner(CozyTerrainUI::TabName,FOnSpawnTab::CreateLambda([](const FSpawnTabArgs&){return SNew(SDockTab).TabRole(ETabRole::NomadTab)[SNew(CozyTerrainUI::SPanel)];})).SetDisplayName(CozyTerrainUI::T(TEXT("지형 편집기"))).SetTooltipText(CozyTerrainUI::T(TEXT("현재 레벨에서 지형을 설계·미리보기·적용합니다")));
+        // 창 메뉴 항목은 위 탭 등록이 자동으로 만든다 (따로 메뉴를 더하면 '지형 편집기'가 두 번 나왔음)
         OpenCommand=MakeUnique<FAutoConsoleCommand>(TEXT("Cozy.TerrainEditor"),TEXT("현재 레벨의 지형 편집기 열기"),FConsoleCommandDelegate::CreateLambda([](){FGlobalTabmanager::Get()->TryInvokeTab(CozyTerrainUI::TabName);}));
-    }
-    void Menus()
-    {
-        FToolMenuOwnerScoped Owner(this);
-        auto* Menu=UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Window");
-        Menu->FindOrAddSection("WindowLayout").AddMenuEntry("CozyTerrainEditor",CozyTerrainUI::T(TEXT("지형 편집기")),CozyTerrainUI::T(TEXT("현재 레벨에서 지형을 설계·미리보기·적용합니다")),FSlateIcon(),FUIAction(FExecuteAction::CreateLambda([](){FGlobalTabmanager::Get()->TryInvokeTab(CozyTerrainUI::TabName);})));
     }
     virtual void ShutdownModule() override
     {
-        OpenCommand.Reset();UToolMenus::UnRegisterStartupCallback(this);UToolMenus::UnregisterOwner(this);FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(CozyTerrainUI::TabName);
+        OpenCommand.Reset();FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(CozyTerrainUI::TabName);
     }
 };
 IMPLEMENT_MODULE(FCozyTerrainEditorModule,CozyTerrainEditor)

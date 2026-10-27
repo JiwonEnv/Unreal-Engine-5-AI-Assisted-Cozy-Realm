@@ -57,6 +57,7 @@ public:
     virtual bool IsEditorOnly() const override { return true; }
     virtual void PostEditChangeProperty(FPropertyChangedEvent& Event) override;
     virtual void PostEditUndo() override;
+    virtual void PostLoad() override;
     UPROPERTY(EditAnywhere, Category="01 지형 설계", meta=(DisplayName="설계")) FCozyTerrainRecipe Recipe;
     UPROPERTY(EditAnywhere, Category="02 표시", meta=(DisplayName="3D 미리보기 표시")) bool bShowPreview=true;
     UPROPERTY(EditAnywhere, Category="02 표시", meta=(DisplayName="급경사 기준 (도)",ClampMin="5",ClampMax="60")) float SlopeLimit=30;
@@ -73,7 +74,14 @@ public:
     UPROPERTY() FVector BoundCenter=FVector::ZeroVector;
     UPROPERTY() FVector2D BoundSize=FVector2D::ZeroVector;
     UPROPERTY() bool bHasUnappliedChanges=true;
+    /** 마지막으로 실제 지형에 적용한 설계 · 그 직전 적용분 (3D 미리보기를 바뀌는 곳만 그리고, 복구 뒤에도 기준을 맞추려고) */
+    UPROPERTY() FCozyTerrainRecipe AppliedRecipe;
+    UPROPERTY() FCozyTerrainRecipe PrevAppliedRecipe;
+    UPROPERTY() bool bHasApplied=false;
+    UPROPERTY() bool bHasPrevApplied=false;
     float Sample(FVector2D LocalMeters) const;
+    /** 지금 실제 지형의 높이 추정 (적용한 설계가 있으면 그 설계 · 없으면 연결 당시 원래 높이) */
+    float SampleApplied(FVector2D LocalMeters) const;
     void RebuildPreview();
     bool BindLandscape(ALandscape* Landscape, FString& Result);
     bool Apply(FString& Result);
@@ -82,6 +90,9 @@ public:
     bool LoadPreset(FString& Result);
     void AddDemo();
 private:
+    /** 연결 당시 원래 지형 높이 (m · 설계 기준) · 연결 전이면 0 */
+    float BaselineHeight(FVector2D LocalMeters) const;
+    float SampleWith(const FCozyTerrainRecipe& R, FVector2D LocalMeters) const;
     bool ReadTarget(TArray<uint16>& Data, FString& Result) const;
     bool WriteLayer(const TArray<uint16>& Data, FString& Result);
     FString PresetPath() const;

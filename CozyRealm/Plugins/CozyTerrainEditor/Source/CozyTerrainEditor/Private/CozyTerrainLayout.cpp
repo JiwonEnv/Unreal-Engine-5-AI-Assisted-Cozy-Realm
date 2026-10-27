@@ -74,8 +74,24 @@ void ACozyTerrainLayout::PostEditChangeProperty(FPropertyChangedEvent& E)
     RebuildPreview();
 }
 void ACozyTerrainLayout::PostEditUndo(){Super::PostEditUndo();RebuildPreview();}
+void ACozyTerrainLayout::PostLoad()
+{
+    Super::PostLoad();
+    // 적용 기록이 생기기 전에 저장한 설계: 적용된 상태로 저장됐으면 지금 설계를 적용분으로 본다 (미리보기 기준)
+    if(!bHasApplied&&EditLayerGuid.IsValid()&&!bHasUnappliedChanges){AppliedRecipe=Recipe;bHasApplied=true;}
+}
 
-float ACozyTerrainLayout::Sample(FVector2D P) const
+float ACozyTerrainLayout::SampleApplied(FVector2D P) const
+{
+    if(bHasApplied) return SampleWith(AppliedRecipe,P);
+    // 아직 적용 전: 연결 당시 원래 높이 그대로 (새로 만들 지형이면 0)
+    return BaselineHeight(P);
+}
+
+float ACozyTerrainLayout::Sample(FVector2D P) const{return SampleWith(Recipe,P);}
+float ACozyTerrainLayout::SampleWith(const FCozyTerrainRecipe& R,FVector2D P) const{return R.Evaluate(P,BaselineHeight(P)+R.BaseHeight);}
+
+float ACozyTerrainLayout::BaselineHeight(FVector2D P) const
 {
     float Base=0;
     const int W=GridMax.X-GridMin.X+1,H=GridMax.Y-GridMin.Y+1;
@@ -87,31 +103,37 @@ float ACozyTerrainLayout::Sample(FVector2D P) const
         const double Raw=FMath::Lerp(FMath::Lerp(double(Baseline[Y*W+X]),double(Baseline[Y*W+X2]),GX-X),FMath::Lerp(double(Baseline[Y2*W+X]),double(Baseline[Y2*W+X2]),GX-X),GY-Y);
         Base=((Raw-32768)/128*CapturedTransform.GetScale3D().Z+CapturedTransform.GetLocation().Z-GetActorLocation().Z)/100;
     }
-    return Recipe.Evaluate(P,Base+Recipe.BaseHeight);
+    return Base;
 }
 
 void ACozyTerrainLayout::RebuildPreview()
 {
     FString Reason;
     if(!Recipe.Validate(Reason)){Preview->ClearAllMeshSections();return;}
-    constexpr int N=65;
+    // 실제 지형과 높이가 달라지는 곳만 그린다 (전체를 덮으면 실제 지형 위에 하얗게 겹쳐 알아보기 어려웠음)
+    // 색: 올라가는 곳 주황 · 내려가는 곳 파랑 · 급경사 빨강
+    constexpr int N=65; constexpr float ChangedMeters=.05f;
     TArray<FVector> V,Normals; TArray<int32> Indices; TArray<FVector2D> UV; TArray<FLinearColor> Colors; TArray<FProcMeshTangent> Tangents;
-    V.Reserve(N*N); Colors.Reserve(N*N);
+    TArray<bool> Changed; V.Reserve(N*N); Colors.Reserve(N*N); Changed.Reserve(N*N);
     for(int Y=0;Y<N;++Y) for(int X=0;X<N;++X)
     {
         FVector2D P((double(X)/(N-1)-.5)*Recipe.MapSize.X,(double(Y)/(N-1)-.5)*Recipe.MapSize.Y);
-        const float Z=Sample(P);
+        const float Z=Sample(P),Delta=Z-SampleApplied(P);
         V.Add(FVector(P.X*100,P.Y*100,Z*100+15));
         const float DX=Sample(P+FVector2D(.5,0))-Sample(P-FVector2D(.5,0));
         const float DY=Sample(P+FVector2D(0,.5))-Sample(P-FVector2D(0,.5));
         Normals.Add(FVector(-DX,-DY,1).GetSafeNormal());
         UV.Add(FVector2D(double(X)/(N-1),double(Y)/(N-1)));
-        const float T=FMath::Clamp((Z+20)/100.f,0.f,1.f);
-        FLinearColor C=FMath::Lerp(FLinearColor(.06,.28,.24),FLinearColor(.84,.62,.23),T);
+        FLinearColor C=Delta>=0?FLinearColor(.95,.55,.15):FLinearColor(.2,.45,.95);
         if(FMath::RadiansToDegrees(FMath::Atan(FMath::Sqrt(DX*DX+DY*DY)))>SlopeLimit) C=FLinearColor(.9,.16,.08);
-        Colors.Add(C);
-        if(X<N-1&&Y<N-1){int A=Y*N+X;Indices.Append({A,A+N,A+1,A+1,A+N,A+N+1});}
+        Colors.Add(C); Changed.Add(FMath::Abs(Delta)>ChangedMeters);
     }
+    for(int Y=0;Y<N-1;++Y) for(int X=0;X<N-1;++X)
+    {
+        const int A=Y*N+X;
+        if(Changed[A]||Changed[A+1]||Changed[A+N]||Changed[A+N+1]) Indices.Append({A,A+N,A+1,A+1,A+N,A+N+1});
+    }
+    if(Indices.IsEmpty()){Preview->ClearAllMeshSections();if(GEditor)GEditor->RedrawLevelEditingViewports();return;}
     Preview->CreateMeshSection_LinearColor(0,V,Indices,Normals,UV,Colors,Tangents,false);
     Preview->SetVisibility(bShowPreview); if(GEditor) GEditor->RedrawLevelEditingViewports();
 }
@@ -215,6 +237,7 @@ bool ACozyTerrainLayout::Apply(FString& Result)
         EditLayerGuid=Target->GetEditLayer(Index)->GetGuid();
     }
     if(!WriteLayer(Delta,Result)) return false;
+    PrevAppliedRecipe=AppliedRecipe;bHasPrevApplied=bHasApplied;AppliedRecipe=Recipe;bHasApplied=true;
     bHasUnappliedChanges=false;bShowPreview=false;Preview->SetVisibility(false);MarkPackageDirty();
     Result=TEXT("적용 완료 · 원본 레이어 유지 · 적용 전 사본 저장됨. 맵 저장은 직접 실행하세요.");return true;
 }
@@ -234,7 +257,9 @@ bool ACozyTerrainLayout::Restore(FString& Result)
     const FScopedTransaction Transaction(NSLOCTEXT("CozyTerrain","Restore","적용 전 지형으로 복구"));Modify();Target->Modify();
     if(Existed){if(!WriteLayer(Old,Result))return false;}
     else {Target->DeleteLayer(Target->GetLayerIndex(EditLayerGuid));EditLayerGuid.Invalidate();Target->RequestLayersContentUpdateForceAll();}
-    bHasUnappliedChanges=true;Target->MarkPackageDirty();Result=TEXT("마지막 적용 전 높이로 복구했습니다. 설계 수치는 유지됩니다.");return true;
+    // 미리보기 기준도 직전 적용분으로 (복구는 한 단계만)
+    AppliedRecipe=PrevAppliedRecipe;bHasApplied=bHasPrevApplied;bHasPrevApplied=false;
+    bHasUnappliedChanges=true;Target->MarkPackageDirty();RebuildPreview();Result=TEXT("마지막 적용 전 높이로 복구했습니다. 설계 수치는 유지됩니다.");return true;
 }
 
 FString ACozyTerrainLayout::PresetPath() const{return FPaths::ProjectSavedDir()/TEXT("CozyTerrainEditor/Presets")/(FPaths::MakeValidFileName(PresetName)+TEXT(".json"));}
