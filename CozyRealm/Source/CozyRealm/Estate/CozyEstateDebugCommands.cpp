@@ -1,4 +1,4 @@
-#include "HAL/IConsoleManager.h"
+﻿#include "HAL/IConsoleManager.h"
 #include "Misc/CommandLine.h"
 #include "Misc/CoreDelegates.h"
 #include "Containers/Ticker.h"
@@ -110,6 +110,45 @@ namespace CozyDebug
 	}
 }
 
+// 첫 실행 안내 시험: 밭 수령 → (가공은 수령 배지 시험에서 시작됨) → 판매소에서 밀 1개 판매 · 안내 단계가 넘어가는지 로그로 확인
+static FAutoConsoleCommandWithWorld CozyTutorialWalk(
+	TEXT("Cozy.TutorialWalk"), TEXT("안내 시험: 밭·제분소 수령 · 밀가루 1개 판매 (-CozyDebugCommands 필요)"),
+	FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World)
+	{
+		UCozyEstateSubsystem* Estate = World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
+		if (!FParse::Param(FCommandLine::Get(), TEXT("CozyDebugCommands")) || !Estate || !Estate->IsStarted())
+		{
+			return;
+		}
+		FText Message;
+		for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
+		{
+			if (Facility.DefinitionId == TEXT("Field") || Facility.DefinitionId == TEXT("Mill"))
+			{
+				Estate->CollectUnclaimed(Facility.InstanceId);
+			}
+		}
+		// 제분소 가공이 없으면 1회 시작 (3단계 '밀가루 만들기' 확인)
+		for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
+		{
+			if (Facility.DefinitionId == TEXT("Mill") && Estate->GetProcessingJobs(Facility.InstanceId).Num() == 0)
+			{
+				Estate->DebugAddResource(TEXT("Wheat"), 3);
+				Estate->StartProcessing(Facility.InstanceId, TEXT("Mill_Flour"), 1, Message);
+				break;
+			}
+		}
+		for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
+		{
+			if (Facility.DefinitionId == TEXT("Shop"))
+			{
+				Estate->SellItem(Facility.InstanceId, TEXT("Flour"), 1, Message);
+				break;
+			}
+		}
+		UE_LOG(LogCozyRealm, Log, TEXT("[디버그] 안내 시험: 밭 수령 · 판매 %s"), *Message.ToString());
+	}));
+
 static FAutoConsoleCommandWithWorld CozyStateTest(
 	TEXT("Cozy.StateTest"), TEXT("상태 칩 시험: 밭 주민 빼기 · 창고 밀가루 가득 · 판매소 업그레이드 시작 (-CozyDebugCommands 필요)"),
 	FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World) { CozyDebug::RunStateTest(World); }));
@@ -145,6 +184,18 @@ static struct FCozyBadgeTestOnStart
 						if (FParse::Param(FCommandLine::Get(), TEXT("CozyStateTest")))
 						{
 							CozyDebug::RunStateTest(World);
+						}
+						// -CozyTutorialWalk: 안내가 2단계로 넘어간 뒤(약 3초) 밭 수령, 다시 3초 뒤 판매
+						if (FParse::Param(FCommandLine::Get(), TEXT("CozyTutorialWalk")))
+						{
+							for (const float Delay : { 3.f, 6.f, 9.f })
+							{
+								FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([World](float)
+								{
+									GEngine->Exec(World, TEXT("Cozy.TutorialWalk"));
+									return false;
+								}), Delay);
+							}
 						}
 						return false;
 					}

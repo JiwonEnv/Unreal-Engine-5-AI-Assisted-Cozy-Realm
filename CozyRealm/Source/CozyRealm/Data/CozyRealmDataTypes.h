@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
@@ -427,6 +427,33 @@ struct FCozyEstateConfigRow : public FTableRowBase
 	/** 방치 보상 심상 조각: 이 시간마다 1개 (🤖 1시간 · 0이면 없음) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Offline")
 	float OfflineMindShardEverySeconds = 3600.f;
+
+	/** 🙋/🤖/❓ 표시와 메모 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Note")
+	FString Note;
+};
+
+/** 첫 실행 안내 한 단계 (Tutorial.csv · 1행 = 1단계 · 행 이름 순서대로 진행) */
+USTRUCT(BlueprintType)
+struct FCozyTutorialRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	/** 다음 단계로 넘어가는 조건 (AssignField · CollectField · StartProcessing · Sell) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial")
+	FName Goal;
+
+	/** 화살표를 띄울 시설 정의 ID (예: Field · 비우면 화살표 없음) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial")
+	FName TargetFacility;
+
+	/** 제목 (예: 밭에 오니비 배치) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial")
+	FText Title;
+
+	/** 설명 (무엇을 누르면 되는지) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial")
+	FText Body;
 
 	/** 🙋/🤖/❓ 표시와 메모 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Note")

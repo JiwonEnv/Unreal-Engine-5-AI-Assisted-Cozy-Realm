@@ -104,6 +104,10 @@ public:
 	void ToggleStorageWindow();
 
 	void ToggleDebugPanel();
+	/** 첫 실행 안내를 처음 단계부터 (새 게임 시작 · 설정 '안내 다시 보기') */
+	void StartTutorial();
+	/** 안내 진행 확인 · 화살표 위치 (플레이어 컨트롤러가 매 프레임 · 위젯이 그려지지 않는 시험 실행에서도 진행되게) */
+	void UpdateTutorial(float DeltaTime);
 	/** UI 미리보기: HUD · 모든 창 화면 · 배치 패널 · 시설 메뉴 · 배치 버튼을 함께 가짜 값으로 (게임 상태는 바꾸지 않음) */
 	void SetUiPreview(bool bEnable);
 	void SetUiPreviewState(ECozyUiPreviewState State);
@@ -235,6 +239,35 @@ private:
 	// --- 배치 모드 ---
 	void RefreshPlacementPanel();
 	void UpdatePlacementLive();
+	// --- 첫 실행 안내 (Tutorial.csv · 새 게임에서 한 번 · 설정 '안내 다시 보기') ---
+	/** 안내 칸·화살표를 만든다 (처음 시작할 때 한 번) */
+	void BuildTutorialWidgets();
+	/** Index 단계를 보여 주고 그 단계의 기준값(창고 밀·밀가루·골드)을 기록 */
+	void ShowTutorialStep(int32 Index);
+	/** 안내를 끝냄 (bCompleted면 마지막 단계까지 · 아니면 건너뜀) · 다시 띄우지 않게 저장 */
+	void FinishTutorial(bool bCompleted);
+	bool IsTutorialGoalDone(FName Goal) const;
+	int32 GetStoredAmount(FName ItemId) const;
+	struct FTutorialStep { FName Goal; FName Target; FText Title; FText Body; };
+	TArray<FTutorialStep> TutorialSteps;
+	int32 TutorialIndex = INDEX_NONE;
+	float TutorialTime = 0.f;
+	/** 단계 시작 때 기준값 (수확 · 가공 · 판매 확인용) */
+	int32 TutorialWheatStart = 0;
+	int32 TutorialFlourStart = 0;
+	int32 TutorialGoldStart = 0;
+	bool bTutorialChecked = false;
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> TutorialPanel;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TutorialTitle;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TutorialBody;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TutorialArrow;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UCozyUiAction>> TutorialActions;
+
 	/** 배치 버튼 화면(PlacementActions)을 버튼 상자에 붙이고 갱신 · 화면이 없으면 false */
 	bool ShowPlacementActionsScreen();
 	bool bPlacementMode = false;

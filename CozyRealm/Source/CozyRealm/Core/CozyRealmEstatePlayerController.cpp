@@ -176,6 +176,11 @@ void ACozyRealmEstatePlayerController::PlayerTick(float DeltaTime)
 		const FString& Notice = Estate->GetRecoveryNotice();
 		if (Hud && !Notice.IsEmpty() && Notice != LastRecoveryNotice) { Hud->ShowToast(FText::FromString(Notice)); LastRecoveryNotice = Notice; }
 	}
+	// 첫 실행 안내 (땅 편집 모드에서도 진행 확인은 계속)
+	if (Hud)
+	{
+		Hud->UpdateTutorial(DeltaTime);
+	}
 
 	// 작은 창 모드: 영지를 보며 수확만 (시설 메뉴 · 창 · 배치는 크게 보기 후)
 	const bool bCompact = Hud && Hud->IsCompactMode();

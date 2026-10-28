@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
@@ -484,6 +484,8 @@ public:
 	bool HasSaveFile() const;
 	/** 영지를 시작했는지 (StartEstate 이후) · 타이틀처럼 영지를 시작하지 않은 맵에서는 저장하지 않는다 */
 	bool IsStarted() const { return bStarted; }
+	/** 이번 실행에서 새 게임으로 시작했는가 (저장이 없었거나 새 게임 · 첫 실행 안내를 띄울지 판단) */
+	bool IsNewGameSession() const { return bNewGameSession; }
 	/**
 	 *  저장 파일을 읽기만 해서 상태를 알려준다 (파일을 만들거나 고치지 않음 · 타이틀 화면용).
 	 *  Valid = 이어하기 가능 · Recovered = 본 파일은 못 읽지만 직전 정상본으로 이어짐 · Invalid = 손상·미래 버전(덮어쓰지 않음)
@@ -627,6 +629,7 @@ private:
 	TArray<TObjectPtr<ACozyFacilityActor>> FacilityActors;
 
 	bool bStarted = false;
+	bool bNewGameSession = false;
 	float TimeScale = 1.f;
 	double StepAccumulator = 0.0;
 	ECozyNightOverride NightOverride = ECozyNightOverride::Auto;

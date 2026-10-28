@@ -1,4 +1,4 @@
-#include "Estate/CozyEstateSubsystem.h"
+﻿#include "Estate/CozyEstateSubsystem.h"
 #include "Algo/Count.h"
 #include "Environment/CozySurfaceComponent.h"
 #include "Facilities/CozyFacilityActor.h"
@@ -84,6 +84,7 @@ void UCozyEstateSubsystem::StartEstate()
 	FDateTime SavedUtc;
 	const bool bLoaded = LoadOrBuildState(SavedUtc);
 	bStarted = true;
+	bNewGameSession = !bLoaded;
 	if (bLoaded)
 	{
 		// 저장 시각부터 지금까지 정산 → 바로 저장해 같은 시간을 두 번 받지 않게 함
@@ -3544,6 +3545,7 @@ void UCozyEstateSubsystem::DebugRestartNewGame()
 	BuildNewGameState();
 	SpawnFacilityActors();
 	StepAccumulator = 0.0;
+	bNewGameSession = true;
 	SaveEstate(TEXT("새 게임"));
 	NotifyChanged();
 }

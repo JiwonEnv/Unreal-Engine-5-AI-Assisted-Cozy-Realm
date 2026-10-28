@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameUserSettings.h"
@@ -40,6 +40,10 @@ public:
 	/** 작은 창 모드일 때 다른 프로그램 창보다 항상 위에 */
 	UPROPERTY(config)
 	bool bCompactAlwaysOnTop = false;
+
+	/** 첫 실행 안내를 끝냈거나 건너뜀 (다시 띄우지 않음 · 설정 창 '안내 다시 보기'로 다시) · 기본값 복원(SetToDefaults)과 상관없이 유지 */
+	UPROPERTY(config)
+	bool bTutorialDone = false;
 };
 
 /**

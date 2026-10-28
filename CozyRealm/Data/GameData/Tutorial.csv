@@ -1,0 +1,5 @@
+﻿---,Goal,TargetFacility,Title,Body,Note
+Step1,AssignField,Field,밭에 오니비 배치,밭을 누르고 '주민'에서 오니비를 배치하세요. 주민이 있어야 밭이 일합니다.,🙋 순서 배치→수확→가공→판매 (2026-10-22 사용자 결정) / 🤖 문구 Claude 제안
+Step2,CollectField,Field,밀 수확,밭 위에 밀 배지가 뜨면 눌러서 창고로 옮기세요. (Space = 전부 수확),🤖 문구 Claude 제안
+Step3,StartProcessing,Mill,밀가루 만들기,제분소를 누르고 '가공'에서 밀가루 제작을 시작하세요. 제분소에도 오니비가 있어야 합니다.,🤖 문구 Claude 제안
+Step4,Sell,Shop,팔아서 골드 얻기,판매소를 누르고 '판매'에서 밀가루를 팔아 보세요. 제분소 위 밀가루 배지를 먼저 눌러 창고로 옮겨야 합니다.,🤖 문구 Claude 제안
