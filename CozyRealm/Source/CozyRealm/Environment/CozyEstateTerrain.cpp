@@ -224,6 +224,19 @@ float ACozyEstateTerrain::HeightAt(float X, float Y) const
 	return FMath::Max(-30.f, Rise * RidgeHeight + Noise * NoiseHeight * Rise);
 }
 
+float ACozyEstateTerrain::LayerWeightAt(float WX, float WY, float H, float Slope, FName Layer) const
+{
+	const float Distance = CozyTerrain::RoundedSquareDistance(WX, WY);
+	const float Rock = FMath::Max(FMath::SmoothStep(0.55f, 0.95f, Slope), FMath::SmoothStep(RidgeHeight * 0.75f, RidgeHeight * 1.05f, H));
+	const float Forest = FMath::SmoothStep(FlatHalfSize - 300.f, FlatHalfSize + 700.f, Distance);
+	const float Patch = FMath::SmoothStep(0.25f, 0.5f, CozyTerrain::Fractal(WX, WY, 900.f, RandomSeed + 3)) * (1.f - Forest) * FMath::SmoothStep(1300.f, 1800.f, Distance);
+	if (Layer == TEXT("Rock")) return Rock;
+	if (Layer == TEXT("GrassB")) return Forest * (1.f - Rock);
+	if (Layer == TEXT("DirtA")) return Patch * (1.f - Rock);
+	if (Layer == TEXT("GrassA")) return (1.f - Forest) * (1.f - Patch) * (1.f - Rock);
+	return 0.f;
+}
+
 void ACozyEstateTerrain::GenerateTerrain()
 {
 	UWorld* World = GetWorld();
@@ -264,19 +277,11 @@ void ACozyEstateTerrain::GenerateTerrain()
 	{
 		const float WX = X * QuadSize - HalfExtent;
 		const float WY = Y * QuadSize - HalfExtent;
-		const float Distance = CozyTerrain::RoundedSquareDistance(WX, WY);
 		const float H = Heights[Y * Size + X];
 		const float DX = Heights[Y * Size + FMath::Min(X + 1, Size - 1)] - Heights[Y * Size + FMath::Max(X - 1, 0)];
 		const float DY = Heights[FMath::Min(Y + 1, Size - 1) * Size + X] - Heights[FMath::Max(Y - 1, 0) * Size + X];
 		const float Slope = FMath::Sqrt(DX * DX + DY * DY) / (2.f * QuadSize);
-		const float Rock = FMath::Max(FMath::SmoothStep(0.55f, 0.95f, Slope), FMath::SmoothStep(RidgeHeight * 0.75f, RidgeHeight * 1.05f, H));
-		const float Forest = FMath::SmoothStep(FlatHalfSize - 300.f, FlatHalfSize + 700.f, Distance);
-		const float Patch = FMath::SmoothStep(0.25f, 0.5f, CozyTerrain::Fractal(WX, WY, 900.f, RandomSeed + 3)) * (1.f - Forest) * FMath::SmoothStep(1300.f, 1800.f, Distance);
-		if (Layer == TEXT("Rock")) { return Rock; }
-		if (Layer == TEXT("GrassB")) { return Forest * (1.f - Rock); }
-		if (Layer == TEXT("DirtA")) { return Patch * (1.f - Rock); }
-		if (Layer == TEXT("GrassA")) { return (1.f - Forest) * (1.f - Patch) * (1.f - Rock); }
-		return 0.f;
+		return LayerWeightAt(WX, WY, H, Slope, Layer);
 	};
 
 	TArray<FLandscapeImportLayerInfo> ImportLayers;

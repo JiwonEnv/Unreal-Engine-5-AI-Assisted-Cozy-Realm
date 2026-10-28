@@ -1,0 +1,77 @@
+{
+  "map": "/Game/CozyRealm/Maps/L_MountainWorld",
+  "extent_m": 504,
+  "landscape_components": 64,
+  "instances": {
+    "broad_trees": 757,
+    "pines": 376,
+    "boulders": 242,
+    "cliffs": 126
+  },
+  "clearings": [
+    {
+      "name": "시작 영지",
+      "center_cm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "radius_cm": [
+        3100.0,
+        2700.0
+      ]
+    },
+    {
+      "name": "서쪽 산중턱 확장 후보",
+      "center_cm": [
+        -10500.0,
+        6500.0,
+        2200.0
+      ],
+      "radius_cm": [
+        3300.0,
+        2600.0
+      ]
+    },
+    {
+      "name": "동쪽 숲 확장 후보",
+      "center_cm": [
+        10500.0,
+        4500.0,
+        1200.0
+      ],
+      "radius_cm": [
+        3400.0,
+        2900.0
+      ]
+    },
+    {
+      "name": "상부 능선 전망지",
+      "center_cm": [
+        2000.0,
+        15000.0,
+        4800.0
+      ],
+      "radius_cm": [
+        2600.0,
+        2200.0
+      ]
+    },
+    {
+      "name": "남쪽 산기슭 후보",
+      "center_cm": [
+        3500.0,
+        -13000.0,
+        -1600.0
+      ],
+      "radius_cm": [
+        4300.0,
+        3100.0
+      ]
+    }
+  ],
+  "facilities": 10,
+  "status": "레벨 초안 생성·빌드·패키지 실행·충돌·보행 시연·영상 검증 완료. 실제 생산·건설·해금 연동은 후속 범위",
+  "regeneration_backup": "/Game/CozyRealm/Tests/MountainWorld/L_BeforeRegeneration_20261024_010015",
+  "terrain_revision": 5
+}
