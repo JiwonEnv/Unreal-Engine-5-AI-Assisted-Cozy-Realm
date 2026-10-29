@@ -309,6 +309,17 @@ private:
 	TObjectPtr<class USizeBox> WindowScreenSize;
 	UPROPERTY(Transient)
 	TObjectPtr<class UScrollBox> WindowScreenScroll;
+	/**
+	 *  창 위쪽 위치 고정 (꾸미기 상점 · 출시 품질 점검 2026-10-30): 처음 그려진 위치에서 위쪽을 고정해
+	 *  '방금 한 일' 줄이 생기거나 길어져도 목록·버튼이 위로 밀리지 않게 (창은 아래로만 늘어남)
+	 */
+	bool bWindowTopLocked = false;
+	float WindowLockedTop = 0.f;
+	/** 고정하기 전의 창 여백 (풀 때 되돌림) */
+	FMargin WindowDefaultPadding;
+	int32 WindowOpenFrames = 0;
+	/** 창 위치를 처음(가운데 정렬)으로 되돌림 (창을 열고 닫을 때) */
+	void ResetWindowTopLock();
 	bool bCompactMode = false;
 
 	UPROPERTY(Transient)

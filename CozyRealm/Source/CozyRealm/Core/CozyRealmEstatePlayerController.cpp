@@ -337,6 +337,14 @@ void ACozyRealmEstatePlayerController::SelectFacility(ACozyFacilityActor* Facili
 	{
 		return;
 	}
+	// 꾸미기 장식은 기능이 없어 메뉴를 열지 않음 (배치 모드에서만 끌어서 옮김 · 출시 품질 점검 2026-10-30)
+	const UCozyEstateSubsystem* Estate = GetWorld() ? GetWorld()->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
+	const FCozyFacilityState* State = Estate && Facility ? Estate->FindFacility(Facility->GetFacilityId()) : nullptr;
+	if (State && Estate->IsDecoration(State->DefinitionId))
+	{
+		ClearSelection();
+		return;
+	}
 	ClearSelection();
 	SelectedFacility = Facility;
 	Facility->SetSelected(true);

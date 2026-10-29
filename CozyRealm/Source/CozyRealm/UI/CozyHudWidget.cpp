@@ -246,10 +246,28 @@ void UCozyHudWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 
 	UpdateNameLabelPositions();
 
+	// 꾸미기 상점: 처음 그려진 위치에서 창 위쪽을 고정 (사기를 누를 때 '방금 한 일' 줄이 생겨도 목록·버튼이 밀리지 않게)
+	if (WindowKind == ECozyWindowKind::DecorShop && WindowOverlay && WindowScreenSize && !bWindowTopLocked && MyGeometry.GetLocalSize().Y > 1.f)
+	{
+		const float Desired = WindowScreenSize->GetDesiredSize().Y;
+		if (++WindowOpenFrames >= 2 && Desired > 1.f)
+		{
+			const FMargin Pad = WindowOverlay->GetPadding();
+			WindowDefaultPadding = Pad;
+			WindowLockedTop = Pad.Top + FMath::Max(0.f, (MyGeometry.GetLocalSize().Y - Pad.Top - Pad.Bottom - Desired) * 0.5f);
+			WindowOverlay->SetVerticalAlignment(VAlign_Top);
+			WindowOverlay->SetPadding(FMargin(Pad.Left, WindowLockedTop, Pad.Right, Pad.Bottom));
+			bWindowTopLocked = true;
+		}
+	}
+
 	// 창 화면 높이 상한: 시작 직후에는 화면 크기를 아직 모를 수 있어 매 프레임 이 위젯의 실제 높이로 맞춘다 (HUD 아래 공간)
 	if (WindowScreenSize && WindowKind != ECozyWindowKind::None)
 	{
-		const float MaxHeight = FMath::Max(200.f, MyGeometry.GetLocalSize().Y - 130.f);
+		// 위쪽을 고정한 창은 고정한 위치부터 화면 아래 여백까지
+		const float MaxHeight = bWindowTopLocked
+			? FMath::Max(200.f, MyGeometry.GetLocalSize().Y - WindowLockedTop - WindowOverlay->GetPadding().Bottom - 10.f)
+			: FMath::Max(200.f, MyGeometry.GetLocalSize().Y - 130.f);
 		if (MyGeometry.GetLocalSize().Y > 1.f && !FMath::IsNearlyEqual(WindowScreenSize->GetMaxDesiredHeight(), MaxHeight, 1.f))
 		{
 			WindowScreenSize->SetMaxDesiredHeight(MaxHeight);
@@ -589,10 +607,15 @@ void UCozyHudWidget::RefreshNameLabels()
 		return;
 	}
 
-	// 시설 액터가 그대로면 다시 만들지 않음
+	// 시설 액터가 그대로면 다시 만들지 않음 · 꾸미기 장식은 이름표·수령 배지가 없음 (기능 없는 시설)
 	TArray<TWeakObjectPtr<ACozyFacilityActor>> Current;
 	for (TActorIterator<ACozyFacilityActor> It(World); It; ++It)
 	{
+		const FCozyFacilityState* Facility = Estate->FindFacility(It->GetFacilityId());
+		if (Facility && Estate->IsDecoration(Facility->DefinitionId))
+		{
+			continue;
+		}
 		Current.Add(*It);
 	}
 	if (Current == LabelFacilities)
@@ -1010,6 +1033,11 @@ void UCozyHudWidget::OpenWindow(ECozyWindowKind Kind, const FGuid& FacilityId, c
 	{
 		Controller->ClearSelection();
 	}
+	// 다른 창으로 바뀌면 가운데 정렬로 다시 시작 (같은 창을 다시 그릴 때는 고정 위치 유지)
+	if (Kind != WindowKind)
+	{
+		ResetWindowTopLock();
+	}
 	HideFacilityIcons();
 	// 설정 창 위에 다른 창을 열면(단축키 등) 설정 창을 닫은 것과 같게 정리
 	if (WindowKind == ECozyWindowKind::Settings && Kind != ECozyWindowKind::Settings)
@@ -1118,8 +1146,21 @@ void UCozyHudWidget::ToggleSettingsWindow()
 	OpenWindow(ECozyWindowKind::Settings, FGuid());
 }
 
+void UCozyHudWidget::ResetWindowTopLock()
+{
+	WindowOpenFrames = 0;
+	if (bWindowTopLocked && WindowOverlay)
+	{
+		// 고정 전의 가운데 정렬 · 여백으로
+		WindowOverlay->SetVerticalAlignment(VAlign_Center);
+		WindowOverlay->SetPadding(WindowDefaultPadding);
+	}
+	bWindowTopLocked = false;
+}
+
 void UCozyHudWidget::CloseWindow()
 {
+	ResetWindowTopLock();
 	// 설정 창: 적용하지 않은 변경은 버림 (화면 변경 확인 중이면 이전 화면 설정으로) · 진행 데이터는 건드리지 않음
 	if (WindowKind == ECozyWindowKind::Settings)
 	{
