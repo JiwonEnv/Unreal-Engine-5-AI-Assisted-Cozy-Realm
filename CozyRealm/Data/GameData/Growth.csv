@@ -1,6 +1,6 @@
 ﻿---,TargetFacilityId,FromLevel,RequiredShrineLevel,StartCost,Seconds,UnlockCrops,RequiredFacilities,UnlockFacilities,Note
 Shrine_1,Shrine,1,0,"((""Wheat"", 10),(""Flour"", 5))",180,(),"((""Nagaya"", 1),(""Hushinso"", 1),(""FieldOffice"", 1),(""Mill"", 1))",(),🤖 T3 첫 신사: 조건 없음·밀 10+밀가루 5 / 🤖 T1 3분 · 기능 3에서 사용 / 🙋 D41 신사 Lv2 조건: 나가야·후신소·밭 관리 시설·제분소 Lv1 (판매소 포함 여부 ❓라 넣지 않음)
-FieldOffice_1,FieldOffice,1,2,"((""Gold"", 20))",30,(RedBean),(),(),🤖 테스트 값 · 밭 관리 시설 Lv1→2 (기존 밭 Lv1→2의 🙋 비용 20골드·🤖 T1 30초를 옮김 · D39) · 🙋 신사 상한 / 🤖 팥 해금은 테스트용(레벨별 해금 작물 ❓)
+FieldOffice_1,FieldOffice,1,2,"((""Gold"", 20))",30,(),(),(),🤖 테스트 값 · 밭 관리 시설 Lv1→2 (기존 밭 Lv1→2의 🙋 비용 20골드·🤖 T1 30초를 옮김 · D39) · 🙋 신사 상한 / 🙋 2026-10-30 팥 해금을 뺌: 데모에서는 밀만 고를 수 있음 (팥은 판매가 0·쓰는 레시피 없음이라 고르면 진행이 막힘) · 6주차 '팥 작물 해금'에서 레시피와 함께 다시 엶
 Mill_1,Mill,1,2,"((""Gold"", 20))",30,(),"((""FieldOffice"", 1))",(),🙋 비용 = 시설 레벨업 공식 20골드 · 🤖 30초는 테스트 시간 · 🙋 D41 선행: 밭 관리 시설 Lv1 (제분소 Lv N ← 밭 관리 시설 Lv N-1)
 Nagaya_1,Nagaya,1,2,"((""Gold"", 20))",30,(),(),(),🙋 비용 = 20×1.5^(레벨-1) 골드 공식 · 🤖 30초는 테스트 시간(정식은 등급 공식) · 🙋 신사 상한
 Hushinso_1,Hushinso,1,2,"((""Gold"", 20))",30,(),(),(),🙋 비용 = 20×1.5^(레벨-1) 골드 공식 · 🤖 30초는 테스트 시간(정식은 등급 공식) · 🙋 신사 상한

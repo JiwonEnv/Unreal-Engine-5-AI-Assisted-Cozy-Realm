@@ -463,13 +463,25 @@ struct FCozyEstateConfigRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Offline")
 	float OfflineMaxSeconds = 43200.f;
 
-	/** 방치 보상 시간 부적: 이 시간마다 1개 (🤖 2시간 · 0이면 없음 · 남는 시간은 이어지지 않음) */
+	/** 방치 보상 시간 부적: 이 시간마다 1개 (🤖 2시간 · 0이면 없음 · 켜 둔 동안·꺼 둔 동안 같은 규칙 · 남는 시간은 저장된 누적 시간으로 이어짐 · D44) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Offline")
 	float OfflineTalismanEverySeconds = 7200.f;
 
 	/** 방치 보상 심상 조각: 이 시간마다 1개 (🤖 1시간 · 0이면 없음) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Offline")
 	float OfflineMindShardEverySeconds = 3600.f;
+
+	/** 방치 보상 심상 조각 재화 ID (Items.csv 행 이름 · 비우면 지급 없음) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Offline")
+	FName OfflineShardItemId;
+
+	/** 실제 시각 따라잡기: 지난 처리 이후 이 시간(실제 초) 이상 비면 절전·멈춤 복귀로 보고 방치 정산과 같은 경로로 처리 (0이면 끔) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Offline")
+	float CatchupGapSeconds = 0.f;
+
+	/** 판매·가공·업그레이드·부적·구매 뒤 저장 요청을 이 시간(실제 초) 동안 묶어 한 번 저장 (0이면 다음 프레임에 저장) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Save")
+	float SaveRequestDelaySeconds = 0.f;
 
 	/** 꾸미기 점수: 이 점수마다 생산 속도 보너스 한 단계 (🙋 50점 · 0이면 보너스 없음) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Decoration")
@@ -494,13 +506,25 @@ struct FCozyTutorialRow : public FTableRowBase
 {
 	GENERATED_BODY()
 
-	/** 다음 단계로 넘어가는 조건 (AssignField · CollectField · StartProcessing · Sell) */
+	/** 다음 단계로 넘어가는 조건 (AssignField · CollectField · StartProcessing · Sell · Speedup) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial")
 	FName Goal;
 
-	/** 화살표를 띄울 시설 정의 ID (예: Field · 비우면 화살표 없음) */
+	/** 화살표를 띄울 시설 정의 ID이자 목표 대상 시설 (예: Field · 비우면 화살표 없음) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial")
 	FName TargetFacility;
+
+	/** 목표를 확인할 재료·재화 ID (예: 수확 = Wheat · 판매 = Gold · 시간 단축 = TimeTalisman · 비우면 재료를 보지 않음) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial")
+	FName GoalItem;
+
+	/** 목표 수량 (수확: 창고에 이만큼 이상 · 판매·가공: 이만큼 이상 늘어남 · 시간 단축: 이만큼 이상 씀) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial")
+	int32 GoalAmount = 0;
+
+	/** 이 단계에 들어갈 때 한 번만 주는 보상 ID (Rewards.csv의 RewardId · 비우면 없음) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial")
+	FName RewardId;
 
 	/** 제목 (예: 밭에 오니비 배치) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tutorial")

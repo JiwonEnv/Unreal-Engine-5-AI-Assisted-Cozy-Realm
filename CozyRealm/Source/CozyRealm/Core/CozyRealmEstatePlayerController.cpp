@@ -204,10 +204,13 @@ void ACozyRealmEstatePlayerController::PlayerTick(float DeltaTime)
 		HandleWorldClick();
 	}
 	TickHero(bCompact);
-	if (WasInputKeyJustPressed(EKeys::F1) && Hud && !bCompact)
+#if !UE_BUILD_SHIPPING
+	// F1 디버그 창: 출시 빌드에는 없음 · 개발 빌드도 에디터(PIE) 또는 실행 인자 -CozyDebugCommands일 때만
+	if (WasInputKeyJustPressed(EKeys::F1) && Hud && !bCompact && CozyDebug::IsEnabled())
 	{
 		Hud->ToggleDebugPanel();
 	}
+#endif
 	// 작은 창 모드 (M · 화면 구석의 작은 창 ↔ 원래 크기)
 	if (Hud && WasInputKeyJustPressed(EKeys::M))
 	{
@@ -334,6 +337,14 @@ void ACozyRealmEstatePlayerController::SelectFacility(ACozyFacilityActor* Facili
 	{
 		return;
 	}
+	// 꾸미기 장식은 기능이 없어 메뉴를 열지 않음 (배치 모드에서만 끌어서 옮김 · 출시 품질 점검 2026-10-30)
+	const UCozyEstateSubsystem* Estate = GetWorld() ? GetWorld()->GetSubsystem<UCozyEstateSubsystem>() : nullptr;
+	const FCozyFacilityState* State = Estate && Facility ? Estate->FindFacility(Facility->GetFacilityId()) : nullptr;
+	if (State && Estate->IsDecoration(State->DefinitionId))
+	{
+		ClearSelection();
+		return;
+	}
 	ClearSelection();
 	SelectedFacility = Facility;
 	Facility->SetSelected(true);
@@ -441,12 +452,22 @@ void ACozyRealmEstatePlayerController::TickPlacement()
 
 void ACozyRealmEstatePlayerController::CozySetResource(FName ItemId, int32 Amount)
 {
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	// 개발용 명령: 디버그 도구를 쓸 수 있을 때만 (출시·일반 실행에서는 무시)
+	if (!CozyDebug::IsEnabled())
+	{
+		UE_LOG(LogCozyRealm, Log, TEXT("[개발] CozySetResource는 에디터나 실행 인자 -CozyDebugCommands가 있을 때만 씁니다"));
+		return;
+	}
 	if (UCozyEstateSubsystem* Estate = GetWorld() ? GetWorld()->GetSubsystem<UCozyEstateSubsystem>() : nullptr)
 	{
 		const int32 Before = Estate->GetAmount(ItemId);
 		Estate->DebugSetResource(ItemId, Amount);
 		UE_LOG(LogCozyRealm, Log, TEXT("[개발] 수량 맞춤: %s %d → %d"), *ItemId.ToString(), Before, Estate->GetAmount(ItemId));
 	}
+#endif
 }
 
 void ACozyRealmEstatePlayerController::ClearSelection()

@@ -282,6 +282,18 @@ public:
 
 	/** 데이터를 다시 검사해 로그에 경고를 남긴다 (디버그 메뉴) · 문제 개수는 로그 끝줄에 */
 	void ValidateData() const;
+	/**
+	 *  쓸 곳(레시피 재료·업그레이드 비용·장식 가격)도 판매가도 없는 재료 (시험용 레시피는 셈하지 않음 · 데이터 검사가 경고).
+	 *  OutDeadEnd = 데모에서 만들 수 있는데 쓸 곳이 없음(진행이 막힘) · OutUnused = 만드는 곳도 없음
+	 */
+	void FindUnusableMaterials(TArray<FName>& OutDeadEnd, TArray<FName>& OutUnused) const;
+	/** 이 시설 정의가 데이터상 오를 수 있는 최대 레벨 (성장 단계가 없으면 1) */
+	int32 GetMaxFacilityLevel(FName DefinitionId) const;
+	/**
+	 *  이 시설이 최대 속도(성장 최대 단계 × 꾸미기 최대 보너스)로 방치 최대 시간 동안 만드는 양 (시험용 레시피 제외).
+	 *  🙋 미수령 한도는 이 값 이상이어야 방치 보상 최대 12시간치가 전부 쌓인다 (데이터 검사·자동 시험이 확인)
+	 */
+	int32 GetMaxOfflineOutput(FName DefinitionId) const;
 	/** 진행 검사 (7-6): 성장 단계를 레벨·조건만 따라가며 끝까지 도달할 수 있는지 · 단계 빈칸·중복·상한·달성 불가·순환 */
 	void ValidateProgression(TFunctionRef<void(const FString&)> Warn) const;
 
@@ -387,6 +399,14 @@ public:
 	/** 확정: 다시 계산해 부적 차감 + 남은 시간 단축을 한 번에 · 실패하면 아무것도 바뀌지 않음 */
 	bool ApplySpeedup(const FGuid& JobId, int32 Count, FText& OutMessage);
 
+	// --- 첫 실행 안내 (Tutorial.csv · 완료 여부는 영지 저장 상태에) ---
+
+	/** 안내 단계 (행 이름 순서) */
+	TArray<const FCozyTutorialRow*> GetTutorialSteps() const;
+	/** 이 영지에서 안내를 끝냈거나 건너뛰었는가 (새 게임이면 false · 저장 파일에 남음) */
+	bool IsTutorialDone() const { return State.bTutorialDone; }
+	void SetTutorialDone(bool bDone);
+
 	// --- 일회성 보상 (정리 7-11) ---
 
 	/** 이미 받은 보상인가 */
@@ -408,6 +428,10 @@ public:
 
 	/** 해금된 작물인가 (처음부터 열림 또는 관리 시설 단계로 해금) */
 	bool IsCropUnlocked(FName CropId) const;
+	/** 이 작물을 여는 성장 단계가 데이터에 있는가 (없고 처음부터 열린 작물도 아니면 선택 목록에 보이지 않음) */
+	bool HasCropUnlockPath(FName CropId) const;
+	/** 작물 선택 창에 보여 줄 작물 (해금됨 · 해금 단계가 있는 잠긴 작물 · 지금 키우는 작물 · 데이터 순서) */
+	TArray<FName> GetCropChoices(const FGuid& FacilityId) const;
 	/** 잠긴 작물의 해금 안내 (예: '밭 관리 시설 Lv2에서 해금') */
 	FText GetCropUnlockHint(FName CropId) const;
 	/** 이 밭의 작물을 지금 바꿀 수 있는가 · 미수령분·진행 주기가 있으면 불가 (D31) */
@@ -543,6 +567,11 @@ public:
 
 	/** 지금 상태를 저장 (Reason은 로그용) */
 	bool SaveEstate(const FString& Reason);
+	/**
+	 *  곧 저장해 달라는 요청 (판매·가공 시작·업그레이드·부적·구매 등 · 자동 저장 1분을 기다리지 않음).
+	 *  EstateConfig SaveRequestDelaySeconds 동안 들어온 요청을 묶어 한 번만 저장 · 영지를 시작하지 않았으면 무시
+	 */
+	void RequestSave(const TCHAR* Reason);
 	/** 종료·검증처럼 디스크 반영 완료가 필요한 지점에서만 사용한다. */
 	void FlushPendingSave() { PollSave(true); }
 	bool HasSaveFile() const;
@@ -571,8 +600,14 @@ public:
 	/** 아직 보여 주지 않은 방치 보상 결과 (없으면 nullptr) */
 	const FCozyOfflineReport* GetPendingOfflineReport() const { return bOfflineReportPending ? &OfflineReport : nullptr; }
 	void DismissOfflineReport() { bOfflineReportPending = false; }
-	/** 디버그: 방치 시간 건너뛰기 (저장 파일 없이 같은 정산 처리 · 정산 후 저장) */
+	/** 디버그: 방치 시간 건너뛰기 (저장 파일 없이 같은 정산 처리 · 영지를 시작했으면 정산 후 저장) */
 	void DebugSkipOffline(double Seconds);
+	/**
+	 *  실제 시각 기준 진행 (Tick이 지난 처리 이후 흐른 UTC 초로 부름 · 자동 시험도 사용).
+	 *  0 이하(시계를 뒤로 돌림)는 무시 · CatchupGapSeconds 이상 비었으면(절전·멈춤 복귀) 방치 정산과 같은 경로(최대 12시간)
+	 *  · 그 밖에는 1초씩 진행 · 진행한 게임 초 수를 돌려줌 (방치 정산 경로면 0)
+	 */
+	int32 AdvanceRealSeconds(double RealSeconds, const TCHAR* Source);
 	/** 디버그: 가공 '제작 추가' 규칙 자체 검사 (실제 규칙 함수로 시험 · 끝나면 검사 전 상태로 되돌림 · 결과는 로그 [자체 검사]) */
 	FString DebugRunProcessingAppendCheck();
 
@@ -617,6 +652,10 @@ private:
 
 	/** 게임 시간 1초마다 작업 진행 (게임 시간: 1초 단위 갱신) */
 	void StepJobs();
+	/** 게임 시간 1초: 시간 +1 · 작업 진행 · 방치 재화 누적 (켜 둔 동안·방치 정산 공통 · D44) */
+	void AdvanceOneSecond(int32& OutTalismans, int32& OutShards);
+	/** 방치 재화 누적 시간에 Seconds를 더하고 다 찬 만큼 지급 (남는 시간은 상태에 남아 다음에 이어짐) */
+	void AccrueIdleRewards(double Seconds, int32& OutTalismans, int32& OutShards);
 	void StepProduction(FCozyFacilityState& Facility, const FCozyFacilityRow& Def);
 	double GetProductionDuration(const FCozyFacilityState& Facility, const FCozyCropRow& Crop, const FCozyFacilityRow& Def) const;
 	/** 지금 속도로 생산 주기 작업을 새로 등록하고 시설의 진행 작업으로 정한다 (StartAt = 주기 시작 시각) */
@@ -652,8 +691,11 @@ private:
 	double GetSpeedMultiplier(const FCozyFacilityState& Facility, const FCozyFacilityRow& Def) const;
 	/** 성장(레벨·관리 시설)만의 속도 배율 · 꾸미기 보너스는 GetSpeedMultiplier가 곱함 */
 	double GetGrowthSpeedMultiplier(const FCozyFacilityState& Facility, const FCozyFacilityRow& Def) const;
-	/** 이 정의의 시설 중 가장 높은 레벨 (없으면 0) */
-	int32 GetHighestLevelOf(FName DefinitionId) const;
+	/**
+	 *  이 정의의 시설 중 가장 높은 레벨 (없으면 0).
+	 *  레벨 효과(관리 속도·선행 조건)는 영지에 놓인 시설만 셈 · bIncludeStored는 해금(진행 기록) 판단용
+	 */
+	int32 GetHighestLevelOf(FName DefinitionId, bool bIncludeStored = false) const;
 	/** 시간이 다 된 업그레이드를 완료 처리 */
 	void StepGrowth();
 	void RemoveResidentFromFacility(FCozyResidentState& Resident);
@@ -686,6 +728,10 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UDataTable> RewardTable;
 
+	/** 첫 실행 안내 단계 (Tutorial.csv · 없어도 시작은 됨) */
+	UPROPERTY(Transient)
+	TObjectPtr<UDataTable> TutorialTable;
+
 	/** 꾸미기 장식 (Decorations.csv · 행마다 시설 정의도 함께 등록됨) */
 	UPROPERTY(Transient)
 	TObjectPtr<UDataTable> DecorationTable;
@@ -713,6 +759,12 @@ private:
 	/** 마지막 저장 시각 (UTC) · 자동 저장까지 흐른 실제 시간 */
 	FDateTime LastSavedUtc;
 	double AutosaveAccumulator = 0.0;
+	/** 마지막으로 시간을 처리한 실제 시각 (UTC) · 켜 둔 동안 진행은 DeltaTime 누적이 아니라 이 시각과의 차이로 (절전·멈춤에도 시간이 사라지지 않게) */
+	FDateTime LastProcessedUtc;
+	/** 묶어서 저장할 요청이 있는가 · 첫 요청 뒤 흐른 실제 시간 */
+	bool bSaveRequested = false;
+	double SaveRequestAge = 0.0;
+	FString SaveRequestReason;
 	bool bAutosavePaused = false;
 	bool bSaveBlockedByInvalidFile = false;
 	FCozyEstateSaveIO SaveWriter;

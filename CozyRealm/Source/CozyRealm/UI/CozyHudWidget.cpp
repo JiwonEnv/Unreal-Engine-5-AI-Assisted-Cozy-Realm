@@ -185,29 +185,34 @@ void UCozyHudWidget::BuildLayout()
 	WindowOverlay->SetContent(WindowScreenSize);
 	WindowOverlay->SetVisibility(ESlateVisibility::Collapsed);
 
-	// 디버그 메뉴 (F1)
-	DebugPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("DebugPanel"));
-	DebugPanel->SetBrushColor(CozyHud::PanelColor);
-	DebugPanel->SetPadding(FMargin(12.f));
-	DebugContent = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("DebugContent"));
-	// 길어도 화면 안에 들어가게 높이 상한(매 프레임 화면 높이에 맞춤) + 스크롤
-	DebugSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("DebugSize"));
-	UScrollBox* DebugScroll = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("DebugScroll"));
-	DebugScroll->AddChild(DebugContent);
-	DebugSize->SetContent(DebugScroll);
-	DebugSize->SetMaxDesiredHeight(700.f);
-	DebugSize->SetWidthOverride(500.f);
-	DebugPanel->SetContent(DebugSize);
-	if (UCanvasPanelSlot* DebugSlot = RootCanvas->AddChildToCanvas(DebugPanel))
+	// 디버그 메뉴 (F1) · 출시 빌드에는 만들지 않음 · 개발 빌드도 에디터나 -CozyDebugCommands일 때만 (출시 품질 점검 2026-10-30)
+#if !UE_BUILD_SHIPPING
+	if (CozyDebug::IsEnabled())
 	{
-		DebugSlot->SetZOrder(6);
-		DebugSlot->SetAnchors(FAnchors(1.f, 0.f));
-		DebugSlot->SetAlignment(FVector2D(1.f, 0.f));
-		// 위쪽 HUD 버튼 줄 아래에서 시작 (56이면 큰 화면에서 제목 줄이 버튼에 가렸음)
-		DebugSlot->SetPosition(FVector2D(-12.f, CozyHud::HudTopSafe));
-		DebugSlot->SetAutoSize(true);
+		DebugPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("DebugPanel"));
+		DebugPanel->SetBrushColor(CozyHud::PanelColor);
+		DebugPanel->SetPadding(FMargin(12.f));
+		DebugContent = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("DebugContent"));
+		// 길어도 화면 안에 들어가게 높이 상한(매 프레임 화면 높이에 맞춤) + 스크롤
+		DebugSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("DebugSize"));
+		UScrollBox* DebugScroll = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("DebugScroll"));
+		DebugScroll->AddChild(DebugContent);
+		DebugSize->SetContent(DebugScroll);
+		DebugSize->SetMaxDesiredHeight(700.f);
+		DebugSize->SetWidthOverride(500.f);
+		DebugPanel->SetContent(DebugSize);
+		if (UCanvasPanelSlot* DebugSlot = RootCanvas->AddChildToCanvas(DebugPanel))
+		{
+			DebugSlot->SetZOrder(6);
+			DebugSlot->SetAnchors(FAnchors(1.f, 0.f));
+			DebugSlot->SetAlignment(FVector2D(1.f, 0.f));
+			// 위쪽 HUD 버튼 줄 아래에서 시작 (56이면 큰 화면에서 제목 줄이 버튼에 가렸음)
+			DebugSlot->SetPosition(FVector2D(-12.f, CozyHud::HudTopSafe));
+			DebugSlot->SetAutoSize(true);
+		}
+		DebugPanel->SetVisibility(ESlateVisibility::Collapsed);
 	}
-	DebugPanel->SetVisibility(ESlateVisibility::Collapsed);
+#endif
 
 	// HUD 화면 연결이 빠졌으면 알림 (알림 글자를 만든 뒤에)
 	if (!HudScreen)
@@ -241,10 +246,28 @@ void UCozyHudWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 
 	UpdateNameLabelPositions();
 
+	// 꾸미기 상점: 처음 그려진 위치에서 창 위쪽을 고정 (사기를 누를 때 '방금 한 일' 줄이 생겨도 목록·버튼이 밀리지 않게)
+	if (WindowKind == ECozyWindowKind::DecorShop && WindowOverlay && WindowScreenSize && !bWindowTopLocked && MyGeometry.GetLocalSize().Y > 1.f)
+	{
+		const float Desired = WindowScreenSize->GetDesiredSize().Y;
+		if (++WindowOpenFrames >= 2 && Desired > 1.f)
+		{
+			const FMargin Pad = WindowOverlay->GetPadding();
+			WindowDefaultPadding = Pad;
+			WindowLockedTop = Pad.Top + FMath::Max(0.f, (MyGeometry.GetLocalSize().Y - Pad.Top - Pad.Bottom - Desired) * 0.5f);
+			WindowOverlay->SetVerticalAlignment(VAlign_Top);
+			WindowOverlay->SetPadding(FMargin(Pad.Left, WindowLockedTop, Pad.Right, Pad.Bottom));
+			bWindowTopLocked = true;
+		}
+	}
+
 	// 창 화면 높이 상한: 시작 직후에는 화면 크기를 아직 모를 수 있어 매 프레임 이 위젯의 실제 높이로 맞춘다 (HUD 아래 공간)
 	if (WindowScreenSize && WindowKind != ECozyWindowKind::None)
 	{
-		const float MaxHeight = FMath::Max(200.f, MyGeometry.GetLocalSize().Y - 130.f);
+		// 위쪽을 고정한 창은 고정한 위치부터 화면 아래 여백까지
+		const float MaxHeight = bWindowTopLocked
+			? FMath::Max(200.f, MyGeometry.GetLocalSize().Y - WindowLockedTop - WindowOverlay->GetPadding().Bottom - 10.f)
+			: FMath::Max(200.f, MyGeometry.GetLocalSize().Y - 130.f);
 		if (MyGeometry.GetLocalSize().Y > 1.f && !FMath::IsNearlyEqual(WindowScreenSize->GetMaxDesiredHeight(), MaxHeight, 1.f))
 		{
 			WindowScreenSize->SetMaxDesiredHeight(MaxHeight);
@@ -260,7 +283,7 @@ void UCozyHudWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		}
 	}
 
-	if (DebugSize)
+	if (DebugSize && DebugPanel)
 	{
 		// HUD 아래부터 화면 끝 12px 전까지 (패널 안쪽 위아래 여백 포함)
 		const float DebugMax = FMath::Max(240.f, MyGeometry.GetLocalSize().Y - CozyHud::HudTopSafe - 12.f - DebugPanel->GetPadding().GetTotalSpaceAlong<Orient_Vertical>());
@@ -584,10 +607,15 @@ void UCozyHudWidget::RefreshNameLabels()
 		return;
 	}
 
-	// 시설 액터가 그대로면 다시 만들지 않음
+	// 시설 액터가 그대로면 다시 만들지 않음 · 꾸미기 장식은 이름표·수령 배지가 없음 (기능 없는 시설)
 	TArray<TWeakObjectPtr<ACozyFacilityActor>> Current;
 	for (TActorIterator<ACozyFacilityActor> It(World); It; ++It)
 	{
+		const FCozyFacilityState* Facility = Estate->FindFacility(It->GetFacilityId());
+		if (Facility && Estate->IsDecoration(Facility->DefinitionId))
+		{
+			continue;
+		}
 		Current.Add(*It);
 	}
 	if (Current == LabelFacilities)
@@ -1005,6 +1033,11 @@ void UCozyHudWidget::OpenWindow(ECozyWindowKind Kind, const FGuid& FacilityId, c
 	{
 		Controller->ClearSelection();
 	}
+	// 다른 창으로 바뀌면 가운데 정렬로 다시 시작 (같은 창을 다시 그릴 때는 고정 위치 유지)
+	if (Kind != WindowKind)
+	{
+		ResetWindowTopLock();
+	}
 	HideFacilityIcons();
 	// 설정 창 위에 다른 창을 열면(단축키 등) 설정 창을 닫은 것과 같게 정리
 	if (WindowKind == ECozyWindowKind::Settings && Kind != ECozyWindowKind::Settings)
@@ -1113,8 +1146,21 @@ void UCozyHudWidget::ToggleSettingsWindow()
 	OpenWindow(ECozyWindowKind::Settings, FGuid());
 }
 
+void UCozyHudWidget::ResetWindowTopLock()
+{
+	WindowOpenFrames = 0;
+	if (bWindowTopLocked && WindowOverlay)
+	{
+		// 고정 전의 가운데 정렬 · 여백으로
+		WindowOverlay->SetVerticalAlignment(VAlign_Center);
+		WindowOverlay->SetPadding(WindowDefaultPadding);
+	}
+	bWindowTopLocked = false;
+}
+
 void UCozyHudWidget::CloseWindow()
 {
+	ResetWindowTopLock();
 	// 설정 창: 적용하지 않은 변경은 버림 (화면 변경 확인 중이면 이전 화면 설정으로) · 진행 데이터는 건드리지 않음
 	if (WindowKind == ECozyWindowKind::Settings)
 	{
@@ -1327,22 +1373,13 @@ void UCozyHudWidget::HandleCollectClicked(const FGuid& FacilityId)
 
 void UCozyHudWidget::StartTutorial()
 {
-	// 단계 문구는 Data/GameData/Tutorial.csv (행 이름 순서) · 코드 없이 고칠 수 있게
+	// 단계 문구·목표 대상·목표 재료·수량·단계 보상은 Data/GameData/Tutorial.csv (행 이름 순서 · 영지 서비스가 읽음) · 코드 없이 고칠 수 있게
 	TutorialSteps.Reset();
-	FString Csv;
-	if (FFileHelper::LoadFileToString(Csv, *FPaths::Combine(FPaths::ProjectDir(), TEXT("Data"), TEXT("GameData"), TEXT("Tutorial.csv"))))
+	if (const UCozyEstateSubsystem* Estate = GetEstate())
 	{
-		UDataTable* Table = NewObject<UDataTable>(this, NAME_None, RF_Transient);
-		Table->RowStruct = FCozyTutorialRow::StaticStruct();
-		Table->CreateTableFromCSVString(Csv);
-		TArray<FName> Names = Table->GetRowNames();
-		Names.Sort([](const FName& A, const FName& B) { return A.LexicalLess(B); });
-		for (const FName& Name : Names)
+		for (const FCozyTutorialRow* Row : Estate->GetTutorialSteps())
 		{
-			if (const FCozyTutorialRow* Row = Table->FindRow<FCozyTutorialRow>(Name, TEXT("Tutorial")))
-			{
-				TutorialSteps.Add({ Row->Goal, Row->TargetFacility, Row->Title, Row->Body });
-			}
+			TutorialSteps.Add({ Row->Goal, Row->TargetFacility, Row->GoalItem, Row->GoalAmount, Row->RewardId, Row->Title, Row->Body });
 		}
 	}
 	if (TutorialSteps.Num() == 0)
@@ -1453,10 +1490,23 @@ void UCozyHudWidget::ShowTutorialStep(int32 Index)
 	}
 	TutorialIndex = Index;
 	TutorialTime = 0.f;
-	TutorialWheatStart = GetStoredAmount(TEXT("Wheat"));
-	TutorialFlourStart = GetStoredAmount(TEXT("Flour"));
-	TutorialGoldStart = GetStoredAmount(TEXT("Gold"));
 	const FTutorialStep& Step = TutorialSteps[Index];
+	// 단계 보상 (예: 5단계 첫 시간 단축 체험용 튜토리얼 부적) · 일회성 보상 경로라 다시 보기·불러오기에도 한 번만
+	if (!Step.RewardId.IsNone())
+	{
+		if (UCozyEstateSubsystem* Estate = GetEstate())
+		{
+			FText Message;
+			if (Estate->GrantOneTimeReward(Step.RewardId, Message))
+			{
+				ShowToast(Message);
+			}
+		}
+	}
+	// 보상을 받은 뒤의 보유량이 기준 (받은 부적을 '쓴 것'으로 잘못 세지 않게)
+	TutorialItemStart = Step.GoalItem.IsNone() ? 0 : GetStoredAmount(Step.GoalItem);
+	TutorialItemLast = TutorialItemStart;
+	TutorialItemSpent = 0;
 	TutorialTitle->SetText(FText::Format(LOCTEXT("TutorialTitle", "안내 {0}/{1} · {2}"), FText::AsNumber(Index + 1), FText::AsNumber(TutorialSteps.Num()), Step.Title));
 	TutorialBody->SetText(Step.Body);
 	TutorialPanel->SetVisibility(ESlateVisibility::Visible);
@@ -1478,10 +1528,10 @@ void UCozyHudWidget::FinishTutorial(bool bCompleted)
 	{
 		TutorialArrow->SetVisibility(ESlateVisibility::Collapsed);
 	}
-	if (UCozyGameUserSettings* Settings = UCozyGameUserSettings::Get())
+	// 안내 완료 여부는 이 영지의 저장 상태에 (새 게임이면 다시 안내 · 예전 설정 파일 값은 불러오기 때 한 번 옮김)
+	if (UCozyEstateSubsystem* Estate = GetEstate())
 	{
-		Settings->bTutorialDone = true;
-		Settings->SaveSettings();
+		Estate->SetTutorialDone(true);
 	}
 	ShowToast(bCompleted ? LOCTEXT("TutorialDone", "안내를 모두 마쳤습니다 · 설정 창에서 다시 볼 수 있습니다")
 		: LOCTEXT("TutorialSkipped", "안내를 건너뛰었습니다 · 설정 창의 '안내 다시 보기'로 다시 볼 수 있습니다"));
@@ -1495,13 +1545,16 @@ int32 UCozyHudWidget::GetStoredAmount(FName ItemId) const
 	return Amount ? *Amount : 0;
 }
 
-bool UCozyHudWidget::IsTutorialGoalDone(FName Goal) const
+bool UCozyHudWidget::IsTutorialGoalDone(const FTutorialStep& Step) const
 {
 	const UCozyEstateSubsystem* Estate = GetEstate();
 	if (!Estate)
 	{
 		return false;
 	}
+	const FName Goal = Step.Goal;
+	const int32 Amount = Step.GoalItem.IsNone() ? 0 : GetStoredAmount(Step.GoalItem);
+	const int32 Need = FMath::Max(1, Step.GoalAmount);
 	auto AnyFacility = [Estate](FName DefinitionId, TFunctionRef<bool(const FCozyFacilityState&)> Test)
 	{
 		for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
@@ -1513,22 +1566,29 @@ bool UCozyHudWidget::IsTutorialGoalDone(FName Goal) const
 		}
 		return false;
 	};
+	// 목표 대상 시설·재료·수량은 Tutorial.csv의 TargetFacility · GoalItem · GoalAmount
 	if (Goal == TEXT("AssignField"))
 	{
-		return AnyFacility(TEXT("Field"), [](const FCozyFacilityState& F) { return F.AssignedResidents.Num() > 0; });
+		return AnyFacility(Step.Target, [](const FCozyFacilityState& F) { return F.AssignedResidents.Num() > 0; });
 	}
 	if (Goal == TEXT("CollectField"))
 	{
-		return GetStoredAmount(TEXT("Wheat")) > TutorialWheatStart;
+		// 수확해서 늘었고, 다음 단계(가공 1회)에 필요한 만큼 창고에 있음
+		return Amount > TutorialItemStart && Amount >= Need;
 	}
 	if (Goal == TEXT("StartProcessing"))
 	{
-		return GetStoredAmount(TEXT("Flour")) > TutorialFlourStart
-			|| AnyFacility(TEXT("Mill"), [Estate](const FCozyFacilityState& F) { return Estate->GetProcessingJobs(F.InstanceId).Num() > 0; });
+		return Amount >= TutorialItemStart + Need
+			|| AnyFacility(Step.Target, [Estate](const FCozyFacilityState& F) { return Estate->GetProcessingJobs(F.InstanceId).Num() > 0; });
 	}
 	if (Goal == TEXT("Sell"))
 	{
-		return GetStoredAmount(TEXT("Gold")) > TutorialGoldStart;
+		return Amount >= TutorialItemStart + Need;
+	}
+	if (Goal == TEXT("Speedup"))
+	{
+		// 시간 부적을 쓴 양 (방치 보상으로 늘어난 것은 세지 않음)
+		return TutorialItemSpent >= Need;
 	}
 	return false;
 }
@@ -1539,11 +1599,11 @@ void UCozyHudWidget::UpdateTutorial(float DeltaTime)
 	if (!bTutorialChecked && TutorialIndex == INDEX_NONE)
 	{
 		const UCozyEstateSubsystem* Estate = GetEstate();
-		const UCozyGameUserSettings* Settings = UCozyGameUserSettings::Get();
 		if (Estate && Estate->IsStarted())
 		{
 			bTutorialChecked = true;
-			if (Estate->IsNewGameSession() && Settings && !Settings->bTutorialDone)
+			// 이 영지에서 아직 안내를 끝내지 않았으면 (새 게임 · 안내 도중 종료한 저장)
+			if (!Estate->IsTutorialDone())
 			{
 				StartTutorial();
 			}
@@ -1574,8 +1634,15 @@ void UCozyHudWidget::UpdateTutorial(float DeltaTime)
 	}
 
 	const FTutorialStep& Step = TutorialSteps[TutorialIndex];
+	// 목표 재료를 쓴 양 누적 (줄어든 만큼만 · 늘어난 것은 기준만 옮김)
+	if (!Step.GoalItem.IsNone())
+	{
+		const int32 Now = GetStoredAmount(Step.GoalItem);
+		TutorialItemSpent += FMath::Max(0, TutorialItemLast - Now);
+		TutorialItemLast = Now;
+	}
 	// 이미 이룬 단계(다시 보기에서 주민이 이미 배치됨 등)는 잠깐 보여 준 뒤 다음으로
-	if (TutorialTime > CozyHud::TutorialMinSeconds && IsTutorialGoalDone(Step.Goal))
+	if (TutorialTime > CozyHud::TutorialMinSeconds && IsTutorialGoalDone(Step))
 	{
 		if (TutorialIndex + 1 < TutorialSteps.Num())
 		{
@@ -1619,6 +1686,15 @@ void UCozyHudWidget::UpdateTutorial(float DeltaTime)
 
 void UCozyHudWidget::ToggleDebugPanel()
 {
+#if UE_BUILD_SHIPPING
+	bDebugVisible = false;
+	return;
+#else
+	// 디버그 도구를 쓸 수 없는 실행(일반 패키지)에서는 열지 않음 · 닫기는 언제나 가능
+	if (!bDebugVisible && (!CozyDebug::IsEnabled() || !DebugPanel))
+	{
+		return;
+	}
 	bDebugVisible = !bDebugVisible;
 	if (DebugPanel)
 	{
@@ -1628,12 +1704,14 @@ void UCozyHudWidget::ToggleDebugPanel()
 	{
 		RefreshDebugPanel();
 	}
+#endif
 }
 
 void UCozyHudWidget::RefreshDebugPanel()
 {
+#if !UE_BUILD_SHIPPING
 	UCozyEstateSubsystem* Estate = GetEstate();
-	if (!DebugContent || !Estate)
+	if (!DebugContent || !Estate || !CozyDebug::IsEnabled())
 	{
 		return;
 	}
@@ -2025,6 +2103,7 @@ void UCozyHudWidget::RefreshDebugPanel()
 	});
 
 	ActionSink = nullptr;
+#endif
 }
 
 #undef LOCTEXT_NAMESPACE

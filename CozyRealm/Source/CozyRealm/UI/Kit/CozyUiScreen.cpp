@@ -305,6 +305,11 @@ TArray<FCozyUiElementEntry> UCozyUiScreen::GetElementsForArea(FName AreaId) cons
 		{
 			if (Each.Area == AreaId && IsElementShown(Each.Id))
 			{
+				// 디버그 창 버튼은 디버그 도구를 쓸 수 있을 때만 (출시·일반 실행에서는 영역에 넣지 않음)
+				if (Each.Action == ECozyUiAction::ToggleDebug && !IsDesignTime() && !CozyDebug::IsEnabled())
+				{
+					continue;
+				}
 				// 목록과 상세 영역은 동시에 보여 주지 않는다. 편집 에셋의 배치는 그대로 유지한다.
 				const bool bDetail = SelectedUpgradeFacility.IsValid();
 				if ((Each.ListSource == ECozyUiListSource::UpgradeFacilities && Each.ValueParam == TEXT("Overview") && bDetail)
@@ -665,7 +670,7 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 			R.Current = View.SpeedMultiplier;
 			R.Text = !View.bHasGrowthSource ? FText::GetEmpty()
 				: View.GrowthSourceLevel > 0
-					? FText::Format(LOCTEXT("GrowthLine", "공통 관리 효과: 생산 속도 ×{0} ({1} Lv{2}) · 단계가 오르면 다음 주기부터 적용"), CozyUiScreenUtil::Multiplier(View.SpeedMultiplier), View.GrowthSourceName, FText::AsNumber(View.GrowthSourceLevel))
+					? FText::Format(LOCTEXT("GrowthLine", "공통 관리 효과: 생산 속도 ×{0} ({1} Lv.{2}) · 단계가 오르면 다음 주기부터 적용"), CozyUiScreenUtil::Multiplier(View.SpeedMultiplier), View.GrowthSourceName, FText::AsNumber(View.GrowthSourceLevel))
 					: FText::Format(LOCTEXT("GrowthLineNone", "공통 관리 효과: 기본 속도 ×{0} ({1}|hpp(이,가) 아직 없습니다)"), CozyUiScreenUtil::Multiplier(View.SpeedMultiplier), View.GrowthSourceName);
 			// 꾸미기 보너스가 있으면 위 배율에 포함되어 있음을 밝힘
 			const float DecorBonus = Estate->GetDecorationScoreView().Bonus;
@@ -702,7 +707,7 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 				const FString Out = CozyUiScreenUtil::JoinTexts(Items, TEXT(", "));
 				return Out.IsEmpty() ? FString(TEXT("없음")) : Out;
 			};
-			FString Text = FString::Printf(TEXT("관리 단계 Lv%d%s\n모든 밭 생산 속도 ×%s (관리하는 밭 %d개 · 새로 지은 밭도 같은 효과)\n고를 수 있는 작물: %s"),
+			FString Text = FString::Printf(TEXT("관리 단계 Lv.%d%s\n모든 밭 생산 속도 ×%s (관리하는 밭 %d개 · 새로 지은 밭도 같은 효과)\n고를 수 있는 작물: %s"),
 				View.Level, View.bUpgrading ? TEXT(" (업그레이드 중 · 밭은 지금 효과로 계속 생산)") : TEXT(""),
 				*CozyUiScreenUtil::Multiplier(View.CurrentMultiplier).ToString(), View.ManagedFacilities, *Join(View.UnlockedCrops));
 			Text += View.NextMultiplier > 0.f
@@ -971,7 +976,7 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 				R.Current = Job->Progress01 * 100.f;
 				R.RemainingSeconds = Job->RemainingSeconds;
 				R.StateColor = ECozyUiColor::Progress;
-				R.Text = FText::Format(LOCTEXT("UpJob2", "{0} → Lv{1} · 남은 {2}"), Job->FacilityName, FText::AsNumber(Job->ToLevel), CozyUiFormat::Duration(Job->RemainingSeconds));
+				R.Text = FText::Format(LOCTEXT("UpJob2", "{0} → Lv.{1} · 남은 {2}"), Job->FacilityName, FText::AsNumber(Job->ToLevel), CozyUiFormat::Duration(Job->RemainingSeconds));
 			}
 			else
 			{
@@ -1026,8 +1031,8 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 			R.Current = Quote.FromLevel;
 			R.Max = Quote.ToLevel;
 			R.Text = Quote.bValid
-				? FText::Format(LOCTEXT("UpRowTitle2", "{0}   Lv{1} → Lv{2}"), Name, FText::AsNumber(Quote.FromLevel), FText::AsNumber(Quote.ToLevel))
-				: FText::Format(LOCTEXT("UpRowTitleMax2", "{0}   Lv{1}"), Name, FText::AsNumber(Quote.FromLevel));
+				? FText::Format(LOCTEXT("UpRowTitle2", "{0}   Lv.{1} → Lv.{2}"), Name, FText::AsNumber(Quote.FromLevel), FText::AsNumber(Quote.ToLevel))
+				: FText::Format(LOCTEXT("UpRowTitleMax2", "{0}   Lv.{1}"), Name, FText::AsNumber(Quote.FromLevel));
 			break;
 		}
 		if (Value == ECozyUiValue::UpgradeBlock)
@@ -1052,7 +1057,7 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 				for (const FCozyUpgradeQuote::FCondition& Condition : Quote.Conditions)
 				{
 					Conditions += FString::Printf(TEXT("%s%s %s"), Conditions.IsEmpty() ? TEXT("") : TEXT(" · "), *Condition.Label.ToString(),
-						Condition.bMet ? TEXT("(충족)") : *FString::Printf(TEXT("(부족 · 지금 Lv%d)"), Condition.Current));
+						Condition.bMet ? TEXT("(충족)") : *FString::Printf(TEXT("(부족 · 지금 Lv.%d)"), Condition.Current));
 				}
 				Detail += FString::Printf(TEXT("\n조건: %s"), *Conditions);
 			}
@@ -1112,7 +1117,7 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 				break;
 			}
 			R.Current = Facility->Level;
-			FString Label = FString::Printf(TEXT("%s Lv%d"), *Estate->GetFacilityDisplayName(Facility->InstanceId).ToString(), Facility->Level);
+			FString Label = FString::Printf(TEXT("%s Lv.%d"), *Estate->GetFacilityDisplayName(Facility->InstanceId).ToString(), Facility->Level);
 			if (const FCozyCropRow* Crop = Facility->SelectedCropId.IsNone() ? nullptr : Estate->GetCropDef(Facility->SelectedCropId))
 			{
 				Label += FString::Printf(TEXT(" · %s"), *Crop->DisplayName.ToString());
@@ -1364,14 +1369,11 @@ TArray<FCozyUiListRow> UCozyUiScreen::GetRealListRows(ECozyUiListSource Source, 
 	case ECozyUiListSource::WindowCrops:
 		if (const FCozyFacilityState* Facility = ContextFacility.IsValid() ? Estate->FindFacility(ContextFacility) : nullptr)
 		{
-			const FCozyFacilityRow* Def = Estate->GetFacilityDef(Facility->DefinitionId);
-			if (Def && Def->bProductionItemSelectable)
+			// 해금 단계가 없는 잠긴 작물(데모의 팥)은 목록에 넣지 않음 (🙋 2026-10-30)
+			for (const FName& CropId : Estate->GetCropChoices(Facility->InstanceId))
 			{
-				for (const FName& CropId : Def->ProductionItems)
-				{
-					const FCozyCropRow* Crop = Estate->GetCropDef(CropId);
-					Rows.Add({ CropId, Crop ? Crop->DisplayName : FText::FromName(CropId) });
-				}
+				const FCozyCropRow* Crop = Estate->GetCropDef(CropId);
+				Rows.Add({ CropId, Crop ? Crop->DisplayName : FText::FromName(CropId) });
 			}
 		}
 		break;

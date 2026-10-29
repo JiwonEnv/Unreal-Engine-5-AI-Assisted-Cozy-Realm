@@ -208,4 +208,21 @@ struct FCozyEstateState
 	/** 지급한 일회성 보상 ID (7-11 · 2주차) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Estate")
 	TArray<FName> GrantedRewards;
+
+	/**
+	 *  첫 실행 안내를 끝냈거나 건너뜀 (저장 형식 3 · 영지마다 따로 → 새 게임이면 다시 안내).
+	 *  예전에는 설정 파일(GameUserSettings bTutorialDone)에 있었고, 형식 2 이하 저장을 처음 불러올 때 한 번 옮긴다.
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Estate")
+	bool bTutorialDone = false;
+
+	/**
+	 *  방치 재화 누적 시간 (게임 초 · 저장 형식 3 · D44 '접속 중과 같은 규칙').
+	 *  켜 둔 동안과 꺼 둔 동안(방치 정산) 모두 1초씩 더하고, 지급 간격만큼 찰 때마다 1개 지급 후 그만큼 뺀다 → 같은 시간을 두 번 받지 않음
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Estate")
+	double TalismanRewardSeconds = 0.0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Estate")
+	double MindShardRewardSeconds = 0.0;
 };

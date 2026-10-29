@@ -246,20 +246,20 @@ private:
 	// --- 첫 실행 안내 (Tutorial.csv · 새 게임에서 한 번 · 설정 '안내 다시 보기') ---
 	/** 안내 칸·화살표를 만든다 (처음 시작할 때 한 번) */
 	void BuildTutorialWidgets();
-	/** Index 단계를 보여 주고 그 단계의 기준값(창고 밀·밀가루·골드)을 기록 */
+	/** Index 단계를 보여 주고 (단계 보상이 있으면 한 번만 지급) 그 단계의 기준값(목표 재료 보유량)을 기록 */
 	void ShowTutorialStep(int32 Index);
-	/** 안내를 끝냄 (bCompleted면 마지막 단계까지 · 아니면 건너뜀) · 다시 띄우지 않게 저장 */
+	/** 안내를 끝냄 (bCompleted면 마지막 단계까지 · 아니면 건너뜀) · 이 영지의 저장 상태에 남겨 다시 띄우지 않음 */
 	void FinishTutorial(bool bCompleted);
-	bool IsTutorialGoalDone(FName Goal) const;
+	struct FTutorialStep { FName Goal; FName Target; FName GoalItem; int32 GoalAmount = 0; FName RewardId; FText Title; FText Body; };
+	bool IsTutorialGoalDone(const FTutorialStep& Step) const;
 	int32 GetStoredAmount(FName ItemId) const;
-	struct FTutorialStep { FName Goal; FName Target; FText Title; FText Body; };
 	TArray<FTutorialStep> TutorialSteps;
 	int32 TutorialIndex = INDEX_NONE;
 	float TutorialTime = 0.f;
-	/** 단계 시작 때 기준값 (수확 · 가공 · 판매 확인용) */
-	int32 TutorialWheatStart = 0;
-	int32 TutorialFlourStart = 0;
-	int32 TutorialGoldStart = 0;
+	/** 단계 시작 때 목표 재료 보유량 · 마지막으로 본 보유량 · 그 뒤로 쓴 양 (시간 단축 확인용 · 늘어난 양은 세지 않음) */
+	int32 TutorialItemStart = 0;
+	int32 TutorialItemLast = 0;
+	int32 TutorialItemSpent = 0;
 	bool bTutorialChecked = false;
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> TutorialPanel;
@@ -309,6 +309,17 @@ private:
 	TObjectPtr<class USizeBox> WindowScreenSize;
 	UPROPERTY(Transient)
 	TObjectPtr<class UScrollBox> WindowScreenScroll;
+	/**
+	 *  창 위쪽 위치 고정 (꾸미기 상점 · 출시 품질 점검 2026-10-30): 처음 그려진 위치에서 위쪽을 고정해
+	 *  '방금 한 일' 줄이 생기거나 길어져도 목록·버튼이 위로 밀리지 않게 (창은 아래로만 늘어남)
+	 */
+	bool bWindowTopLocked = false;
+	float WindowLockedTop = 0.f;
+	/** 고정하기 전의 창 여백 (풀 때 되돌림) */
+	FMargin WindowDefaultPadding;
+	int32 WindowOpenFrames = 0;
+	/** 창 위치를 처음(가운데 정렬)으로 되돌림 (창을 열고 닫을 때) */
+	void ResetWindowTopLock();
 	bool bCompactMode = false;
 
 	UPROPERTY(Transient)
