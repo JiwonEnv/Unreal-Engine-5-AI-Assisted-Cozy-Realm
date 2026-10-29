@@ -44,6 +44,13 @@ public:
 	/** 0 종료 / 1 브러시 / 2 타일. 제작 검증용 입력 진입점. */
 	UFUNCTION(Exec) void CozyGroundMode(int32 Mode);
 
+	/**
+	 *  꾸미기 상점 '바닥'에서 고른 바닥으로 칠하기 시작 (Floors.csv 행 ID · 붓이면 지면 붓, 타일이면 바닥 타일 모드).
+	 *  칸당 비용·조작 안내를 알림으로 보여 줌 · 출시 수정 2차 (🙋 바닥 꾸미기를 상점에 합침)
+	 */
+	void BeginFloorPainting(FName FloorId);
+	bool IsGroundEditing() const { return GroundMode != 0; }
+
 	/** 브러시를 이 지점까지 끈다 (마우스 드래그 한 프레임과 같음) · 표면이 바뀌어도 한 드래그로 이어 칠함 */
 	void PaintBrushTo(const FCozySurfaceHit& Hit);
 	/** 지금 드래그를 끝내고 되돌리기 한 단위로 묶음 */
@@ -113,6 +120,13 @@ private:
 	TArray<TArray<TWeakObjectPtr<class UCozySurfaceComponent>>> PaintUndoGroups, PaintRedoGroups;
 	bool bFloorPreview = false;
 	FGuid MovingFloorId;
+	/** 지금 고른 바닥의 이름 · 칸당 비용 · 조작 안내 (알림용) */
+	FText DescribeGroundTool() const;
+	/** 지면 붓이 이 위치에서 새로 걸치는 칸의 비용을 냄 · 지우개는 무료 · 부족하면 이번 드래그를 멈추고 false */
+	bool PayBrushCells(const FVector& Position);
+	/** 이번 드래그에서 이미 비용을 낸 칸 (같은 칸을 두 번 내지 않음) · 골드가 부족해 멈춘 드래그 */
+	TSet<FIntPoint> StrokePaidCells;
+	bool bStrokeBlocked = false;
 	/** 바닥 타일 미리보기 · 옮기던 타일 취소 */
 	void CancelFloorPreview() { bFloorPreview = false; MovingFloorId.Invalidate(); }
 	FString LastRecoveryNotice;

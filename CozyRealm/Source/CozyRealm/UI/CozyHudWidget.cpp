@@ -9,6 +9,8 @@
 #include "Environment/CozySeasonPreset.h"
 #include "Settings/CozySettingsSubsystem.h"
 #include "Settings/CozyGameUserSettings.h"
+#include "UI/CozyDemoSettings.h"
+#include "HAL/PlatformProcess.h"
 #include "Data/CozyRealmDataTypes.h"
 #include "Engine/DataTable.h"
 #include "Misc/FileHelper.h"
@@ -62,6 +64,19 @@ namespace CozyHud
 	const FLinearColor OverlayColor(0.f, 0.f, 0.f, 0.7f);
 	const FLinearColor MutedText(0.7f, 0.7f, 0.75f);
 	const FLinearColor AccentText(1.f, 0.85f, 0.45f);
+	/** 떠오르는 숫자: 보이는 시간(초) · 올라가는 속도(화면 단위/초) · 글자 크기 · 이름표 위로 띄우는 높이 (출시 수정 2차) */
+	constexpr float FloatingSeconds = 1.4f;
+	constexpr float FloatingRise = 46.f;
+	constexpr int32 FloatingFontSize = 22;
+	constexpr float FloatingLift = 40.f;
+	const FLinearColor FloatingGain(1.f, 0.92f, 0.55f);
+	const FLinearColor FloatingLevel(0.6f, 1.f, 0.7f);
+	/** 꾸미기 상점: 처음 그릴 때 '방금 한 일' 줄(두 줄)이 들어갈 자리를 미리 셈 (사기 뒤 창 아래가 잘리지 않게) */
+	constexpr float FeedbackReserve = 56.f;
+	/** 위쪽 알림을 HUD 칩 줄 아래로 띄우는 거리 */
+	constexpr float ToastBelowHud = 8.f;
+	/** 데모 끝 안내 폭 */
+	constexpr float DemoEndWidth = 560.f;
 
 	FText TimeScaleText(float Scale)
 	{
@@ -163,7 +178,8 @@ void UCozyHudWidget::BuildLayout()
 		ToastSlot->SetZOrder(10);
 		ToastSlot->SetAnchors(FAnchors(0.5f, 0.f));
 		ToastSlot->SetAlignment(FVector2D(0.5f, 0.f));
-		ToastSlot->SetPosition(FVector2D(0.f, 52.f));
+		// 위쪽 HUD 칩 줄(재화·시계·버튼)과 겹치지 않게 그 아래 (출시 수정 2차 · 예전 52는 칩과 겹쳤음)
+		ToastSlot->SetPosition(FVector2D(0.f, CozyHud::HudTopSafe + CozyHud::ToastBelowHud));
 		ToastSlot->SetAutoSize(true);
 	}
 	ToastText->SetVisibility(ESlateVisibility::Collapsed);
@@ -227,6 +243,7 @@ void UCozyHudWidget::NativeConstruct()
 	if (UCozyEstateSubsystem* Estate = GetEstate())
 	{
 		EstateChangedHandle = Estate->OnEstateChanged.AddUObject(this, &UCozyHudWidget::HandleEstateChanged);
+		EstateEventHandle = Estate->OnCozyEstateEvent.AddUObject(this, &UCozyHudWidget::HandleEstateEvent);
 	}
 	HandleEstateChanged(true);
 }
@@ -236,6 +253,7 @@ void UCozyHudWidget::NativeDestruct()
 	if (UCozyEstateSubsystem* Estate = GetEstate())
 	{
 		Estate->OnEstateChanged.Remove(EstateChangedHandle);
+		Estate->OnCozyEstateEvent.Remove(EstateEventHandle);
 	}
 	Super::NativeDestruct();
 }
@@ -254,7 +272,9 @@ void UCozyHudWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		{
 			const FMargin Pad = WindowOverlay->GetPadding();
 			WindowDefaultPadding = Pad;
-			WindowLockedTop = Pad.Top + FMath::Max(0.f, (MyGeometry.GetLocalSize().Y - Pad.Top - Pad.Bottom - Desired) * 0.5f);
+			// '방금 한 일' 줄이 아직 없으면 그 자리(두 줄)를 미리 더해 가운데를 잡음 → 사기 뒤 창이 아래로 늘어나도 화면 안 (출시 수정 2차)
+			const float Reserve = LastFeedback.IsEmpty() ? CozyHud::FeedbackReserve : 0.f;
+			WindowLockedTop = Pad.Top + FMath::Max(0.f, (MyGeometry.GetLocalSize().Y - Pad.Top - Pad.Bottom - Desired - Reserve) * 0.5f);
 			WindowOverlay->SetVerticalAlignment(VAlign_Top);
 			WindowOverlay->SetPadding(FMargin(Pad.Left, WindowLockedTop, Pad.Right, Pad.Bottom));
 			bWindowTopLocked = true;
@@ -296,6 +316,21 @@ void UCozyHudWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	if (bPlacementMode || bPlacementPreview)
 	{
 		UpdatePlacementLive();
+	}
+
+	UpdateFloatingTexts(InDeltaTime);
+
+	// 데모 끝: 신사가 데모 마지막 레벨이면 다른 창이 없을 때 한 번 (방치 정산 결과 창 뒤에 · 저장 상태에 기록)
+	DemoEndCheckTimer += InDeltaTime;
+	if (DemoEndCheckTimer >= 0.5f)
+	{
+		DemoEndCheckTimer = 0.f;
+		UCozyEstateSubsystem* Estate = GetEstate();
+		if (Estate && !bUiPreview && !bCompactMode && !IsWindowOpen() && !IsDemoEndOpen() && Estate->ShouldShowDemoEnd())
+		{
+			ShowDemoEnd();
+			Estate->MarkDemoEndShown();
+		}
 	}
 
 	if (ToastRemaining > 0.f)
@@ -560,6 +595,227 @@ void UCozyHudWidget::HandleEstateChanged(bool bStructural)
 
 // ---------------------------------------------------------------------------
 // 공통 위젯 (이름표 · 디버그 창)
+
+// ---------------------------------------------------------------------------
+// 영지 일 알림 → 소리 · 떠오르는 숫자 · 업그레이드 강조 (출시 수정 2차 2026-10-30)
+
+void UCozyHudWidget::HandleEstateEvent(const FCozyEstateEvent& Event)
+{
+	// 소리: 프로젝트 설정 Cozy Audio의 Event Sounds (비어 있으면 무음)
+	if (const UCozySettingsSubsystem* Settings = UCozySettingsSubsystem::Get(this))
+	{
+		Settings->PlayEventSound(this, Event.Kind);
+	}
+	const UCozyEstateSubsystem* Estate = GetEstate();
+	auto ItemName = [Estate](FName ItemId)
+	{
+		const FCozyItemRow* Item = Estate ? Estate->GetItemDef(ItemId) : nullptr;
+		return Item ? Item->DisplayName : FText::FromName(ItemId);
+	};
+	switch (Event.Kind)
+	{
+	case ECozyEstateEventKind::Harvest:
+	case ECozyEstateEventKind::ProcessingDone:
+	case ECozyEstateEventKind::Sale:
+		if (Event.Amount > 0)
+		{
+			SpawnFloatingText(Event.FacilityId, FText::Format(LOCTEXT("FloatGain", "+{0} {1}"), FText::AsNumber(Event.Amount), ItemName(Event.ItemId)), CozyHud::FloatingGain);
+		}
+		break;
+	case ECozyEstateEventKind::UpgradeDone:
+		if (ACozyFacilityActor* Actor = FindFacilityActorById(Event.FacilityId))
+		{
+			Actor->PlayUpgradePulse();
+		}
+		SpawnFloatingText(Event.FacilityId, FText::Format(LOCTEXT("FloatLevel", "Lv.{0}!"), FText::AsNumber(Event.Level)), CozyHud::FloatingLevel);
+		break;
+	default:
+		break;
+	}
+}
+
+ACozyFacilityActor* UCozyHudWidget::FindFacilityActorById(const FGuid& FacilityId) const
+{
+	if (!FacilityId.IsValid() || !GetWorld())
+	{
+		return nullptr;
+	}
+	for (TActorIterator<ACozyFacilityActor> It(GetWorld()); It; ++It)
+	{
+		if (It->GetFacilityId() == FacilityId)
+		{
+			return *It;
+		}
+	}
+	return nullptr;
+}
+
+void UCozyHudWidget::SpawnFloatingText(const FGuid& FacilityId, const FText& Text, const FLinearColor& Color)
+{
+	ACozyFacilityActor* Actor = FindFacilityActorById(FacilityId);
+	if (!Actor || !LabelLayer || bCompactMode)
+	{
+		return;
+	}
+	UTextBlock* Block = MakeText(Text, CozyHud::FloatingFontSize, Color);
+	if (HudScreen)
+	{
+		FSlateFontInfo Font = HudScreen->GetFont(ECozyUiTextRole::Number);
+		if (Font.HasValidFont())
+		{
+			Font.Size = CozyHud::FloatingFontSize;
+			Block->SetFont(Font);
+		}
+	}
+	Block->SetShadowOffset(FVector2D(1.5f, 2.f));
+	Block->SetShadowColorAndOpacity(FLinearColor(0.f, 0.f, 0.f, 0.75f));
+	Block->SetVisibility(ESlateVisibility::HitTestInvisible);
+	if (UCanvasPanelSlot* FloatSlot = LabelLayer->AddChildToCanvas(Block))
+	{
+		FloatSlot->SetAutoSize(true);
+		FloatSlot->SetAlignment(FVector2D(0.5f, 1.f));
+		FloatSlot->SetZOrder(20);
+	}
+	FloatingTexts.Add({ Block, Actor, 0.f });
+	UpdateFloatingTexts(0.f);
+}
+
+void UCozyHudWidget::UpdateFloatingTexts(float DeltaTime)
+{
+	for (int32 Index = FloatingTexts.Num() - 1; Index >= 0; --Index)
+	{
+		FFloatingText& Each = FloatingTexts[Index];
+		Each.Age += DeltaTime;
+		UTextBlock* Block = Each.Text.Get();
+		const ACozyFacilityActor* Actor = Each.Facility.Get();
+		if (!Block || !Actor || Each.Age >= CozyHud::FloatingSeconds)
+		{
+			if (Block)
+			{
+				Block->RemoveFromParent();
+			}
+			FloatingTexts.RemoveAt(Index);
+			continue;
+		}
+		FVector2D ScreenPosition;
+		if (UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(GetOwningPlayer(), Actor->GetNameAnchorLocation(), ScreenPosition, false))
+		{
+			if (UCanvasPanelSlot* FloatSlot = Cast<UCanvasPanelSlot>(Block->Slot))
+			{
+				// 이름표 위에서 위로 떠오름 · 뒤쪽 절반에서 서서히 사라짐
+				FloatSlot->SetPosition(ScreenPosition - FVector2D(0.f, CozyHud::FloatingLift + Each.Age * CozyHud::FloatingRise));
+			}
+		}
+		const float T = Each.Age / CozyHud::FloatingSeconds;
+		Block->SetRenderOpacity(T < 0.5f ? 1.f : FMath::Clamp(1.f - (T - 0.5f) * 2.f, 0.f, 1.f));
+	}
+}
+
+bool UCozyHudWidget::IsDemoEndOpen() const
+{
+	return DemoEndPanel && DemoEndPanel->GetVisibility() != ESlateVisibility::Collapsed;
+}
+
+void UCozyHudWidget::ShowDemoEnd()
+{
+	if (!RootCanvas || !WidgetTree)
+	{
+		return;
+	}
+	if (!DemoEndPanel)
+	{
+		const UCozyDemoSettings* Demo = UCozyDemoSettings::Get();
+		const UCozyUiTheme* Theme = HudScreen ? HudScreen->GetTheme() : nullptr;
+		auto ApplyFont = [this](UTextBlock* Text, ECozyUiTextRole Role)
+		{
+			if (!HudScreen)
+			{
+				return;
+			}
+			const FSlateFontInfo Font = HudScreen->GetFont(Role);
+			if (Font.HasValidFont())
+			{
+				Text->SetFont(Font);
+			}
+			Text->SetColorAndOpacity(FSlateColor(HudScreen->GetColor(ECozyUiColor::Ink)));
+		};
+		auto OrDefault = [](const FText& Value, const FText& Fallback) { return Value.IsEmpty() ? Fallback : Value; };
+
+		DemoEndPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("DemoEndPanel"));
+		if (const FSlateBrush* Brush = Theme ? Theme->FindImage(TEXT("Window")) : nullptr)
+		{
+			DemoEndPanel->SetBrush(*Brush);
+		}
+		else
+		{
+			DemoEndPanel->SetBrushColor(CozyHud::PanelColor);
+		}
+		DemoEndPanel->SetPadding(Theme ? Theme->Metrics.WindowPadding : FMargin(20.f));
+		USizeBox* Width = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+		Width->SetWidthOverride(CozyHud::DemoEndWidth);
+		UVerticalBox* Column = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
+		// 🤖 문구 Claude 제안 (DefaultGame.ini Cozy Demo에서 바꿈)
+		UTextBlock* Title = MakeText(OrDefault(Demo->EndTitle, LOCTEXT("DemoEndTitle", "데모는 여기까지입니다")), 24);
+		ApplyFont(Title, ECozyUiTextRole::Title);
+		Title->SetAutoWrapText(true);
+		Column->AddChildToVerticalBox(Title);
+		UTextBlock* Body = MakeText(OrDefault(Demo->EndBody, LOCTEXT("DemoEndBody", "신사를 데모의 마지막 단계까지 키웠습니다. 함께해 주셔서 고맙습니다!\n정식판에서 새 시설과 주민, 이야기가 이어집니다. 위시리스트에 담아 두시면 출시 소식을 받아 볼 수 있어요.\n영지는 계속 둘러보고 꾸밀 수 있습니다.")), 17);
+		ApplyFont(Body, ECozyUiTextRole::Body);
+		Body->SetAutoWrapText(true);
+		if (UVerticalBoxSlot* BodySlot = Column->AddChildToVerticalBox(Body))
+		{
+			BodySlot->SetPadding(FMargin(0.f, 10.f, 0.f, 14.f));
+		}
+		UHorizontalBox* Buttons = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+		auto AddButton = [&](const FText& Label, const FText& Tip, bool bEnabled, bool bMain, TFunction<void()> OnClick)
+		{
+			UButton* Button = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass());
+			if (const FButtonStyle* Style = Theme ? Theme->FindButtonStyle(bMain ? FName(TEXT("Main")) : NAME_None) : nullptr)
+			{
+				Button->SetStyle(*Style);
+			}
+			UTextBlock* Text = MakeText(Label, 16, FLinearColor(0.08f, 0.08f, 0.1f));
+			ApplyFont(Text, ECozyUiTextRole::Button);
+			Button->SetContent(Text);
+			Button->SetToolTipText(Tip);
+			Button->SetIsEnabled(bEnabled);
+			UCozyUiAction* Action = NewObject<UCozyUiAction>(this);
+			Action->Callback = [Click = MoveTemp(OnClick)]()
+			{
+				Click();
+				if (FSlateApplication::IsInitialized())
+				{
+					FSlateApplication::Get().SetAllUserFocusToGameViewport();
+				}
+			};
+			Button->OnClicked.AddDynamic(Action, &UCozyUiAction::Fire);
+			DemoEndActions.Add(Action);
+			if (UHorizontalBoxSlot* ButtonSlot = Buttons->AddChildToHorizontalBox(Button))
+			{
+				ButtonSlot->SetPadding(FMargin(0.f, 0.f, 10.f, 0.f));
+			}
+		};
+		const FString Url = Demo->WishlistUrl;
+		// ❓ Steam 주소가 정해지기 전에는 버튼을 끄고 이유를 툴팁으로
+		AddButton(OrDefault(Demo->WishlistLabel, LOCTEXT("DemoWishlist", "위시리스트에 담기")),
+			Url.IsEmpty() ? LOCTEXT("DemoWishlistSoon", "Steam 상점 페이지를 준비 중입니다") : FText::FromString(Url), !Url.IsEmpty(), true,
+			[Url]() { FPlatformProcess::LaunchURL(*Url, nullptr, nullptr); });
+		AddButton(OrDefault(Demo->ContinueLabel, LOCTEXT("DemoContinue", "계속 둘러보기")), LOCTEXT("DemoContinueTip", "안내를 닫고 영지로 돌아갑니다 (다시 뜨지 않음)"), true, false,
+			[this]() { if (DemoEndPanel) { DemoEndPanel->SetVisibility(ESlateVisibility::Collapsed); } });
+		Column->AddChildToVerticalBox(Buttons)->SetHorizontalAlignment(HAlign_Right);
+		Width->SetContent(Column);
+		DemoEndPanel->SetContent(Width);
+		if (UCanvasPanelSlot* PanelSlot = RootCanvas->AddChildToCanvas(DemoEndPanel))
+		{
+			PanelSlot->SetAnchors(FAnchors(0.5f, 0.5f));
+			PanelSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+			PanelSlot->SetAutoSize(true);
+			PanelSlot->SetZOrder(12);
+		}
+	}
+	DemoEndPanel->SetVisibility(ESlateVisibility::Visible);
+	UE_LOG(LogCozyRealm, Log, TEXT("[UI] 데모 끝 안내를 띄움"));
+}
 
 UTextBlock* UCozyHudWidget::MakeText(const FText& Text, int32 FontSize, const FLinearColor& Color)
 {

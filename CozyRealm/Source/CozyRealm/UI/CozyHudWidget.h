@@ -108,6 +108,8 @@ public:
 	void ToggleDecorShopWindow();
 
 	void ToggleDebugPanel();
+	/** '데모는 여기까지' 안내가 떠 있는가 (신사 데모 마지막 레벨 · 한 번만) */
+	bool IsDemoEndOpen() const;
 	/** 첫 실행 안내를 처음 단계부터 (새 게임 시작 · 설정 '안내 다시 보기') */
 	void StartTutorial();
 	/** 안내 진행 확인 · 화살표 위치 (플레이어 컨트롤러가 매 프레임 · 위젯이 그려지지 않는 시험 실행에서도 진행되게) */
@@ -172,6 +174,27 @@ private:
 
 	void BuildLayout();
 	void HandleEstateChanged(bool bStructural);
+	/** 영지 일 알림: 소리(Cozy Audio · 비어 있으면 무음) · 떠오르는 숫자 · 업그레이드 강조 (출시 수정 2차) */
+	void HandleEstateEvent(const struct FCozyEstateEvent& Event);
+	FDelegateHandle EstateEventHandle;
+	/** 시설 위에서 떠오르다 사라지는 글자 (예: '+3 밀') · 이름표 층에 붙음 */
+	void SpawnFloatingText(const FGuid& FacilityId, const FText& Text, const FLinearColor& Color);
+	void UpdateFloatingTexts(float DeltaTime);
+	struct FFloatingText
+	{
+		TWeakObjectPtr<UTextBlock> Text;
+		TWeakObjectPtr<ACozyFacilityActor> Facility;
+		float Age = 0.f;
+	};
+	TArray<FFloatingText> FloatingTexts;
+	ACozyFacilityActor* FindFacilityActorById(const FGuid& FacilityId) const;
+	/** 신사가 데모 마지막 레벨에 닿으면 한 번 띄우는 안내 (위시리스트 · 계속 둘러보기) */
+	void ShowDemoEnd();
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> DemoEndPanel;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UCozyUiAction>> DemoEndActions;
+	float DemoEndCheckTimer = 0.f;
 	/** 미수령분 수령 버튼 공통 처리 (생산·가공) · 결과는 '방금 한 일'로 */
 	void HandleCollectClicked(const FGuid& FacilityId);
 	void SetFeedback(const FText& Message);

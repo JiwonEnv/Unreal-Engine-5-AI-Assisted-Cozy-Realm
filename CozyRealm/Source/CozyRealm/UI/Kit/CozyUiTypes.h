@@ -192,7 +192,11 @@ enum class ECozyUiValue : uint8
 	/** 꾸미기 점수 ({0} 점수 · {1} 다음 단계 점수 · {2} 보너스 % · {4} '꾸미기 점수 N점 · 생산 +X% · 다음 단계까지 M점') */
 	DecorScore UMETA(DisplayName = "Decor Score (꾸미기 점수·보너스)"),
 	/** 장식 한 줄 (매개변수 = 장식 ID · 보통 @Row · {0} 점수 · {4} '1×1 · 3점 · 골드 30 · 보유 2(놓음 1)' + 살 수 없으면 이유) */
-	DecorLine UMETA(DisplayName = "Decor Line (꾸미기 장식 한 줄)")
+	DecorLine UMETA(DisplayName = "Decor Line (꾸미기 장식 한 줄)"),
+	/** 그래픽 품질 선택지 (매개변수: 0 낮음 · 1 중간 · 2 높음 · 3 최고 · {4} 이름 · 고른 것은 강조색 · 출시 수정 2차) */
+	SettingsGraphicsQuality UMETA(DisplayName = "Settings Graphics Quality (그래픽 품질 선택지)"),
+	/** 바닥 한 줄 (매개변수 = Floors.csv 바닥 ID · 보통 @Row · {4} '지면 붓 · 칸당 골드 1 · 지우기 무료' + 골드가 모자라면 이유 · 출시 수정 2차) */
+	FloorLine UMETA(DisplayName = "Floor Line (바닥 꾸미기 한 줄)")
 };
 
 /** 반복 목록의 출처 · 줄 수가 게임 상태에 따라 바뀌는 목록 */
@@ -247,7 +251,9 @@ enum class ECozyUiListSource : uint8
 	/** 종료 전 저장에 실패했으면 한 줄 · 아니면 0줄 */
 	SettingsQuitFailed UMETA(DisplayName = "Settings Quit Failed (저장 실패 · 실패했을 때만 한 줄)"),
 	/** 꾸미기 상점의 장식 목록 (줄 ID = 장식 ID · Decorations.csv 순서) */
-	DecorCatalog UMETA(DisplayName = "Decor Catalog (꾸미기 상점 장식)")
+	DecorCatalog UMETA(DisplayName = "Decor Catalog (꾸미기 상점 장식)"),
+	/** 꾸미기 상점의 바닥 목록 (줄 ID = 바닥 ID · Floors.csv 순서 · 출시 수정 2차) */
+	FloorCatalog UMETA(DisplayName = "Floor Catalog (꾸미기 상점 바닥)")
 };
 
 /** 배경 안쪽 여백 */
@@ -400,7 +406,11 @@ enum class ECozyUiAction : uint8
 	/** 꾸미기 상점 창 열기 · 열려 있으면 닫기 */
 	OpenDecorShop UMETA(DisplayName = "Open Decor Shop (꾸미기 상점 창)"),
 	/** 장식 1개 사기 (매개변수 = 장식 ID · 보통 @Row) · 재화가 부족하면 버튼이 꺼지고 이유가 툴팁으로 */
-	BuyDecoration UMETA(DisplayName = "Buy Decoration (장식 사기)")
+	BuyDecoration UMETA(DisplayName = "Buy Decoration (장식 사기)"),
+	/** 그래픽 품질 고르기 (Action Param: 0 낮음 · 1 중간 · 2 높음 · 3 최고 · 적용을 눌러야 바뀌고 저장 · 출시 수정 2차) */
+	SetGraphicsQuality UMETA(DisplayName = "Set Graphics Quality (그래픽 품질 고르기)"),
+	/** 바닥 칠하기 시작 (매개변수 = 바닥 ID · 보통 @Row · 창을 닫고 지면 붓/바닥 타일 모드로 · 칸당 비용은 칠할 때 냄 · 출시 수정 2차) */
+	SelectFloor UMETA(DisplayName = "Select Floor (바닥 칠하기)")
 };
 
 /** 미리보기 상태 · 실제 값 대신 보여 줄 가짜 상태 */

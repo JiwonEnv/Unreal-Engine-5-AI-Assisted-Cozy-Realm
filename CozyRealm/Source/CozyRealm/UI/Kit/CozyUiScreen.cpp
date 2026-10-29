@@ -442,6 +442,7 @@ FCozyUiValueResult UCozyUiScreen::GetPreviewValue(ECozyUiValue Value) const
 	case ECozyUiValue::StoredLabel: R.Text = LOCTEXT("PvStored", "제분소 Lv2"); break;
 	case ECozyUiValue::DecorScore: R.Current = 62.f; R.Max = 100.f; R.Text = LOCTEXT("PvDecorScore", "꾸미기 점수 62점 · 생산 +5% · 다음 단계까지 38점"); R.StateColor = ECozyUiColor::Point; break;
 	case ECozyUiValue::DecorLine: R.Current = 3.f; R.Text = LOCTEXT("PvDecorLine", "1×1 · 3점 · 골드 30 · 보유 1 (놓음 1)"); R.StateColor = ECozyUiColor::InkMuted; break;
+	case ECozyUiValue::FloorLine: R.Text = LOCTEXT("PvFloorLine", "지면 붓 · 칸당 골드 1 · 지우기 무료"); R.StateColor = ECozyUiColor::InkMuted; break;
 	case ECozyUiValue::FacilityName: R.Text = LOCTEXT("PvFacName", "제분소  Lv.2 (예시)"); break;
 	case ECozyUiValue::UpgradeSlots: R.Current = PreviewState == ECozyUiPreviewState::Empty ? 0.f : 1.f; R.Max = 1.f; break;
 	case ECozyUiValue::StoredFacilities: R.Current = 1.f; R.Max = 0.f; break;
@@ -1069,6 +1070,11 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 			{
 				Detail += FString::Printf(TEXT("\n효과: 모든 밭 생산 속도 ×%s (진행 중인 주기는 그대로, 다음 주기부터)"), *CozyUiScreenUtil::Multiplier(Quote.NextFieldSpeedMultiplier).ToString());
 			}
+			// 레벨 효과 (동시 가공·업그레이드 칸 · 주민 수 · 출시 수정 2차)
+			for (const FText& Effect : Quote.EffectLines)
+			{
+				Detail += TEXT("\n") + Effect.ToString();
+			}
 			if (Quote.UnlockCropNames.Num() > 0)
 			{
 				Detail += FString::Printf(TEXT("\n해금 작물: %s (각 밭의 작물 선택에 표시 · 자동으로 바뀌지 않음)"), *CozyUiScreenUtil::JoinTexts(Quote.UnlockCropNames, TEXT(", ")));
@@ -1156,6 +1162,28 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 			FText::AsNumber(Quote.Points), FText::FromString(CozyUiScreenUtil::JoinTexts(Prices, TEXT(" + "))), FText::AsNumber(Quote.Placed + Quote.Stored), FText::AsNumber(Quote.Placed));
 		R.Text = Quote.bCanBuy ? Line : FText::Format(LOCTEXT("DecorLineBlocked", "{0} · 살 수 없음: {1}"), Line, Quote.BlockReason);
 		R.StateColor = Quote.bCanBuy ? ECozyUiColor::InkMuted : ECozyUiColor::Warning;
+		break;
+	}
+	case ECozyUiValue::FloorLine:
+	{
+		const FCozyFloorQuote Quote = Estate->GetFloorQuote(Param, 1);
+		if (!Quote.bValid)
+		{
+			R.Text = Quote.BlockReason;
+			R.StateColor = ECozyUiColor::Locked;
+			break;
+		}
+		TArray<FText> Prices;
+		for (const FCozyFloorQuote::FAmount& Cost : Quote.Costs)
+		{
+			Prices.Add(FText::Format(LOCTEXT("FloorPrice", "{0} {1}"), CozyUiScreenUtil::ItemName(Estate, Cost.ItemId), FText::AsNumber(Cost.Amount)));
+		}
+		const FText Price = Prices.Num() > 0 ? FText::Format(LOCTEXT("FloorPerCell", "칸당 {0}"), FText::FromString(CozyUiScreenUtil::JoinTexts(Prices, TEXT(" + ")))) : LOCTEXT("FloorFree", "무료");
+		const FText Line = Quote.Tool == ECozyFloorTool::Brush
+			? FText::Format(LOCTEXT("FloorLineBrush", "지면 붓(드래그) · {0} · 지우기 무료·환불 없음"), Price)
+			: FText::Format(LOCTEXT("FloorLineTile", "바닥 타일(클릭 → Enter) · {0} · 제거 무료·환불 없음"), Price);
+		R.Text = Quote.bCanPay ? Line : FText::Format(LOCTEXT("FloorLineBlocked", "{0} · 지금은 칠할 수 없음: {1}"), Line, Quote.BlockReason);
+		R.StateColor = Quote.bCanPay ? ECozyUiColor::InkMuted : ECozyUiColor::Warning;
 		break;
 	}
 	case ECozyUiValue::ProcReserved:
@@ -1410,6 +1438,13 @@ TArray<FCozyUiListRow> UCozyUiScreen::GetRealListRows(ECozyUiListSource Source, 
 			Rows.Add({ DecorationId, Decoration ? Decoration->DisplayName : FText::FromName(DecorationId) });
 		}
 		break;
+	case ECozyUiListSource::FloorCatalog:
+		for (const FName& FloorId : Estate->GetFloorCatalog())
+		{
+			const FCozyFloorRow* Floor = Estate->GetFloorDef(FloorId);
+			Rows.Add({ FloorId, Floor ? Floor->DisplayName : FText::FromName(FloorId) });
+		}
+		break;
 	case ECozyUiListSource::StoredFacilities:
 		for (const FGuid& Id : Estate->GetStoredFacilities())
 		{
@@ -1484,6 +1519,8 @@ FText UCozyUiScreen::GetActionName(ECozyUiAction Action)
 	case ECozyUiAction::RestartTutorial: return LOCTEXT("ActTutorial", "첫 실행 안내를 처음부터 다시 봅니다");
 	case ECozyUiAction::OpenDecorShop: return LOCTEXT("ActDecorShop", "꾸미기 상점 창");
 	case ECozyUiAction::BuyDecoration: return LOCTEXT("ActBuyDecor", "장식 사기 (보관함으로)");
+	case ECozyUiAction::SelectFloor: return LOCTEXT("ActSelectFloor", "이 바닥으로 칠하기 (창을 닫고 바닥 꾸미기 · 칸당 비용은 칠할 때)");
+	case ECozyUiAction::SetGraphicsQuality: return LOCTEXT("ActQuality", "그래픽 품질 고르기 (적용을 눌러야 저장 · 낮음·중간은 하드웨어 레이트레이싱 끔)");
 	case ECozyUiAction::StartUpgrade: return LOCTEXT("ActUpStart", "업그레이드 시작");
 	case ECozyUiAction::GoToFacility: return LOCTEXT("ActGoTo", "그 시설로 이동");
 	case ECozyUiAction::TakeOutStored: return LOCTEXT("ActTakeOut", "보관함에서 꺼내기");
@@ -1560,6 +1597,13 @@ bool UCozyUiScreen::CanRunAction(const FCozyUiElementEntry& Entry, FText& OutRea
 		const FCozyDecorationQuote Quote = Estate->GetDecorationQuote(Entry.ActionParam);
 		OutReason = Quote.BlockReason;
 		return Quote.bCanBuy;
+	}
+	case ECozyUiAction::SelectFloor:
+	{
+		// 한 칸도 칠할 수 없으면 버튼을 끄고 이유를 툴팁으로
+		const FCozyFloorQuote Quote = Estate->GetFloorQuote(Entry.ActionParam, 1);
+		OutReason = Quote.BlockReason;
+		return Quote.bCanPay;
 	}
 	case ECozyUiAction::AssignResident:
 	{
@@ -1819,6 +1863,11 @@ void UCozyUiScreen::RunAction(const FCozyUiElementEntry& Entry)
 		Hud->RefreshWindowScreen();
 		break;
 	}
+	case ECozyUiAction::SelectFloor:
+		// 상점 창을 닫고 바닥 꾸미기로 (칸당 비용은 칠할 때마다 · 안내는 알림으로)
+		Hud->CloseWindow();
+		Controller->BeginFloorPainting(Entry.ActionParam);
+		break;
 	case ECozyUiAction::ConfirmOfflineReport: Estate->DismissOfflineReport(); Hud->CloseWindow(); break;
 	case ECozyUiAction::CollectWindow: Hud->CollectFromWindow(ContextFacility); break;
 	case ECozyUiAction::OpenNagayaForWindow: Hud->OpenWindow(ECozyWindowKind::Nagaya, FGuid(), ContextFacility); break;
