@@ -1332,22 +1332,13 @@ void UCozyHudWidget::HandleCollectClicked(const FGuid& FacilityId)
 
 void UCozyHudWidget::StartTutorial()
 {
-	// 단계 문구는 Data/GameData/Tutorial.csv (행 이름 순서) · 코드 없이 고칠 수 있게
+	// 단계 문구·목표 대상·목표 재료·수량·단계 보상은 Data/GameData/Tutorial.csv (행 이름 순서 · 영지 서비스가 읽음) · 코드 없이 고칠 수 있게
 	TutorialSteps.Reset();
-	FString Csv;
-	if (FFileHelper::LoadFileToString(Csv, *FPaths::Combine(FPaths::ProjectDir(), TEXT("Data"), TEXT("GameData"), TEXT("Tutorial.csv"))))
+	if (const UCozyEstateSubsystem* Estate = GetEstate())
 	{
-		UDataTable* Table = NewObject<UDataTable>(this, NAME_None, RF_Transient);
-		Table->RowStruct = FCozyTutorialRow::StaticStruct();
-		Table->CreateTableFromCSVString(Csv);
-		TArray<FName> Names = Table->GetRowNames();
-		Names.Sort([](const FName& A, const FName& B) { return A.LexicalLess(B); });
-		for (const FName& Name : Names)
+		for (const FCozyTutorialRow* Row : Estate->GetTutorialSteps())
 		{
-			if (const FCozyTutorialRow* Row = Table->FindRow<FCozyTutorialRow>(Name, TEXT("Tutorial")))
-			{
-				TutorialSteps.Add({ Row->Goal, Row->TargetFacility, Row->Title, Row->Body });
-			}
+			TutorialSteps.Add({ Row->Goal, Row->TargetFacility, Row->GoalItem, Row->GoalAmount, Row->RewardId, Row->Title, Row->Body });
 		}
 	}
 	if (TutorialSteps.Num() == 0)
@@ -1458,10 +1449,23 @@ void UCozyHudWidget::ShowTutorialStep(int32 Index)
 	}
 	TutorialIndex = Index;
 	TutorialTime = 0.f;
-	TutorialWheatStart = GetStoredAmount(TEXT("Wheat"));
-	TutorialFlourStart = GetStoredAmount(TEXT("Flour"));
-	TutorialGoldStart = GetStoredAmount(TEXT("Gold"));
 	const FTutorialStep& Step = TutorialSteps[Index];
+	// 단계 보상 (예: 5단계 첫 시간 단축 체험용 튜토리얼 부적) · 일회성 보상 경로라 다시 보기·불러오기에도 한 번만
+	if (!Step.RewardId.IsNone())
+	{
+		if (UCozyEstateSubsystem* Estate = GetEstate())
+		{
+			FText Message;
+			if (Estate->GrantOneTimeReward(Step.RewardId, Message))
+			{
+				ShowToast(Message);
+			}
+		}
+	}
+	// 보상을 받은 뒤의 보유량이 기준 (받은 부적을 '쓴 것'으로 잘못 세지 않게)
+	TutorialItemStart = Step.GoalItem.IsNone() ? 0 : GetStoredAmount(Step.GoalItem);
+	TutorialItemLast = TutorialItemStart;
+	TutorialItemSpent = 0;
 	TutorialTitle->SetText(FText::Format(LOCTEXT("TutorialTitle", "안내 {0}/{1} · {2}"), FText::AsNumber(Index + 1), FText::AsNumber(TutorialSteps.Num()), Step.Title));
 	TutorialBody->SetText(Step.Body);
 	TutorialPanel->SetVisibility(ESlateVisibility::Visible);
@@ -1483,10 +1487,10 @@ void UCozyHudWidget::FinishTutorial(bool bCompleted)
 	{
 		TutorialArrow->SetVisibility(ESlateVisibility::Collapsed);
 	}
-	if (UCozyGameUserSettings* Settings = UCozyGameUserSettings::Get())
+	// 안내 완료 여부는 이 영지의 저장 상태에 (새 게임이면 다시 안내 · 예전 설정 파일 값은 불러오기 때 한 번 옮김)
+	if (UCozyEstateSubsystem* Estate = GetEstate())
 	{
-		Settings->bTutorialDone = true;
-		Settings->SaveSettings();
+		Estate->SetTutorialDone(true);
 	}
 	ShowToast(bCompleted ? LOCTEXT("TutorialDone", "안내를 모두 마쳤습니다 · 설정 창에서 다시 볼 수 있습니다")
 		: LOCTEXT("TutorialSkipped", "안내를 건너뛰었습니다 · 설정 창의 '안내 다시 보기'로 다시 볼 수 있습니다"));
@@ -1500,13 +1504,16 @@ int32 UCozyHudWidget::GetStoredAmount(FName ItemId) const
 	return Amount ? *Amount : 0;
 }
 
-bool UCozyHudWidget::IsTutorialGoalDone(FName Goal) const
+bool UCozyHudWidget::IsTutorialGoalDone(const FTutorialStep& Step) const
 {
 	const UCozyEstateSubsystem* Estate = GetEstate();
 	if (!Estate)
 	{
 		return false;
 	}
+	const FName Goal = Step.Goal;
+	const int32 Amount = Step.GoalItem.IsNone() ? 0 : GetStoredAmount(Step.GoalItem);
+	const int32 Need = FMath::Max(1, Step.GoalAmount);
 	auto AnyFacility = [Estate](FName DefinitionId, TFunctionRef<bool(const FCozyFacilityState&)> Test)
 	{
 		for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
@@ -1518,22 +1525,29 @@ bool UCozyHudWidget::IsTutorialGoalDone(FName Goal) const
 		}
 		return false;
 	};
+	// 목표 대상 시설·재료·수량은 Tutorial.csv의 TargetFacility · GoalItem · GoalAmount
 	if (Goal == TEXT("AssignField"))
 	{
-		return AnyFacility(TEXT("Field"), [](const FCozyFacilityState& F) { return F.AssignedResidents.Num() > 0; });
+		return AnyFacility(Step.Target, [](const FCozyFacilityState& F) { return F.AssignedResidents.Num() > 0; });
 	}
 	if (Goal == TEXT("CollectField"))
 	{
-		return GetStoredAmount(TEXT("Wheat")) > TutorialWheatStart;
+		// 수확해서 늘었고, 다음 단계(가공 1회)에 필요한 만큼 창고에 있음
+		return Amount > TutorialItemStart && Amount >= Need;
 	}
 	if (Goal == TEXT("StartProcessing"))
 	{
-		return GetStoredAmount(TEXT("Flour")) > TutorialFlourStart
-			|| AnyFacility(TEXT("Mill"), [Estate](const FCozyFacilityState& F) { return Estate->GetProcessingJobs(F.InstanceId).Num() > 0; });
+		return Amount >= TutorialItemStart + Need
+			|| AnyFacility(Step.Target, [Estate](const FCozyFacilityState& F) { return Estate->GetProcessingJobs(F.InstanceId).Num() > 0; });
 	}
 	if (Goal == TEXT("Sell"))
 	{
-		return GetStoredAmount(TEXT("Gold")) > TutorialGoldStart;
+		return Amount >= TutorialItemStart + Need;
+	}
+	if (Goal == TEXT("Speedup"))
+	{
+		// 시간 부적을 쓴 양 (방치 보상으로 늘어난 것은 세지 않음)
+		return TutorialItemSpent >= Need;
 	}
 	return false;
 }
@@ -1544,11 +1558,11 @@ void UCozyHudWidget::UpdateTutorial(float DeltaTime)
 	if (!bTutorialChecked && TutorialIndex == INDEX_NONE)
 	{
 		const UCozyEstateSubsystem* Estate = GetEstate();
-		const UCozyGameUserSettings* Settings = UCozyGameUserSettings::Get();
 		if (Estate && Estate->IsStarted())
 		{
 			bTutorialChecked = true;
-			if (Estate->IsNewGameSession() && Settings && !Settings->bTutorialDone)
+			// 이 영지에서 아직 안내를 끝내지 않았으면 (새 게임 · 안내 도중 종료한 저장)
+			if (!Estate->IsTutorialDone())
 			{
 				StartTutorial();
 			}
@@ -1579,8 +1593,15 @@ void UCozyHudWidget::UpdateTutorial(float DeltaTime)
 	}
 
 	const FTutorialStep& Step = TutorialSteps[TutorialIndex];
+	// 목표 재료를 쓴 양 누적 (줄어든 만큼만 · 늘어난 것은 기준만 옮김)
+	if (!Step.GoalItem.IsNone())
+	{
+		const int32 Now = GetStoredAmount(Step.GoalItem);
+		TutorialItemSpent += FMath::Max(0, TutorialItemLast - Now);
+		TutorialItemLast = Now;
+	}
 	// 이미 이룬 단계(다시 보기에서 주민이 이미 배치됨 등)는 잠깐 보여 준 뒤 다음으로
-	if (TutorialTime > CozyHud::TutorialMinSeconds && IsTutorialGoalDone(Step.Goal))
+	if (TutorialTime > CozyHud::TutorialMinSeconds && IsTutorialGoalDone(Step))
 	{
 		if (TutorialIndex + 1 < TutorialSteps.Num())
 		{
