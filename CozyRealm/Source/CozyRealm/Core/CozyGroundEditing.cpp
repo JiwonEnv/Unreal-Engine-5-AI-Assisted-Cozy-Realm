@@ -51,10 +51,91 @@ void ACozyRealmEstatePlayerController::CozyGroundMode(int32 Mode)
 	SetPlacementMode(false);
 	GroundMode = FMath::Clamp(Mode, 0, 2);
 	CancelFloorPreview();
+	// 타일 모드의 종류 번호는 1~3 (GroundStyle - 1 = 타일 0~2) · 붓 지우개(0)에서 넘어오면 첫 타일로
+	if (GroundMode == 2 && GroundStyle < 1) GroundStyle = 1;
 	if (Hero) Hero->SetFrozen(GroundMode != 0);
-	if (Hud) Hud->ShowToast(FText::FromString(GroundMode == 1
-		? TEXT("지면 브러시 · 1~3 색 · 0 지우개 · [ ] 크기 · Ctrl+Z/Y · G 타일 · Esc 종료")
-		: GroundMode == 2 ? TEXT("바닥 타일 · 클릭 미리보기 · Enter 확정 · 우클릭 취소 · H 보관 · U 꺼내기 · V 이동 · Shift+클릭 제거") : TEXT("바닥 꾸미기를 종료했습니다")));
+	// 바닥 이름·칸당 비용을 함께 안내 (꾸미기 상점 '바닥'과 같은 비용 · 출시 수정 2차)
+	if (Hud) Hud->ShowToast(GroundMode == 0 ? FText::FromString(TEXT("바닥 꾸미기를 종료했습니다")) : DescribeGroundTool());
+}
+
+void ACozyRealmEstatePlayerController::BeginFloorPainting(FName FloorId)
+{
+	UCozyEstateSubsystem* Estate = GetWorld()->GetSubsystem<UCozyEstateSubsystem>();
+	const FCozyFloorRow* Floor = Estate ? Estate->GetFloorDef(FloorId) : nullptr;
+	if (!Floor)
+	{
+		if (Hud) Hud->ShowToast(FText::FromString(TEXT("바닥 목록(Floors.csv)에 없는 바닥입니다")));
+		return;
+	}
+	// 붓 1~3 = 흙·돌·모래 · 타일 0~2는 키 1~3 (GroundStyle - 1)
+	GroundStyle = Floor->Tool == ECozyFloorTool::Brush ? FMath::Clamp(Floor->Style, 1, 3) : FMath::Clamp(Floor->Style + 1, 1, 3);
+	CozyGroundMode(Floor->Tool == ECozyFloorTool::Brush ? 1 : 2);
+}
+
+FText ACozyRealmEstatePlayerController::DescribeGroundTool() const
+{
+	const UCozyEstateSubsystem* Estate = GetWorld()->GetSubsystem<UCozyEstateSubsystem>();
+	if (GroundMode == 1 && GroundStyle == 0)
+	{
+		return FText::FromString(TEXT("지면 붓 · 지우개(원래 풀로 · 무료 · 환불 없음) · 1~3 바닥 고르기 · [ ] 크기 · Ctrl+Z/Y · G 타일 · Esc 종료"));
+	}
+	const ECozyFloorTool Tool = GroundMode == 2 ? ECozyFloorTool::Tile : ECozyFloorTool::Brush;
+	const int32 Style = GroundMode == 2 ? GroundStyle - 1 : GroundStyle;
+	const FName FloorId = Estate ? Estate->FindFloorId(Tool, Style) : NAME_None;
+	const FCozyFloorQuote Quote = Estate && !FloorId.IsNone() ? Estate->GetFloorQuote(FloorId, 1) : FCozyFloorQuote();
+	FString Cost = TEXT("무료");
+	if (Quote.bValid && Quote.Costs.Num() > 0)
+	{
+		Cost.Reset();
+		for (const FCozyFloorQuote::FAmount& Each : Quote.Costs)
+		{
+			const FCozyItemRow* Item = Estate->GetItemDef(Each.ItemId);
+			Cost += FString::Printf(TEXT("%s%s %d"), Cost.IsEmpty() ? TEXT("") : TEXT(" + "), Item ? *Item->DisplayName.ToString() : *Each.ItemId.ToString(), Each.Amount);
+		}
+		Cost = TEXT("칸당 ") + Cost;
+	}
+	const FString Name = Quote.bValid ? Quote.Name.ToString() : FString::Printf(TEXT("%d번"), FMath::Max(1, GroundStyle));
+	return FText::FromString(GroundMode == 2
+		? FString::Printf(TEXT("바닥 타일 %s · %s · 1~3 종류 · 클릭 미리보기 · Enter 확정 · 우클릭 취소 · H 보관 · U 꺼내기 · V 이동 · Shift+클릭 제거(무료·환불 없음) · Esc 종료"), *Name, *Cost)
+		: FString::Printf(TEXT("지면 붓 %s · %s · 1~3 바닥 · 0 지우개(무료·환불 없음) · [ ] 크기 · Ctrl+Z/Y · G 타일 · Esc 종료"), *Name, *Cost));
+}
+
+bool ACozyRealmEstatePlayerController::PayBrushCells(const FVector& Position)
+{
+	// 🤖 지우개(0 = 원래 풀)는 무료 · 환불 없음
+	if (GroundStyle == 0)
+	{
+		return true;
+	}
+	if (bStrokeBlocked)
+	{
+		return false;
+	}
+	UCozyEstateSubsystem* Estate = GetWorld()->GetSubsystem<UCozyEstateSubsystem>();
+	if (!Estate)
+	{
+		return true;
+	}
+	// 붓 원이 새로 걸치는 칸만 (한 번 끄는 동안 같은 칸은 한 번만 냄)
+	TArray<FIntPoint> NewCells;
+	for (const FIntPoint& Cell : Estate->GetCellsInCircle(Position, BrushRadius))
+	{
+		if (!StrokePaidCells.Contains(Cell)) NewCells.Add(Cell);
+	}
+	if (NewCells.Num() == 0)
+	{
+		return true;
+	}
+	FText Message;
+	if (!Estate->PayFloorCost(Estate->FindFloorId(ECozyFloorTool::Brush, GroundStyle), NewCells.Num(), Message))
+	{
+		// 부족하면 이번 드래그는 여기서 멈춤 (이미 칠한 칸은 그대로 · 마우스를 떼면 다시 시도)
+		bStrokeBlocked = true;
+		if (Hud) Hud->ShowToast(Message);
+		return false;
+	}
+	StrokePaidCells.Append(NewCells);
+	return true;
 }
 
 void ACozyRealmEstatePlayerController::EndPaintSegment()
@@ -67,6 +148,8 @@ void ACozyRealmEstatePlayerController::FinishGroundStroke()
 {
 	EndPaintSegment();
 	bPaintDragActive = false;
+	StrokePaidCells.Reset();
+	bStrokeBlocked = false;
 	LastStampSurface.Reset();
 	if (DragSurfaces.IsEmpty()) return;
 	// 한 드래그가 평지·경사로·언덕에 걸쳐도 되돌리기는 한 번에 (Claude 후속 2026-10-20)
@@ -115,6 +198,8 @@ void ACozyRealmEstatePlayerController::PaintBrushTo(const FCozySurfaceHit& Hit)
 	};
 	auto StampOn = [this](UCozySurfaceComponent* Target, const FVector& Position)
 	{
+		// 칸당 비용 (꾸미기 상점 '바닥'과 같은 Floors.csv · 부족하면 찍지 않음)
+		if (!PayBrushCells(Position)) return false;
 		if (StrokeSurface.Get() != Target) { EndPaintSegment(); StrokeSurface = Target; Target->BeginPaintStroke(); }
 		LastStampSurface = Target;
 		return Target->PaintAt(Position, BrushRadius, GroundStyle, .6f);
@@ -231,10 +316,13 @@ void ACozyRealmEstatePlayerController::DrawSurfaceDebug() const
 void ACozyRealmEstatePlayerController::TickGroundEditing()
 {
 	if (Hud && Hud->IsWindowOpen()) { FinishGroundStroke(); return; }
-	if (WasInputKeyJustPressed(EKeys::Zero)) GroundStyle = 0;
+	const int32 StyleBefore = GroundStyle;
+	if (WasInputKeyJustPressed(EKeys::Zero) && GroundMode == 1) GroundStyle = 0;
 	if (WasInputKeyJustPressed(EKeys::One)) GroundStyle = 1;
 	if (WasInputKeyJustPressed(EKeys::Two)) GroundStyle = 2;
 	if (WasInputKeyJustPressed(EKeys::Three)) GroundStyle = 3;
+	// 바닥을 바꾸면 이름·칸당 비용을 다시 안내
+	if (GroundStyle != StyleBefore && Hud) Hud->ShowToast(DescribeGroundTool());
 	if (WasInputKeyJustPressed(EKeys::R)) GroundRotation = (GroundRotation + 1) % 4;
 	if (WasInputKeyJustPressed(EKeys::LeftBracket)) BrushRadius = FMath::Max(40.f, BrushRadius - 40.f);
 	if (WasInputKeyJustPressed(EKeys::RightBracket)) BrushRadius = FMath::Min(400.f, BrushRadius + 40.f);

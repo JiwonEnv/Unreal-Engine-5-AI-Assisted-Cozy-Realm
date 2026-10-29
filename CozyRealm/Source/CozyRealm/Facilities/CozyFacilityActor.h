@@ -24,8 +24,19 @@ public:
 
 	ACozyFacilityActor();
 
-	/** 시설 정의로 크기·색·이름을 맞춘다 (영지 서비스가 생성 직후 호출) · Decoration이 있으면 꾸미기 장식 모습 (기본 도형 · 지붕 없음) */
-	void InitFacility(const FGuid& InFacilityId, const FCozyFacilityRow& Def, float CellSize, const FCozyDecorationRow* Decoration = nullptr);
+	/**
+	 *  시설 정의로 크기·색·이름을 맞춘다 (영지 서비스가 생성 직후 호출) · Decoration이 있으면 꾸미기 장식 모습 (기본 도형 · 지붕 없음).
+	 *  정의에 그 외형 단계의 메시 경로(MeshStage1~3 · 장식은 Mesh)가 있으면 그 메시를 칸에 맞춰 띄우고 회색 상자는 숨김 (클릭 판정은 상자 그대로)
+	 */
+	void InitFacility(const FGuid& InFacilityId, const FCozyFacilityRow& Def, float CellSize, const FCozyDecorationRow* Decoration = nullptr, int32 AppearanceStage = 1);
+
+	/** CSV의 메시를 쓰는 중인가 (false면 회색 상자·임시 도형) */
+	bool IsUsingAssetMesh() const { return bUsingAssetMesh; }
+
+	/** 업그레이드 완료 강조: 잠깐 위로 튀었다가 돌아옴 (코드만 · 에셋 없음 · 출시 수정 2차) */
+	void PlayUpgradePulse();
+
+	virtual void Tick(float DeltaSeconds) override;
 
 	/** 선택 표시 (바닥 오라 + 테두리 외곽선) */
 	void SetSelected(bool bInSelected);
@@ -46,6 +57,16 @@ protected:
 	/** 회색 상자 */
 	UPROPERTY(VisibleAnywhere, Category = "Facility")
 	TObjectPtr<UStaticMeshComponent> GreyboxMesh;
+
+	/** CSV에 적은 시설·장식 메시 (경로가 있을 때만 보임 · 충돌 없음 → 클릭은 숨긴 회색 상자가 받음) */
+	UPROPERTY(VisibleAnywhere, Category = "Facility")
+	TObjectPtr<UStaticMeshComponent> AssetMesh;
+
+	/** 업그레이드 강조 시간 (초) · 높이 배율 (1.12 = 12% 늘었다 돌아옴) */
+	UPROPERTY(EditAnywhere, Category = "Effect")
+	float PulseSeconds = 0.45f;
+	UPROPERTY(EditAnywhere, Category = "Effect")
+	float PulseScale = 1.12f;
 
 	/** 회색 상자 위 박공 지붕 (높이가 처마보다 높은 시설만 · 삼각기둥) */
 	UPROPERTY(VisibleAnywhere, Category = "Facility")
@@ -106,6 +127,11 @@ private:
 
 	FGuid FacilityId;
 	float BoxHeight = 150.f;
+	bool bUsingAssetMesh = false;
+	/** 강조가 진행된 시간 (음수 = 강조 없음) */
+	float PulseTime = -1.f;
+	/** 메시를 칸에 맞춰 놓음 · 성공하면 true (경로가 비었거나 못 읽으면 false = 회색 상자) */
+	bool ApplyAssetMesh(const FCozyFacilityRow& Def, int32 AppearanceStage, float FootX, float FootY);
 	FLinearColor BaseColor = FLinearColor::Gray;
 
 	UPROPERTY(Transient)

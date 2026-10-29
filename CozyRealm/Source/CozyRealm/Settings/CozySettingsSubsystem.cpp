@@ -9,6 +9,7 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Sound/SoundClass.h"
 #include "Sound/SoundMix.h"
+#include "Sound/SoundBase.h"
 #include "Core/CozyRealmEstatePlayerController.h"
 #include "UI/CozyHudWidget.h"
 #include "Engine/GameViewportClient.h"
@@ -33,7 +34,6 @@ namespace CozySettings
 	/** 화면 탭 기본값 */
 	constexpr EWindowMode::Type DefaultMode = EWindowMode::WindowedFullscreen;
 	constexpr bool bDefaultVSync = true;
-	constexpr int32 DefaultFrameLimit = 60;
 
 	EWindowMode::Type ParseMode(FName Param)
 	{
@@ -61,12 +61,12 @@ UCozySettingsSubsystem* UCozySettingsSubsystem::Get(const UObject* WorldContext)
 
 bool UCozySettingsSubsystem::IsSettingsAction(ECozyUiAction Action)
 {
-	return Action >= ECozyUiAction::OpenSettings && Action <= ECozyUiAction::ToggleCompactTopNow;
+	return (Action >= ECozyUiAction::OpenSettings && Action <= ECozyUiAction::ToggleCompactTopNow) || Action == ECozyUiAction::SetGraphicsQuality;
 }
 
 bool UCozySettingsSubsystem::IsSettingsValue(ECozyUiValue Value)
 {
-	return Value >= ECozyUiValue::SettingsTab && Value <= ECozyUiValue::SettingsCompactTop;
+	return (Value >= ECozyUiValue::SettingsTab && Value <= ECozyUiValue::SettingsCompactTop) || Value == ECozyUiValue::SettingsGraphicsQuality;
 }
 
 bool UCozySettingsSubsystem::IsSettingsList(ECozyUiListSource Source)
@@ -136,6 +136,7 @@ UCozySettingsSubsystem::FDisplayChoice UCozySettingsSubsystem::ReadAppliedDispla
 		Choice.bVSync = Settings->IsVSyncEnabled();
 		Choice.FrameLimit = FMath::RoundToInt(Settings->GetFrameRateLimit());
 		Choice.bCompactTop = Settings->bCompactAlwaysOnTop;
+		Choice.Quality = Settings->GetOverallScalabilityLevel();
 		// 작은 창 모드 중에는 엔진이 창 크기를 해상도 설정에 써 넣으므로, 들어가기 전 값을 보여 줌
 		if (bCompact)
 		{
@@ -231,6 +232,18 @@ FText UCozySettingsSubsystem::FrameLimitName(int32 Limit)
 	return Limit <= 0 ? LOCTEXT("FpsNone", "제한 없음") : FText::Format(LOCTEXT("Fps", "{0}"), FText::AsNumber(Limit));
 }
 
+FText UCozySettingsSubsystem::QualityName(int32 Quality)
+{
+	switch (Quality)
+	{
+	case 0: return LOCTEXT("QualityLow", "낮음");
+	case 1: return LOCTEXT("QualityMid", "중간");
+	case 2: return LOCTEXT("QualityHigh", "높음");
+	case 3: return LOCTEXT("QualityEpic", "최고");
+	default: return LOCTEXT("QualityCustom", "사용자 지정");
+	}
+}
+
 FText UCozySettingsSubsystem::ResolutionName(const FIntPoint& Resolution)
 {
 	return FText::FromString(FString::Printf(TEXT("%d × %d"), Resolution.X, Resolution.Y));
@@ -277,9 +290,9 @@ FCozyUiValueResult UCozySettingsSubsystem::GetUiValue(ECozyUiValue Value, FName 
 		break;
 	}
 	case ECozyUiValue::SettingsDisplayCurrent:
-		R.Text = FText::Format(LOCTEXT("DisplayCurrent", "지금 적용: {0} · {1} · 수직 동기화 {2} · 최대 프레임 {3}"),
+		R.Text = FText::Format(LOCTEXT("DisplayCurrent2", "지금 적용: {0} · {1} · 수직 동기화 {2} · 최대 프레임 {3} · 그래픽 품질 {4}"),
 			ModeName(Applied.Mode), ShownResolution(Applied),
-			Applied.bVSync ? LOCTEXT("On", "켬") : LOCTEXT("Off", "끔"), FrameLimitName(Applied.FrameLimit));
+			Applied.bVSync ? LOCTEXT("On", "켬") : LOCTEXT("Off", "끔"), FrameLimitName(Applied.FrameLimit), QualityName(Applied.Quality));
 		R.StateColor = ECozyUiColor::InkMuted;
 		break;
 	case ECozyUiValue::SettingsWindowMode:
@@ -312,6 +325,13 @@ FCozyUiValueResult UCozySettingsSubsystem::GetUiValue(ECozyUiValue Value, FName 
 		R.StateColor = PendingDisplay.FrameLimit == Limit ? ECozyUiColor::Point : ECozyUiColor::Ink;
 		break;
 	}
+	case ECozyUiValue::SettingsGraphicsQuality:
+	{
+		const int32 Quality = FCString::Atoi(*Param.ToString());
+		R.Text = QualityName(Quality);
+		R.StateColor = PendingDisplay.Quality == Quality ? ECozyUiColor::Point : ECozyUiColor::Ink;
+		break;
+	}
 	case ECozyUiValue::SettingsPendingNote:
 	{
 		const bool bPending = Tab == ETab::Sound ? HasPendingSound() : HasPendingDisplay();
@@ -322,8 +342,9 @@ FCozyUiValueResult UCozySettingsSubsystem::GetUiValue(ECozyUiValue Value, FName 
 	case ECozyUiValue::SettingsResetNote:
 		R.Text = Tab == ETab::Sound
 			? LOCTEXT("ResetSound", "'이 탭 기본값 복원' → 전체·배경음·효과음 음량을 모두 100으로 (적용을 눌러야 저장 · 화면 설정과 게임 진행은 그대로)")
-			: FText::Format(LOCTEXT("ResetDisplay2", "'이 탭 기본값 복원' → {0} · {1} · 수직 동기화 켬 · 최대 프레임 {2} · 작은 창 항상 위 끔 (적용을 눌러야 저장 · 음량과 게임 진행은 그대로)"),
-				ModeName(CozySettings::DefaultMode), ResolutionName(DesktopResolution), FrameLimitName(CozySettings::DefaultFrameLimit));
+			: FText::Format(LOCTEXT("ResetDisplay3", "'이 탭 기본값 복원' → {0} · {1} · 수직 동기화 켬 · 최대 프레임 {2} · 그래픽 품질 {3} · 작은 창 항상 위 끔 (적용을 눌러야 저장 · 음량과 게임 진행은 그대로)"),
+				ModeName(CozySettings::DefaultMode), ResolutionName(DesktopResolution), FrameLimitName(UCozyPerformanceSettings::Get()->DefaultFrameLimit),
+				QualityName(UCozyPerformanceSettings::Get()->DefaultGraphicsQuality));
 		R.StateColor = ECozyUiColor::InkMuted;
 		break;
 	case ECozyUiValue::SettingsConfirm:
@@ -532,6 +553,7 @@ void UCozySettingsSubsystem::Run(ECozyUiAction Action, FName Param, APlayerContr
 		break;
 	}
 	case ECozyUiAction::SetFrameLimit: PendingDisplay.FrameLimit = FMath::Max(0, FCString::Atoi(*Param.ToString())); Touch(); break;
+	case ECozyUiAction::SetGraphicsQuality: PendingDisplay.Quality = FMath::Clamp(FCString::Atoi(*Param.ToString()), 0, 3); Touch(); break;
 	case ECozyUiAction::ApplySettings: Tab == ETab::Sound ? ApplySound() : ApplyDisplay(); break;
 	case ECozyUiAction::RevertSettings: RevertTab(); break;
 	case ECozyUiAction::ResetSettingsTab: ResetTab(); break;
@@ -611,15 +633,23 @@ void UCozySettingsSubsystem::ApplyDisplay()
 	Settings->SetVSyncEnabled(Want.bVSync);
 	Settings->SetFrameRateLimit(static_cast<float>(Want.FrameLimit));
 	Settings->bCompactAlwaysOnTop = Want.bCompactTop;
+	if (Want.Quality >= 0)
+	{
+		// 그래픽 품질 = 엔진 Scalability 전체 단계 · 🤖 낮음·중간은 하드웨어 레이트레이싱을 끔 (Config/DefaultScalability.ini GlobalIlluminationQuality@0·@1)
+		Settings->SetOverallScalabilityLevel(Want.Quality);
+	}
 	if (bCompact)
 	{
 		ApplyCompactTopmost(Want.bCompactTop);
 	}
 	Settings->ApplyNonResolutionSettings();
+	// 엔진이 방금 플레이어 값으로 최대 프레임을 되돌렸으므로 창 상태에 맞춰 다시 낮춤
+	ThrottleFps = -1;
+	UpdateFrameThrottle();
 	if (!bVideoMode)
 	{
 		Settings->SaveSettings();
-		UE_LOG(LogCozyRealm, Log, TEXT("[설정] 화면 적용(모드·해상도 그대로): 수직 동기화 %d · 최대 프레임 %d"), Want.bVSync ? 1 : 0, Want.FrameLimit);
+		UE_LOG(LogCozyRealm, Log, TEXT("[설정] 화면 적용(모드·해상도 그대로): 수직 동기화 %d · 최대 프레임 %d · 그래픽 품질 %d"), Want.bVSync ? 1 : 0, Want.FrameLimit, Want.Quality);
 		PendingDisplay = ReadAppliedDisplay();
 		Touch(LOCTEXT("DisplaySaved", "화면 설정을 적용하고 저장했습니다"));
 		return;
@@ -700,7 +730,8 @@ void UCozySettingsSubsystem::ResetTab()
 		PendingDisplay.Mode = CozySettings::DefaultMode;
 		PendingDisplay.Resolution = Settings ? Settings->GetDesktopResolution() : PendingDisplay.Resolution;
 		PendingDisplay.bVSync = CozySettings::bDefaultVSync;
-		PendingDisplay.FrameLimit = CozySettings::DefaultFrameLimit;
+		PendingDisplay.FrameLimit = UCozyPerformanceSettings::Get()->DefaultFrameLimit;
+		PendingDisplay.Quality = FMath::Clamp(UCozyPerformanceSettings::Get()->DefaultGraphicsQuality, 0, 3);
 		PendingDisplay.bCompactTop = false;
 		Touch(LOCTEXT("ResetDisplayDone", "화면 탭을 기본값으로 바꿨습니다 · '적용'을 눌러야 바뀌고 저장됩니다"));
 	}
@@ -965,8 +996,83 @@ void UCozySettingsSubsystem::ApplyAudioToWorld(const UObject* WorldContext, floa
 
 // ---------------------------------------------------------------------------
 
+void UCozySettingsSubsystem::PlayLevelMusic(const UObject* WorldContext, bool bTitle)
+{
+	const UCozyAudioSettings* Audio = UCozyAudioSettings::Get();
+	const TSoftObjectPtr<USoundBase>& Path = bTitle ? Audio->TitleMusic : Audio->EstateMusic;
+	if (!WorldContext || Path.IsNull())
+	{
+		return; // 🤖 배경음이 아직 없음 → 무음 (DefaultGame.ini Cozy Audio에 경로만 넣으면 재생)
+	}
+	if (USoundBase* Music = Path.LoadSynchronous())
+	{
+		UGameplayStatics::SpawnSound2D(WorldContext, Music);
+		UE_LOG(LogCozyRealm, Log, TEXT("[소리] %s 배경음 재생: %s"), bTitle ? TEXT("타이틀") : TEXT("영지"), *Path.ToString());
+	}
+	else
+	{
+		UE_LOG(LogCozyRealm, Warning, TEXT("[소리] 배경음을 읽지 못함: %s"), *Path.ToString());
+	}
+}
+
+void UCozySettingsSubsystem::PlayEventSound(const UObject* WorldContext, ECozyEstateEventKind Kind) const
+{
+	const TSoftObjectPtr<USoundBase>* Path = UCozyAudioSettings::Get()->EventSounds.Find(Kind);
+	if (!WorldContext || !Path || Path->IsNull())
+	{
+		return; // 연결된 소리가 없으면 무음
+	}
+	if (USoundBase* Sound = Path->LoadSynchronous())
+	{
+		UGameplayStatics::PlaySound2D(WorldContext, Sound);
+	}
+}
+
+int32 UCozySettingsSubsystem::ComputeThrottledFps(int32 UserLimit, bool bForeground, bool bCompactMode, int32 BackgroundLimit, int32 CompactLimit)
+{
+	// 0 = 제한 없음 · 상한 0 = 낮추지 않음 · 플레이어 값보다 높게는 올리지 않음
+	auto Cap = [](int32 Limit, int32 Ceiling) { return Ceiling <= 0 ? Limit : (Limit <= 0 ? Ceiling : FMath::Min(Limit, Ceiling)); };
+	if (!bForeground)
+	{
+		return Cap(UserLimit, BackgroundLimit);
+	}
+	return bCompactMode ? Cap(UserLimit, CompactLimit) : UserLimit;
+}
+
+void UCozySettingsSubsystem::UpdateFrameThrottle()
+{
+	// 에디터(PIE 포함)에서는 에디터 전체 프레임이 바뀌므로 하지 않음 · 실행 파일에서만
+	const UCozyGameUserSettings* Settings = UCozyGameUserSettings::Get();
+	if (GIsEditor || !GEngine || !Settings || !FSlateApplication::IsInitialized())
+	{
+		return;
+	}
+	const UCozyPerformanceSettings* Perf = UCozyPerformanceSettings::Get();
+	bool bForeground = FSlateApplication::Get().IsActive();
+	const TSharedPtr<SWindow> Window = FSlateApplication::Get().GetActiveTopLevelWindow();
+	if (!Window.IsValid() || Window->IsWindowMinimized())
+	{
+		bForeground = false;
+	}
+	const int32 UserLimit = FMath::RoundToInt(Settings->GetFrameRateLimit());
+	const int32 Want = ComputeThrottledFps(UserLimit, bForeground, bCompact, Perf->BackgroundFrameLimit, Perf->CompactFrameLimit);
+	const int32 NewThrottle = Want == UserLimit ? -1 : Want;
+	if (NewThrottle == ThrottleFps && FMath::RoundToInt(GEngine->GetMaxFPS()) == Want)
+	{
+		return;
+	}
+	GEngine->SetMaxFPS(static_cast<float>(Want));
+	if (NewThrottle != ThrottleFps)
+	{
+		UE_LOG(LogCozyRealm, Log, TEXT("[설정] 최대 프레임 %d (%s · 플레이어 값 %d)"), Want,
+			!bForeground ? TEXT("창이 뒤에 있음·최소화") : bCompact ? TEXT("작은 창") : TEXT("보통"), UserLimit);
+	}
+	ThrottleFps = NewThrottle;
+}
+
 void UCozySettingsSubsystem::Tick(float DeltaTime)
 {
+	UpdateFrameThrottle();
 	if (CompactRequestFrames > 0 && --CompactRequestFrames == 0 && bCompact)
 	{
 		FSystemResolution::RequestResolutionChange(CompactWidth, CompactHeight, EWindowMode::Windowed);

@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DeveloperSettings.h"
+#include "Misc/ConfigCacheIni.h"
 #include "CozyTitleSettings.generated.h"
 
 class UTexture2D;
@@ -44,9 +45,28 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "2 배경 (Background)", meta = (DisplayName = "Camera Drift (카메라 흔들림 폭)", ClampMin = "0"))
 	float CameraDrift = 120.f;
 
-	/** 글자 로고 (로고 그림이 없을 때) · 정식 제목이 정해지면 바꾼다 */
-	UPROPERTY(Config, EditAnywhere, Category = "3 로고 (Logo)", meta = (DisplayName = "Logo Text (글자 로고)"))
-	FString LogoText = TEXT("CozyRealm");
+	/**
+	 *  글자 로고 (로고 그림이 없을 때) · 비우면 프로젝트 표시 이름(DefaultGame.ini GeneralProjectSettings의 ProjectDisplayedTitle)을 쓴다.
+	 *  정식 제목이 정해지면 ProjectDisplayedTitle 한 곳만 바꾸면 창 제목·타이틀 로고가 함께 바뀐다 (출시 수정 2차 2026-10-30)
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "3 로고 (Logo)", meta = (DisplayName = "Logo Text (글자 로고 · 비우면 프로젝트 표시 이름)"))
+	FString LogoText;
+
+	/** 타이틀 로고에 실제로 쓸 글자 (LogoText → 프로젝트 표시 이름 → 프로젝트 이름 순) */
+	FString GetLogoText() const
+	{
+		if (!LogoText.IsEmpty())
+		{
+			return LogoText;
+		}
+		FText Title;
+		if (GConfig && GConfig->GetText(TEXT("/Script/EngineSettings.GeneralProjectSettings"), TEXT("ProjectDisplayedTitle"), Title, GGameIni) && !Title.IsEmpty())
+		{
+			return Title.ToString();
+		}
+		FString Name;
+		return GConfig && GConfig->GetString(TEXT("/Script/EngineSettings.GeneralProjectSettings"), TEXT("ProjectName"), Name, GGameIni) && !Name.IsEmpty() ? Name : FString(TEXT("CozyRealm"));
+	}
 
 	/** 로고 아래 작은 글 */
 	UPROPERTY(Config, EditAnywhere, Category = "3 로고 (Logo)", meta = (DisplayName = "Subtitle (부제)"))

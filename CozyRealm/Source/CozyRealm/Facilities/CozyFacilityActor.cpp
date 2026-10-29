@@ -71,7 +71,9 @@ namespace CozyFacility
 
 ACozyFacilityActor::ACozyFacilityActor()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	// 업그레이드 강조 동안만 Tick (평소에는 꺼 둠)
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = false;
 
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 
@@ -84,6 +86,12 @@ ACozyFacilityActor::ACozyFacilityActor()
 	GreyboxMesh->SetStaticMesh(CubeMesh.Object);
 	GreyboxMesh->SetMaterial(0, ShapeMaterial.Object);
 	GreyboxMesh->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
+
+	// CSV 메시: InitFacility에서 경로가 있을 때만 (충돌은 회색 상자가 맡음)
+	AssetMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("AssetMesh"));
+	AssetMesh->SetupAttachment(RootComponent);
+	AssetMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	AssetMesh->SetVisibility(false);
 
 	// 지붕: InitFacility에서 삼각기둥 메시를 만듦 (클릭 선택이 지붕에도 걸리게 충돌 포함)
 	RoofMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("RoofMesh"));
@@ -119,7 +127,7 @@ ACozyFacilityActor::ACozyFacilityActor()
 	OnibiLight->ComponentTags.Add(CozyFacility::OnibiLightTag);
 }
 
-void ACozyFacilityActor::InitFacility(const FGuid& InFacilityId, const FCozyFacilityRow& Def, float CellSize, const FCozyDecorationRow* Decoration)
+void ACozyFacilityActor::InitFacility(const FGuid& InFacilityId, const FCozyFacilityRow& Def, float CellSize, const FCozyDecorationRow* Decoration, int32 AppearanceStage)
 {
 	FacilityId = InFacilityId;
 	// 꾸미기 장식은 낮은 것도 있어서 (돌길 8cm) 최소 높이를 작게
@@ -220,6 +228,84 @@ void ACozyFacilityActor::InitFacility(const FGuid& InFacilityId, const FCozyFaci
 			EdgeMaterial->SetVectorParameterValue(CozyFacility::ColorParam, OutlineColor);
 		}
 	}
+
+	// CSV에 메시 경로가 있으면 그 메시로 (출시 수정 2차) · 회색 상자는 숨기고 클릭 판정(충돌)만 남김
+	bUsingAssetMesh = ApplyAssetMesh(Def, AppearanceStage, BoxX, BoxY);
+	GreyboxMesh->SetVisibility(!bUsingAssetMesh);
+	if (bUsingAssetMesh)
+	{
+		RoofMesh->SetVisibility(false);
+		RoofMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+}
+
+bool ACozyFacilityActor::ApplyAssetMesh(const FCozyFacilityRow& Def, int32 AppearanceStage, float FootX, float FootY)
+{
+	const TSoftObjectPtr<UStaticMesh>& Path = Def.GetStageMesh(AppearanceStage);
+	UStaticMesh* Mesh = Path.IsNull() ? nullptr : Path.LoadSynchronous();
+	if (!Mesh)
+	{
+		if (!Path.IsNull())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[시설 메시] %s 경로의 메시를 읽지 못해 회색 상자로 둡니다 (경로·쿡 폴더 확인 · docs/에셋_규칙.md)"), *Path.ToString());
+		}
+		AssetMesh->SetStaticMesh(nullptr);
+		AssetMesh->SetVisibility(false);
+		return false;
+	}
+	AssetMesh->SetStaticMesh(Mesh);
+	// 칸 맞춤: 메시 바닥(가로·세로) 경계를 차지 칸 크기에 맞춤 (비율 유지 · 더 긴 쪽 기준으로 칸 안에 들어가게) × 추가 배율
+	const FBox Bounds = Mesh->GetBoundingBox();
+	const FVector Extent = Bounds.GetSize();
+	float Scale = FMath::Max(0.01f, Def.MeshScale);
+	if (Def.bFitMeshToCells && Extent.X > KINDA_SMALL_NUMBER && Extent.Y > KINDA_SMALL_NUMBER)
+	{
+		// 방향 보정이 90°·270°면 가로·세로가 바뀐 채로 맞춤
+		const bool bSwap = FMath::Abs(FMath::Fmod(FMath::Abs(Def.MeshYaw), 180.f) - 90.f) < 45.f;
+		const float MeshX = bSwap ? Extent.Y : Extent.X;
+		const float MeshY = bSwap ? Extent.X : Extent.Y;
+		Scale *= FMath::Min(FootX / MeshX, FootY / MeshY);
+	}
+	// 피벗이 어디에 있든 메시 바닥 가운데가 칸 가운데 지면(+띄움)에 오게
+	const FRotator Yaw(0.f, Def.MeshYaw, 0.f);
+	const FVector BottomCenter(Bounds.GetCenter().X, Bounds.GetCenter().Y, Bounds.Min.Z);
+	AssetMesh->SetRelativeScale3D(FVector(Scale));
+	AssetMesh->SetRelativeRotation(Yaw);
+	AssetMesh->SetRelativeLocation(FVector(0.f, 0.f, BoxLift) - Yaw.RotateVector(BottomCenter * Scale) + Def.MeshOffset);
+	AssetMesh->SetVisibility(true);
+	// 이름표·메뉴 높이를 메시 높이에 맞춤
+	BoxHeight = FMath::Max(10.f, Extent.Z * Scale + Def.MeshOffset.Z);
+	return true;
+}
+
+void ACozyFacilityActor::PlayUpgradePulse()
+{
+	PulseTime = 0.f;
+	SetActorTickEnabled(true);
+}
+
+void ACozyFacilityActor::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	if (PulseTime < 0.f)
+	{
+		SetActorTickEnabled(false);
+		return;
+	}
+	PulseTime += DeltaSeconds;
+	const float Duration = FMath::Max(0.05f, PulseSeconds);
+	if (PulseTime >= Duration)
+	{
+		PulseTime = -1.f;
+		SetActorScale3D(FVector::OneVector);
+		SetActorTickEnabled(false);
+		return;
+	}
+	// 위로 늘었다가(최대 PulseScale) 가로로 살짝 눌리며 돌아옴 · 바닥은 그대로 (액터 원점 = 지면)
+	const float Wave = FMath::Sin(PI * PulseTime / Duration);
+	const float Up = 1.f + (PulseScale - 1.f) * Wave;
+	const float Side = 1.f - (PulseScale - 1.f) * 0.35f * Wave;
+	SetActorScale3D(FVector(Side, Side, Up));
 }
 
 void ACozyFacilityActor::SetSelected(bool bInSelected)

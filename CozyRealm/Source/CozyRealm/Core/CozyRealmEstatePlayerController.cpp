@@ -45,6 +45,7 @@ void ACozyRealmEstatePlayerController::BeginPlay()
 		{
 			Settings->ApplySavedAudio(this);
 			Settings->ApplyWindowState(this);
+			Settings->PlayLevelMusic(this, false);
 		}
 		SpawnHero();
 	}
