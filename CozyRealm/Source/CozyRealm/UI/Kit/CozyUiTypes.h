@@ -188,7 +188,11 @@ enum class ECozyUiValue : uint8
 	/** 설정 창에서 방금 한 일 ({4}) */
 	SettingsFeedback UMETA(DisplayName = "Settings Feedback (설정 결과 안내)"),
 	/** 작은 창을 항상 위에 ({4} '켜기' / '끄기' · 적용 전 값) */
-	SettingsCompactTop UMETA(DisplayName = "Settings Compact On Top (작은 창 항상 위)")
+	SettingsCompactTop UMETA(DisplayName = "Settings Compact On Top (작은 창 항상 위)"),
+	/** 꾸미기 점수 ({0} 점수 · {1} 다음 단계 점수 · {2} 보너스 % · {4} '꾸미기 점수 N점 · 생산 +X% · 다음 단계까지 M점') */
+	DecorScore UMETA(DisplayName = "Decor Score (꾸미기 점수·보너스)"),
+	/** 장식 한 줄 (매개변수 = 장식 ID · 보통 @Row · {0} 점수 · {4} '1×1 · 3점 · 골드 30 · 보유 2(놓음 1)' + 살 수 없으면 이유) */
+	DecorLine UMETA(DisplayName = "Decor Line (꾸미기 장식 한 줄)")
 };
 
 /** 반복 목록의 출처 · 줄 수가 게임 상태에 따라 바뀌는 목록 */
@@ -241,7 +245,9 @@ enum class ECozyUiListSource : uint8
 	/** 게임 종료를 묻는 중이면 한 줄 · 아니면 0줄 */
 	SettingsQuitAsk UMETA(DisplayName = "Settings Quit Ask (게임 종료 확인 · 묻는 중일 때만 한 줄)"),
 	/** 종료 전 저장에 실패했으면 한 줄 · 아니면 0줄 */
-	SettingsQuitFailed UMETA(DisplayName = "Settings Quit Failed (저장 실패 · 실패했을 때만 한 줄)")
+	SettingsQuitFailed UMETA(DisplayName = "Settings Quit Failed (저장 실패 · 실패했을 때만 한 줄)"),
+	/** 꾸미기 상점의 장식 목록 (줄 ID = 장식 ID · Decorations.csv 순서) */
+	DecorCatalog UMETA(DisplayName = "Decor Catalog (꾸미기 상점 장식)")
 };
 
 /** 배경 안쪽 여백 */
@@ -390,7 +396,11 @@ enum class ECozyUiAction : uint8
 	/** 작은 창을 항상 위에 바로 켜기/끄기 + 저장 (작은 창의 핀 버튼 · 꺼져 있으면 버튼 그림은 Image 이름 + 'Off') */
 	ToggleCompactTopNow UMETA(DisplayName = "Toggle Compact On Top Now (작은 창 항상 위 바로 켜기·끄기)"),
 	/** 첫 실행 안내를 처음 단계부터 다시 (설정 창 · 누르면 설정 창을 닫고 안내 시작) */
-	RestartTutorial UMETA(DisplayName = "Restart Tutorial (안내 다시 보기)")
+	RestartTutorial UMETA(DisplayName = "Restart Tutorial (안내 다시 보기)"),
+	/** 꾸미기 상점 창 열기 · 열려 있으면 닫기 */
+	OpenDecorShop UMETA(DisplayName = "Open Decor Shop (꾸미기 상점 창)"),
+	/** 장식 1개 사기 (매개변수 = 장식 ID · 보통 @Row) · 재화가 부족하면 버튼이 꺼지고 이유가 툴팁으로 */
+	BuyDecoration UMETA(DisplayName = "Buy Decoration (장식 사기)")
 };
 
 /** 미리보기 상태 · 실제 값 대신 보여 줄 가짜 상태 */

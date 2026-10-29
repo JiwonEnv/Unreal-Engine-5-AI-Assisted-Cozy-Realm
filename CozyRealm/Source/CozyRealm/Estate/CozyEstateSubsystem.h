@@ -214,6 +214,38 @@ struct FCozyFieldManagementView
 	bool bUpgrading = false;
 };
 
+/** 꾸미기 장식 구매 견적 (꾸미기 상점 창이 읽음 · 상태를 바꾸지 않음) */
+struct FCozyDecorationQuote
+{
+	/** Decorations.csv에 있는 장식인가 */
+	bool bValid = false;
+	bool bCanBuy = false;
+	FText Name;
+	FIntPoint Size = FIntPoint(1, 1);
+	int32 Points = 0;
+	struct FAmount { FName ItemId; int32 Amount = 0; int32 Have = 0; };
+	/** 1개 가격 (재화 ID · 개수 · 지금 보유량) */
+	TArray<FAmount> Costs;
+	/** 영지에 놓인 개수 · 보관함에 있는 개수 */
+	int32 Placed = 0;
+	int32 Stored = 0;
+	/** 살 수 없는 이유 (살 수 있으면 비어 있음) */
+	FText BlockReason;
+};
+
+/** 꾸미기 점수 상태 (점수 · 보너스 · 다음 단계까지) */
+struct FCozyDecorationScoreView
+{
+	/** 영지에 놓인 장식 점수 합계 (보관함 장식은 제외) */
+	int32 Score = 0;
+	/** 지금 생산·가공 속도 보너스 (0.05 = +5%) */
+	float Bonus = 0.f;
+	float MaxBonus = 0.f;
+	/** 다음 보너스 단계까지 필요한 점수 (최대 보너스면 0) */
+	int32 PointsToNext = 0;
+	bool bMaxed = false;
+};
+
 /** 수령 결과 (UI가 메시지로 보여 줌) */
 struct FCozyCollectResult
 {
@@ -393,6 +425,32 @@ public:
 	/** 판매: 조건 재확인 → 창고에서 재료 차감 → 재화 지급을 한 번에 · 실패하면 아무것도 바뀌지 않음 */
 	bool SellItem(const FGuid& ShopFacilityId, FName ItemId, int32 Amount, FText& OutMessage);
 
+	// --- 꾸미기 상점 · 꾸미기 점수 (4주차 기능 2) ---
+	// 🤖 장식은 '기능이 없는 시설'로 다룬다: Decorations.csv 행을 시설 정의로도 등록해
+	//    배치 모드(옮기기·회전·보관)·칸 겹침·저장·지형 재확인을 시설과 같은 코드로 처리한다.
+
+	const FCozyDecorationRow* GetDecorationDef(FName Id) const;
+	/** 이 시설 정의가 꾸미기 장식인가 */
+	bool IsDecoration(FName DefinitionId) const { return GetDecorationDef(DefinitionId) != nullptr; }
+	/** 상점 목록 (Decorations.csv 순서) */
+	TArray<FName> GetDecorationCatalog() const;
+	/** 구매 견적 (상태를 바꾸지 않음) */
+	FCozyDecorationQuote GetDecorationQuote(FName DecorationId) const;
+	/** 구매: 다시 확인 → 가격 차감 → 보관함에 1개 추가를 한 번에 · 실패하면 아무것도 바뀌지 않음 (🤖 산 장식은 보관함으로 · 배치 모드에서 꺼내 놓음) */
+	bool BuyDecoration(FName DecorationId, FText& OutMessage);
+	/** 영지에 놓인(보관하지 않은) 장식 점수 합계 */
+	int32 GetDecorationScore() const;
+	FCozyDecorationScoreView GetDecorationScoreView() const;
+	/** 점수 → 보너스 (🙋 PointsPerStep점마다 BonusPerStep · 최대 BonusMax) · 순수 계산이라 시험에서 바로 씀 */
+	static float ComputeDecorationBonus(int32 Score, int32 PointsPerStep, float BonusPerStep, float BonusMax);
+	/** 걸어서 지나갈 수 있는 시설·장식인가 (🤖 돌길처럼 bWalkable인 장식만) */
+	bool IsWalkableFacility(const FCozyFacilityState& Facility) const;
+	/**
+	 *  칸 겹침 검사 (시설·장식 공통 · 자기 자신과 보관한 것은 제외).
+	 *  GroundZ = 놓을 자리의 지면 높이 · 층이 다른 시설(높이 차가 큰 것)은 겹치지 않는 것으로 봄 · 겹치면 상대 ID.
+	 */
+	bool FindPlacementOverlap(const FGuid& FacilityId, FIntPoint Coord, int32 Rotation, float GroundZ, FGuid& OutOther) const;
+
 	// --- 주민 배치 ---
 
 	/** 주민을 시설에 배치한다 · 다른 시설에 있으면 옮긴다 · 실패하면 이유를 돌려줌 (나가야 창이 호출) */
@@ -427,6 +485,12 @@ public:
 	bool DebugAddFacility(FName DefinitionId);
 	/** 상태를 지우고 시작 설정으로 새 게임을 다시 만든다 (저장 파일도 새 게임으로 덮어씀) */
 	void DebugRestartNewGame();
+	/** 자동 시험용: CSV만 읽고 새 게임 상태를 만든다 (액터·저장 없음 · bStarted는 그대로 false) */
+	bool DebugInitDataOnly(FString& OutErrors);
+	/** 자동 시험용: 상태를 통째로 바꾼다 (액터·저장 없음 · 불러오기와 같은 정리 SanitizeLoadedState 적용) */
+	void DebugSetState(const FCozyEstateState& NewState);
+	/** 디버그: 꾸미기 점수·보너스·장식 목록을 로그와 한 줄 글로 */
+	FString DebugDescribeDecorations() const;
 
 	// --- 배치 모드 (3주차 기능 2 · D45) ---
 
@@ -586,6 +650,8 @@ private:
 	const FCozyGrowthRow* FindGrowthRow(FName DefinitionId, int32 FromLevel, FName* OutRowId = nullptr) const;
 	/** 생산·가공 속도 배율 · 관리 시설이 정해진 시설은 관리 시설 단계의 효과 (D39) */
 	double GetSpeedMultiplier(const FCozyFacilityState& Facility, const FCozyFacilityRow& Def) const;
+	/** 성장(레벨·관리 시설)만의 속도 배율 · 꾸미기 보너스는 GetSpeedMultiplier가 곱함 */
+	double GetGrowthSpeedMultiplier(const FCozyFacilityState& Facility, const FCozyFacilityRow& Def) const;
 	/** 이 정의의 시설 중 가장 높은 레벨 (없으면 0) */
 	int32 GetHighestLevelOf(FName DefinitionId) const;
 	/** 시간이 다 된 업그레이드를 완료 처리 */
@@ -619,6 +685,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UDataTable> RewardTable;
+
+	/** 꾸미기 장식 (Decorations.csv · 행마다 시설 정의도 함께 등록됨) */
+	UPROPERTY(Transient)
+	TObjectPtr<UDataTable> DecorationTable;
+	/** 장식 행을 기능 없는 시설 정의로 시설 표에 더한다 (같은 ID가 이미 있으면 경고 후 건너뜀) */
+	void RegisterDecorationFacilities(FString& OutErrors);
 
 	FCozyEstateConfigRow Config;
 

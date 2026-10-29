@@ -149,6 +149,17 @@ static FAutoConsoleCommandWithWorld CozyTutorialWalk(
 		UE_LOG(LogCozyRealm, Log, TEXT("[디버그] 안내 시험: 밭 수령 · 판매 %s"), *Message.ToString());
 	}));
 
+// 꾸미기 점수 보기 (읽기만 하므로 실행 인자 없이 사용 가능 · 4주차 기능 2)
+static FAutoConsoleCommandWithWorld CozyDecorScore(
+	TEXT("Cozy.DecorScore"), TEXT("꾸미기 점수 · 생산 보너스 · 다음 단계까지 · 장식 목록을 로그([꾸미기])로"),
+	FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World)
+	{
+		if (const UCozyEstateSubsystem* Estate = World ? World->GetSubsystem<UCozyEstateSubsystem>() : nullptr)
+		{
+			Estate->DebugDescribeDecorations();
+		}
+	}));
+
 static FAutoConsoleCommandWithWorld CozyStateTest(
 	TEXT("Cozy.StateTest"), TEXT("상태 칩 시험: 밭 주민 빼기 · 창고 밀가루 가득 · 판매소 업그레이드 시작 (-CozyDebugCommands 필요)"),
 	FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World) { CozyDebug::RunStateTest(World); }));

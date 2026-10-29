@@ -36,7 +36,8 @@ bool UCozySurfaceNavigation::IsFree(const FVector& Feet, const FGuid& IgnoreFaci
 	if (Cell.X < 0 || Cell.Y < 0 || Cell.X >= Config.GridSize.X || Cell.Y >= Config.GridSize.Y) return false;
 	for (const FCozyFacilityState& Facility : Estate->GetState().Facilities)
 	{
-		if (Facility.bStored || Facility.InstanceId == IgnoreFacility) continue;
+		// 보관한 것 · 무시할 시설 · 걸을 수 있는 장식(돌길)은 길을 막지 않음
+		if (Facility.bStored || Facility.InstanceId == IgnoreFacility || Estate->IsWalkableFacility(Facility)) continue;
 		const FIntPoint Size = Estate->GetFootprint(Facility.InstanceId, Facility.Rotation);
 		const FCozyFacilityRow* Def = Estate->GetFacilityDef(Facility.DefinitionId);
 		if (!Def) continue;

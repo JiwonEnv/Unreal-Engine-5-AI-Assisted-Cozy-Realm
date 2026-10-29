@@ -5,6 +5,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "ProceduralMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Engine/StaticMesh.h"
 
 namespace CozyFacility
 {
@@ -118,10 +119,11 @@ ACozyFacilityActor::ACozyFacilityActor()
 	OnibiLight->ComponentTags.Add(CozyFacility::OnibiLightTag);
 }
 
-void ACozyFacilityActor::InitFacility(const FGuid& InFacilityId, const FCozyFacilityRow& Def, float CellSize)
+void ACozyFacilityActor::InitFacility(const FGuid& InFacilityId, const FCozyFacilityRow& Def, float CellSize, const FCozyDecorationRow* Decoration)
 {
 	FacilityId = InFacilityId;
-	BoxHeight = FMath::Max(10.f, Def.GreyboxHeight);
+	// 꾸미기 장식은 낮은 것도 있어서 (돌길 8cm) 최소 높이를 작게
+	BoxHeight = FMath::Max(Decoration ? 2.f : 10.f, Def.GreyboxHeight);
 	BaseColor = Def.GreyboxColor;
 
 	const float SizeX = Def.Size.X * CellSize;
@@ -131,7 +133,25 @@ void ACozyFacilityActor::InitFacility(const FGuid& InFacilityId, const FCozyFaci
 	const float BoxX = SizeX * CozyFacility::FootprintFill;
 	const float BoxY = SizeY * CozyFacility::FootprintFill;
 	// 처마보다 높은 시설: 벽은 처마까지, 나머지는 박공 지붕 (용마루는 긴 변 방향)
-	const float WallHeight = BoxHeight > EaveHeight ? EaveHeight : BoxHeight;
+	// 장식은 지붕 없이 도형 하나 (엔진 기본 도형 · 한 변 100cm · 가운데 기준이라 상자와 같은 크기 계산)
+	const float WallHeight = (Decoration || BoxHeight <= EaveHeight) ? BoxHeight : EaveHeight;
+	if (Decoration)
+	{
+		const FString ShapePath = FString::Printf(TEXT("/Engine/BasicShapes/%s.%s"), *Decoration->GreyboxShape.ToString(), *Decoration->GreyboxShape.ToString());
+		if (UStaticMesh* Shape = LoadObject<UStaticMesh>(nullptr, *ShapePath, nullptr, LOAD_NoWarn | LOAD_Quiet))
+		{
+			GreyboxMesh->SetStaticMesh(Shape);
+		}
+		// 🤖 걸을 수 있는 장식(돌길)은 주인공 몸통을 막지 않음 · 클릭 선택(Visibility)은 그대로
+		if (Decoration->bWalkable)
+		{
+			GreyboxMesh->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+		}
+		// 🤖 장식에는 시설의 밤 초롱·오니비 빛을 켜지 않음 (낮/밤 조명이 이름표로 찾으므로 이름표를 뗌)
+		LanternLight->ComponentTags.Remove(CozyFacility::NightLightTag);
+		OnibiLight->ComponentTags.Remove(CozyFacility::OnibiLightTag);
+		OnibiLight->ComponentTags.Remove(CozyFacility::NightLightTag);
+	}
 	const float RoofHeight = BoxHeight - WallHeight;
 	GreyboxMesh->SetRelativeScale3D(FVector(BoxX, BoxY, WallHeight) / CozyFacility::BasicShapeSize);
 	GreyboxMesh->SetRelativeLocation(FVector(0.f, 0.f, BoxLift + WallHeight * 0.5f));

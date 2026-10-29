@@ -647,6 +647,8 @@ bool UCozyEstateSubsystem::LoadAllData(FString& OutErrors)
 	StartResidentTable = LoadCsvTable(TEXT("StartResidents.csv"), FCozyStartResidentRow::StaticStruct(), OutErrors);
 	StartResourceTable = LoadCsvTable(TEXT("StartResources.csv"), FCozyStartResourceRow::StaticStruct(), OutErrors);
 	RewardTable = LoadCsvTable(TEXT("Rewards.csv"), FCozyRewardRow::StaticStruct(), OutErrors);
+	DecorationTable = LoadCsvTable(TEXT("Decorations.csv"), FCozyDecorationRow::StaticStruct(), OutErrors);
+	RegisterDecorationFacilities(OutErrors);
 
 	FString ConfigErrors;
 	if (UDataTable* ConfigTable = LoadCsvTable(TEXT("EstateConfig.csv"), FCozyEstateConfigRow::StaticStruct(), ConfigErrors))
@@ -664,6 +666,38 @@ bool UCozyEstateSubsystem::LoadAllData(FString& OutErrors)
 
 	// 시설 정의 · 작물 · 재료 · 시작 시설이 없으면 시작할 수 없다
 	return FacilityTable && CropTable && ItemTable && ResidentTable && StartFacilityTable;
+}
+
+void UCozyEstateSubsystem::RegisterDecorationFacilities(FString& OutErrors)
+{
+	if (!DecorationTable || !FacilityTable)
+	{
+		return;
+	}
+	TArray<FName> Duplicates;
+	DecorationTable->ForeachRow<FCozyDecorationRow>(TEXT("Decoration"), [this, &OutErrors, &Duplicates](const FName& Key, const FCozyDecorationRow& Row)
+	{
+		if (FacilityTable->FindRow<FCozyFacilityRow>(Key, TEXT(""), false))
+		{
+			OutErrors += FString::Printf(TEXT("\n- Decorations.csv: %s는 Facilities.csv에 같은 ID가 있어 장식으로 등록하지 않음"), *Key.ToString());
+			Duplicates.Add(Key);
+			return;
+		}
+		// 기능·주민·생산이 없는 시설 정의 · 보관 가능 (배치 모드의 보관 버튼으로 보관함에)
+		FCozyFacilityRow Facility;
+		Facility.DisplayName = Row.DisplayName;
+		Facility.Size = Row.Size;
+		Facility.GreyboxHeight = Row.GreyboxHeight;
+		Facility.GreyboxColor = Row.GreyboxColor;
+		Facility.bCanStore = true;
+		Facility.Note = TEXT("Decorations.csv에서 등록한 꾸미기 장식");
+		FacilityTable->AddRow(Key, Facility);
+	});
+	// 같은 ID의 시설이 꾸미기 점수에 잡히지 않게 장식 표에서 뺌
+	for (const FName& Key : Duplicates)
+	{
+		DecorationTable->RemoveRow(Key);
+	}
 }
 
 void UCozyEstateSubsystem::ValidateData() const
@@ -880,6 +914,37 @@ void UCozyEstateSubsystem::ValidateData() const
 	if (!GetItemDef(Config.SaleCurrencyId))
 	{
 		Warn(FString::Printf(TEXT("영지 설정: 판매 대금 재화 %s가 Items.csv에 없음"), *Config.SaleCurrencyId.ToString()));
+	}
+
+	if (DecorationTable)
+	{
+		static const TSet<FName> Shapes = { TEXT("Cube"), TEXT("Sphere"), TEXT("Cylinder"), TEXT("Cone") };
+		DecorationTable->ForeachRow<FCozyDecorationRow>(TEXT("Validate"), [&](const FName& Key, const FCozyDecorationRow& Row)
+		{
+			if (Row.Size.X < 1 || Row.Size.Y < 1 || Row.Size.X > Config.GridSize.X || Row.Size.Y > Config.GridSize.Y)
+			{
+				Warn(FString::Printf(TEXT("장식 %s: 크기 %dx%d가 영지 칸을 벗어남"), *Key.ToString(), Row.Size.X, Row.Size.Y));
+			}
+			if (Row.Points < 0)
+			{
+				Warn(FString::Printf(TEXT("장식 %s: 점수(%d)가 0보다 작음"), *Key.ToString(), Row.Points));
+			}
+			if (!Shapes.Contains(Row.GreyboxShape))
+			{
+				Warn(FString::Printf(TEXT("장식 %s: 모르는 도형 %s (Cube · Sphere · Cylinder · Cone)"), *Key.ToString(), *Row.GreyboxShape.ToString()));
+			}
+			if (Row.Cost.IsEmpty())
+			{
+				Warn(FString::Printf(TEXT("장식 %s: 가격이 비어 있음"), *Key.ToString()));
+			}
+			for (const TPair<FName, int32>& Cost : Row.Cost)
+			{
+				if (!GetItemDef(Cost.Key) || Cost.Value <= 0)
+				{
+					Warn(FString::Printf(TEXT("장식 %s: 없는 재화(%s) 또는 0 이하 가격"), *Key.ToString(), *Cost.Key.ToString()));
+				}
+			}
+		});
 	}
 
 	ValidateProgression(Warn);
@@ -1107,7 +1172,7 @@ void UCozyEstateSubsystem::SpawnFacilityActor(const FCozyFacilityState& Facility
 	ACozyFacilityActor* Actor = World->SpawnActor<ACozyFacilityActor>(ACozyFacilityActor::StaticClass(), Center, FRotator(0.f, 90.f * Facility.Rotation, 0.f), Params);
 	if (Actor)
 	{
-		Actor->InitFacility(Facility.InstanceId, *Def, Config.CellSize);
+		Actor->InitFacility(Facility.InstanceId, *Def, Config.CellSize, GetDecorationDef(Facility.DefinitionId));
 #if WITH_EDITOR
 		Actor->SetActorLabel(FString::Printf(TEXT("Facility_%s"), *Facility.DefinitionId.ToString()));
 #endif
@@ -1243,7 +1308,8 @@ bool UCozyEstateSubsystem::IsCellWalkable(FIntPoint Cell) const
 	}
 	for (const FCozyFacilityState& Facility : State.Facilities)
 	{
-		if (Facility.bStored)
+		// 보관한 것 · 걸을 수 있는 장식(돌길)은 길을 막지 않음
+		if (Facility.bStored || IsWalkableFacility(Facility))
 		{
 			continue;
 		}
@@ -1313,23 +1379,11 @@ bool UCozyEstateSubsystem::CanPlaceFacility(const FGuid& FacilityId, FIntPoint C
 		OutReason = LOCTEXT("PlaceObstacle", "시설을 놓을 공간에 장애물이 있습니다"); return false;
 	}
 
-	for (const FCozyFacilityState& Other : State.Facilities)
+	FGuid OverlapId;
+	if (FindPlacementOverlap(FacilityId, Coord, Rotation, Support.Position.Z, OverlapId))
 	{
-		if (Other.InstanceId == FacilityId || Other.bStored)
-		{
-			continue;
-		}
-		const FIntPoint OtherSize = GetFootprint(Other.InstanceId, Other.Rotation);
-		const FCozyFacilityRow* OtherDef = GetFacilityDef(Other.DefinitionId);
-		const float OtherZ = Other.bHasSurfacePlacement ? Other.SurfaceHeight : ComputeFacilityLocation(Other.GridCoord, OtherSize).Z;
-		if (OtherDef && (Support.Position.Z >= OtherZ + OtherDef->GreyboxHeight + 20 || OtherZ >= Support.Position.Z + Def->GreyboxHeight + 20)) continue;
-		const bool bOverlap = Coord.X < Other.GridCoord.X + OtherSize.X && Other.GridCoord.X < Coord.X + Size.X
-			&& Coord.Y < Other.GridCoord.Y + OtherSize.Y && Other.GridCoord.Y < Coord.Y + Size.Y;
-		if (bOverlap)
-		{
-			OutReason = FText::Format(LOCTEXT("PlaceOverlap", "{0}|hpp(과,와) 겹쳐서 놓을 수 없습니다"), GetFacilityDisplayName(Other.InstanceId));
-			return false;
-		}
+		OutReason = FText::Format(LOCTEXT("PlaceOverlap", "{0}|hpp(과,와) 겹쳐서 놓을 수 없습니다"), GetFacilityDisplayName(OverlapId));
+		return false;
 	}
     FVector EntryMin = Min; EntryMin.Z = Support.Position.Z;
     if (!GetWorld()->GetSubsystem<UCozySurfaceNavigation>()->HasAccessibleEdge(EntryMin, FVector2D(Size.X, Size.Y) * Config.CellSize, Def->GreyboxHeight, FacilityId))
@@ -1339,6 +1393,37 @@ bool UCozyEstateSubsystem::CanPlaceFacility(const FGuid& FacilityId, FIntPoint C
     }
 
 	return true;
+}
+
+bool UCozyEstateSubsystem::FindPlacementOverlap(const FGuid& FacilityId, FIntPoint Coord, int32 Rotation, float GroundZ, FGuid& OutOther) const
+{
+	const FCozyFacilityState* Facility = FindFacility(FacilityId);
+	const FCozyFacilityRow* Def = Facility ? GetFacilityDef(Facility->DefinitionId) : nullptr;
+	if (!Def)
+	{
+		return false;
+	}
+	const FIntPoint Size = GetFootprint(FacilityId, Rotation);
+	// 시설·장식 모두 같은 규칙: 놓인 것끼리는 칸이 겹칠 수 없음 (걸을 수 있는 돌길도 다른 것과 겹치지 않음)
+	for (const FCozyFacilityState& Other : State.Facilities)
+	{
+		if (Other.InstanceId == FacilityId || Other.bStored)
+		{
+			continue;
+		}
+		const FIntPoint OtherSize = GetFootprint(Other.InstanceId, Other.Rotation);
+		const FCozyFacilityRow* OtherDef = GetFacilityDef(Other.DefinitionId);
+		const float OtherZ = Other.bHasSurfacePlacement ? Other.SurfaceHeight : ComputeFacilityLocation(Other.GridCoord, OtherSize).Z;
+		if (OtherDef && (GroundZ >= OtherZ + OtherDef->GreyboxHeight + 20 || OtherZ >= GroundZ + Def->GreyboxHeight + 20)) continue;
+		const bool bOverlap = Coord.X < Other.GridCoord.X + OtherSize.X && Other.GridCoord.X < Coord.X + Size.X
+			&& Coord.Y < Other.GridCoord.Y + OtherSize.Y && Other.GridCoord.Y < Coord.Y + Size.Y;
+		if (bOverlap)
+		{
+			OutOther = Other.InstanceId;
+			return true;
+		}
+	}
+	return false;
 }
 
 bool UCozyEstateSubsystem::FindFreeSpot(const FGuid& FacilityId, int32 Rotation, FIntPoint& OutCoord) const
@@ -1467,7 +1552,7 @@ bool UCozyEstateSubsystem::BeginPlacement(const FGuid& FacilityId)
 		PlacementId.Invalidate();
 		return false;
 	}
-	PlacementActor->InitFacility(FacilityId, *Def, Config.CellSize);
+	PlacementActor->InitFacility(FacilityId, *Def, Config.CellSize, GetDecorationDef(Facility->DefinitionId));
 	PlacementActor->SetActorEnableCollision(false);
 	UpdatePlacement(PlacementCoord, PlacementRotation);
 	NotifyChanged(true);
@@ -1532,9 +1617,19 @@ bool UCozyEstateSubsystem::ConfirmPlacement(FText& OutMessage)
 
 	PlacementActor = nullptr;
 	PlacementId.Invalidate();
-	OutMessage = bFromStorage
-		? FText::Format(LOCTEXT("PlacedFromStorage", "{0}|hpp(을,를) 다시 배치했습니다 · Lv{1} 그대로"), Name, FText::AsNumber(Facility->Level))
-		: FText::Format(LOCTEXT("Moved", "{0}|hpp(을,를) 옮겼습니다 · 진행 중인 작업은 그대로 이어집니다"), Name);
+	if (IsDecoration(Facility->DefinitionId))
+	{
+		const FCozyDecorationScoreView Score = GetDecorationScoreView();
+		OutMessage = FText::Format(LOCTEXT("PlacedDecoration", "{0}|hpp(을,를) {1} · 꾸미기 점수 {2}점 · 생산 +{3}%"), Name,
+			bFromStorage ? LOCTEXT("PlacedDecoNew", "놓았습니다") : LOCTEXT("PlacedDecoMoved", "옮겼습니다"),
+			FText::AsNumber(Score.Score), FText::AsNumber(FMath::RoundToInt(Score.Bonus * 100.f)));
+	}
+	else
+	{
+		OutMessage = bFromStorage
+			? FText::Format(LOCTEXT("PlacedFromStorage", "{0}|hpp(을,를) 다시 배치했습니다 · Lv{1} 그대로"), Name, FText::AsNumber(Facility->Level))
+			: FText::Format(LOCTEXT("Moved", "{0}|hpp(을,를) 옮겼습니다 · 진행 중인 작업은 그대로 이어집니다"), Name);
+	}
 	UE_LOG(LogCozyRealm, Log, TEXT("배치 확정: %s (%d,%d)→(%d,%d) 회전 %d%s"), *Name.ToString(), From.X, From.Y, PlacementCoord.X, PlacementCoord.Y, PlacementRotation, bFromStorage ? TEXT(" · 보관함에서 꺼냄") : TEXT(""));
 	NotifyChanged(true);
 	SaveEstate(TEXT("배치"));
@@ -2862,6 +2957,12 @@ int32 UCozyEstateSubsystem::GetHighestLevelOf(FName DefinitionId) const
 
 double UCozyEstateSubsystem::GetSpeedMultiplier(const FCozyFacilityState& Facility, const FCozyFacilityRow& Def) const
 {
+	// 🙋 꾸미기 점수 보너스(50점마다 +5% · 최대 +25%)를 성장 배율에 곱함 · 주기를 새로 시작할 때만 계산하므로 다음 주기부터 (D40)
+	return GetGrowthSpeedMultiplier(Facility, Def) * (1.0 + GetDecorationScoreView().Bonus);
+}
+
+double UCozyEstateSubsystem::GetGrowthSpeedMultiplier(const FCozyFacilityState& Facility, const FCozyFacilityRow& Def) const
+{
 	// 🙋 관리 시설이 정해진 시설(밭)은 자기 레벨이 아니라 관리 시설 단계의 공통 효과를 받음 (D39)
 	// 관리 시설이 아직 없으면 기본 속도 · 이후 새로 지은 밭도 같은 계산이라 현재 단계 효과를 받음
 	if (!Def.ManagerFacilityId.IsNone())
@@ -3455,6 +3556,181 @@ bool UCozyEstateSubsystem::SelectCrop(const FGuid& FacilityId, FName CropId, FTe
 	UE_LOG(LogCozyRealm, Log, TEXT("작물 변경: %s → %s"), *GetFacilityDisplayName(FacilityId).ToString(), *CropId.ToString());
 	NotifyChanged();
 	return true;
+}
+
+// ---------------------------------------------------------------------------
+// 꾸미기 상점 · 꾸미기 점수 (4주차 기능 2)
+
+const FCozyDecorationRow* UCozyEstateSubsystem::GetDecorationDef(FName Id) const
+{
+	return DecorationTable && !Id.IsNone() ? DecorationTable->FindRow<FCozyDecorationRow>(Id, TEXT(""), false) : nullptr;
+}
+
+TArray<FName> UCozyEstateSubsystem::GetDecorationCatalog() const
+{
+	return DecorationTable ? DecorationTable->GetRowNames() : TArray<FName>();
+}
+
+FCozyDecorationQuote UCozyEstateSubsystem::GetDecorationQuote(FName DecorationId) const
+{
+	FCozyDecorationQuote Quote;
+	const FCozyDecorationRow* Row = GetDecorationDef(DecorationId);
+	if (!Row || !GetFacilityDef(DecorationId))
+	{
+		Quote.BlockReason = LOCTEXT("DecoMissing", "상점에 없는 장식입니다");
+		return Quote;
+	}
+	Quote.bValid = true;
+	Quote.Name = Row->DisplayName;
+	Quote.Size = Row->Size;
+	Quote.Points = Row->Points;
+	for (const FCozyFacilityState& Facility : State.Facilities)
+	{
+		if (Facility.DefinitionId == DecorationId)
+		{
+			++(Facility.bStored ? Quote.Stored : Quote.Placed);
+		}
+	}
+	FString Missing;
+	for (const TPair<FName, int32>& Cost : Row->Cost)
+	{
+		FCozyDecorationQuote::FAmount& Amount = Quote.Costs.AddDefaulted_GetRef();
+		Amount.ItemId = Cost.Key;
+		Amount.Amount = Cost.Value;
+		Amount.Have = GetAmount(Cost.Key);
+		if (!GetItemDef(Cost.Key) || Cost.Value <= 0)
+		{
+			Quote.BlockReason = LOCTEXT("DecoBadCost", "가격 데이터가 잘못되어 살 수 없습니다");
+		}
+		else if (Amount.Have < Amount.Amount)
+		{
+			CozyEstate::AppendListItem(Missing, FString::Printf(TEXT("%s %d개 부족 (보유 %d)"), *GetItemName(Cost.Key).ToString(), Amount.Amount - Amount.Have, Amount.Have));
+		}
+	}
+	if (Quote.Costs.IsEmpty())
+	{
+		Quote.BlockReason = LOCTEXT("DecoNoCost", "가격이 정해지지 않은 장식입니다");
+	}
+	if (Quote.BlockReason.IsEmpty() && !Missing.IsEmpty())
+	{
+		Quote.BlockReason = FText::FromString(Missing);
+	}
+	Quote.bCanBuy = Quote.BlockReason.IsEmpty();
+	return Quote;
+}
+
+bool UCozyEstateSubsystem::BuyDecoration(FName DecorationId, FText& OutMessage)
+{
+	// 확인 → 차감 → 보관함에 추가를 한 번에 (실패하면 아무것도 바꾸지 않음)
+	const FCozyDecorationQuote Quote = GetDecorationQuote(DecorationId);
+	if (!Quote.bCanBuy)
+	{
+		OutMessage = Quote.BlockReason;
+		return false;
+	}
+	FString Paid;
+	for (const FCozyDecorationQuote::FAmount& Cost : Quote.Costs)
+	{
+		State.Resources.FindOrAdd(Cost.ItemId) -= Cost.Amount;
+		CozyEstate::AppendListItem(Paid, FString::Printf(TEXT("%s %d"), *GetItemName(Cost.ItemId).ToString(), Cost.Amount));
+	}
+	// 🤖 산 장식은 보관함으로 · 배치 모드(B)의 보관함에서 꺼내 놓는다 (놓기 전에는 점수 없음)
+	FCozyFacilityState Decoration;
+	Decoration.InstanceId = FGuid::NewGuid();
+	Decoration.DefinitionId = DecorationId;
+	Decoration.bStored = true;
+	State.Facilities.Add(Decoration);
+	OutMessage = FText::Format(LOCTEXT("DecoBought", "{0}|hpp(을,를) 샀습니다 ({1}) · 보관함에 넣었습니다 · 배치 모드(B)에서 꺼내 놓으면 꾸미기 점수 +{2}"),
+		Quote.Name, FText::FromString(Paid), FText::AsNumber(Quote.Points));
+	UE_LOG(LogCozyRealm, Log, TEXT("꾸미기 구매: %s (%s) · 보관함 %d개 · %s"), *Quote.Name.ToString(), *DecorationId.ToString(), Quote.Stored + 1, *Paid);
+	NotifyChanged(true);
+	if (bStarted)
+	{
+		SaveEstate(TEXT("꾸미기 구매"));
+	}
+	return true;
+}
+
+int32 UCozyEstateSubsystem::GetDecorationScore() const
+{
+	int32 Score = 0;
+	for (const FCozyFacilityState& Facility : State.Facilities)
+	{
+		if (Facility.bStored)
+		{
+			continue;
+		}
+		if (const FCozyDecorationRow* Row = GetDecorationDef(Facility.DefinitionId))
+		{
+			Score += FMath::Max(0, Row->Points);
+		}
+	}
+	return Score;
+}
+
+float UCozyEstateSubsystem::ComputeDecorationBonus(int32 Score, int32 PointsPerStep, float BonusPerStep, float BonusMax)
+{
+	if (PointsPerStep <= 0 || Score <= 0)
+	{
+		return 0.f;
+	}
+	const int32 Steps = Score / PointsPerStep;
+	return FMath::Clamp(Steps * BonusPerStep, 0.f, FMath::Max(0.f, BonusMax));
+}
+
+FCozyDecorationScoreView UCozyEstateSubsystem::GetDecorationScoreView() const
+{
+	FCozyDecorationScoreView View;
+	View.Score = GetDecorationScore();
+	View.MaxBonus = FMath::Max(0.f, Config.DecorBonusMax);
+	View.Bonus = ComputeDecorationBonus(View.Score, Config.DecorPointsPerStep, Config.DecorBonusPerStep, Config.DecorBonusMax);
+	View.bMaxed = Config.DecorPointsPerStep <= 0 || Config.DecorBonusPerStep <= 0.f || View.Bonus >= View.MaxBonus - KINDA_SMALL_NUMBER;
+	View.PointsToNext = View.bMaxed ? 0 : (View.Score / Config.DecorPointsPerStep + 1) * Config.DecorPointsPerStep - View.Score;
+	return View;
+}
+
+bool UCozyEstateSubsystem::IsWalkableFacility(const FCozyFacilityState& Facility) const
+{
+	const FCozyDecorationRow* Row = GetDecorationDef(Facility.DefinitionId);
+	return Row && Row->bWalkable;
+}
+
+FString UCozyEstateSubsystem::DebugDescribeDecorations() const
+{
+	const FCozyDecorationScoreView View = GetDecorationScoreView();
+	int32 Placed = 0, Stored = 0;
+	FString Lines;
+	for (const FCozyFacilityState& Facility : State.Facilities)
+	{
+		if (const FCozyDecorationRow* Row = GetDecorationDef(Facility.DefinitionId))
+		{
+			++(Facility.bStored ? Stored : Placed);
+			Lines += FString::Printf(TEXT("\n  %s %d점 · %s"), *Row->DisplayName.ToString(), Row->Points,
+				Facility.bStored ? TEXT("보관함") : *FString::Printf(TEXT("칸 (%d,%d) 회전 %d"), Facility.GridCoord.X, Facility.GridCoord.Y, Facility.Rotation));
+		}
+	}
+	const FString Summary = FString::Printf(TEXT("꾸미기 점수 %d점 · 생산 +%d%% (최대 +%d%%) · %s · 놓인 장식 %d개 · 보관함 %d개"),
+		View.Score, FMath::RoundToInt(View.Bonus * 100.f), FMath::RoundToInt(View.MaxBonus * 100.f),
+		View.bMaxed ? TEXT("최대") : *FString::Printf(TEXT("다음 단계까지 %d점"), View.PointsToNext), Placed, Stored);
+	UE_LOG(LogCozyRealm, Log, TEXT("[꾸미기] %s%s"), *Summary, *Lines);
+	return Summary;
+}
+
+bool UCozyEstateSubsystem::DebugInitDataOnly(FString& OutErrors)
+{
+	if (!LoadAllData(OutErrors))
+	{
+		return false;
+	}
+	BuildNewGameState();
+	return true;
+}
+
+void UCozyEstateSubsystem::DebugSetState(const FCozyEstateState& NewState)
+{
+	State = NewState;
+	SanitizeLoadedState();
+	NotifyChanged(true);
 }
 
 // ---------------------------------------------------------------------------

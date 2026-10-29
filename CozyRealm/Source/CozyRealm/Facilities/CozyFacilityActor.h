@@ -9,6 +9,7 @@ class UMaterialInstanceDynamic;
 class UPointLightComponent;
 class UProceduralMeshComponent;
 struct FCozyFacilityRow;
+struct FCozyDecorationRow;
 
 /**
  *  영지에 놓인 시설 1개의 모습 (에셋이 생기기 전에는 회색 상자).
@@ -23,8 +24,8 @@ public:
 
 	ACozyFacilityActor();
 
-	/** 시설 정의로 크기·색·이름을 맞춘다 (영지 서비스가 생성 직후 호출) */
-	void InitFacility(const FGuid& InFacilityId, const FCozyFacilityRow& Def, float CellSize);
+	/** 시설 정의로 크기·색·이름을 맞춘다 (영지 서비스가 생성 직후 호출) · Decoration이 있으면 꾸미기 장식 모습 (기본 도형 · 지붕 없음) */
+	void InitFacility(const FGuid& InFacilityId, const FCozyFacilityRow& Def, float CellSize, const FCozyDecorationRow* Decoration = nullptr);
 
 	/** 선택 표시 (바닥 오라 + 테두리 외곽선) */
 	void SetSelected(bool bInSelected);

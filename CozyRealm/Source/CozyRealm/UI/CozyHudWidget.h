@@ -61,7 +61,9 @@ enum class ECozyWindowKind : uint8
 	/** 신사: 영지 레벨 · 시설 레벨 상한 · 다음 성장 조건 */
 	Shrine,
 	/** 설정: 사운드 · 화면 탭 · 게임 종료 (Window Screens의 Settings 화면 · 개발용 F1 디버그 창과 별개) */
-	Settings
+	Settings,
+	/** 꾸미기 상점: 장식 목록 · 구매 (보관함으로) · 꾸미기 점수·생산 보너스 (4주차 기능 2) */
+	DecorShop
 };
 
 /**
@@ -102,6 +104,8 @@ public:
 	/** 단축키: Tab 주민 목록(나가야) · I 창고 · 이미 열려 있으면 닫음 */
 	void ToggleNagayaWindow();
 	void ToggleStorageWindow();
+	/** 단축키 K · HUD '꾸미기' 버튼: 꾸미기 상점 창 (열려 있으면 닫음) */
+	void ToggleDecorShopWindow();
 
 	void ToggleDebugPanel();
 	/** 첫 실행 안내를 처음 단계부터 (새 게임 시작 · 설정 '안내 다시 보기') */
