@@ -18,6 +18,7 @@
 #include "Environment/CozyFloorTiles.h"
 #include "Environment/CozySurfaceNavigation.h"
 #include "Environment/CozyEstateTerrain.h"
+#include "Settings/CozyGameUserSettings.h"
 
 #define LOCTEXT_NAMESPACE "CozyEstate"
 
@@ -90,6 +91,9 @@ void UCozyEstateSubsystem::StartEstate()
 		// 저장 시각부터 지금까지 정산 → 바로 저장해 같은 시간을 두 번 받지 않게 함
 		ApplyOfflineProgress((FDateTime::UtcNow() - SavedUtc).GetTotalSeconds(), TEXT("시작"));
 	}
+	// 켜 둔 동안 진행의 기준 시각 (정산한 시간은 다시 세지 않음)
+	LastProcessedUtc = FDateTime::UtcNow();
+	StepAccumulator = 0.0;
 	SaveEstate(bLoaded ? TEXT("불러온 직후") : TEXT("새 게임"));
 	NotifyChanged(true);
 }
@@ -98,7 +102,8 @@ namespace CozyEstate
 {
 	static const TCHAR* SaveSlotName = TEXT("CozyRealm_Slot1");
 	static constexpr int32 SaveUserIndex = 0;
-	static constexpr int32 CurrentSaveFileVersion = 2;
+	/** 3: 안내 완료 여부 · 방치 재화 누적 시간을 영지 상태에 둠 (2026-10-30 · 2 이하 저장은 불러올 때 옮김) */
+	static constexpr int32 CurrentSaveFileVersion = 3;
 
 	/** <프로젝트>/Saved/SaveGames */
 	static FString GetSaveDir()
@@ -253,7 +258,9 @@ bool UCozyEstateSubsystem::SaveEstate(const FString& Reason)
 		UE_LOG(LogCozyRealm, Warning, TEXT("저장 건너뜀: 영지를 시작하지 않은 상태 (%s)"), *Reason);
 		return false;
 	}
-	State.SaveVersion = 2;
+	State.SaveVersion = CozyEstate::CurrentSaveFileVersion;
+	bSaveRequested = false;
+	SaveRequestAge = 0.0;
 	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
 	{
 		const UCozySurfaceComponent* Surface = It->FindComponentByClass<UCozySurfaceComponent>();
@@ -410,10 +417,27 @@ bool UCozyEstateSubsystem::LoadEstateFromSave(FDateTime& OutSavedUtc)
             RecoveryNotice = TEXT("이전 저장 형식의 원본 보관에 실패해 저장을 중단했습니다.");
         }
     }
+    else if (Save->FileVersion < CozyEstate::CurrentSaveFileVersion)
+    {
+        // 형식 2 → 3: 바꾸기 전 원본을 한 번 보관 (안내 완료 여부·방치 재화 누적 시간이 추가됨)
+        const FString MigrationCopy = CozyEstate::GetSaveFilePath(TEXT("_before_v3"));
+        if (!IFileManager::Get().FileExists(*MigrationCopy) && !FFileHelper::SaveArrayToFile(PreviousBytes, *MigrationCopy))
+        {
+            UE_LOG(LogCozyRealm, Warning, TEXT("저장 형식 %d 원본 사본을 보관하지 못함 (불러오기는 계속)"), Save->FileVersion);
+        }
+    }
     SaveWriter.Initialize(SavePath, MoveTemp(PreviousBytes));
 
 	State = Save->State;
-	State.SaveVersion = 2; // 버전 1에는 없는 도색·타일 배열은 빈 배열로 이관된다.
+	// 버전 1에는 없는 도색·타일 배열은 빈 배열로 이관된다.
+	if (Save->FileVersion < 3)
+	{
+		// 형식 2 이하: 안내 완료 여부가 설정 파일에만 있었음 → 이 영지로 한 번 옮김 (새 게임은 설정 값과 무관하게 다시 안내)
+		const UCozyGameUserSettings* Settings = UCozyGameUserSettings::Get();
+		State.bTutorialDone = Settings && Settings->bTutorialDone;
+		UE_LOG(LogCozyRealm, Log, TEXT("저장 형식 %d → %d 이관: 안내 완료 %d (설정 파일 값)"), Save->FileVersion, CozyEstate::CurrentSaveFileVersion, State.bTutorialDone ? 1 : 0);
+	}
+	State.SaveVersion = CozyEstate::CurrentSaveFileVersion;
 	OutSavedUtc = Save->SavedUtc;
 	LastSavedUtc = Save->SavedUtc;
 	SanitizeLoadedState();
@@ -486,6 +510,73 @@ void UCozyEstateSubsystem::SanitizeLoadedState()
 	{
 		UE_LOG(LogCozyRealm, Warning, TEXT("[불러오기 검사] 데이터에 없는 참조 %d개를 정리했습니다"), Removed);
 	}
+
+	// 숫자 검증 (손상·옛 데이터): 음수 재료 → 0 · 레벨은 1~데이터 최대 레벨 · 미수령분은 0~시설 한도 (출시 품질 점검 2026-10-30)
+	int32 Fixed = 0;
+	for (TPair<FName, int32>& Pair : State.Resources)
+	{
+		if (Pair.Value < 0)
+		{
+			Pair.Value = 0;
+			++Fixed;
+		}
+	}
+	for (FCozyFacilityState& Facility : State.Facilities)
+	{
+		const FCozyFacilityRow* Def = GetFacilityDef(Facility.DefinitionId);
+		if (!Def)
+		{
+			continue;
+		}
+		const int32 Level = FMath::Clamp(Facility.Level, 1, GetMaxFacilityLevel(Facility.DefinitionId));
+		Fixed += Level != Facility.Level ? 1 : 0;
+		Facility.Level = Level;
+		const int32 Unclaimed = FMath::Clamp(Facility.UnclaimedAmount, 0, FMath::Max(0, Def->UnclaimedCapacity));
+		Fixed += Unclaimed != Facility.UnclaimedAmount ? 1 : 0;
+		Facility.UnclaimedAmount = Unclaimed;
+		if (Facility.UnclaimedAmount <= 0)
+		{
+			Facility.UnclaimedItemId = NAME_None;
+		}
+	}
+	if (Fixed > 0)
+	{
+		UE_LOG(LogCozyRealm, Log, TEXT("[불러오기 검사] 범위를 벗어난 숫자 %d개를 고쳤습니다 (음수 재료 · 레벨 · 미수령분)"), Fixed);
+	}
+
+	// 🙋 잠긴 작물(데모에서 숨긴 팥 등)로 저장된 밭: 해금된 첫 작물(밀)로 되돌림 (2026-10-30)
+	// 진행 중이던 주기는 지급 전이라 정리하고, 미수령분은 수령 규칙대로 창고에 들어갈 만큼 옮김 · 남은 것은 밭에 두어 버리지 않음 (D27)
+	for (FCozyFacilityState& Facility : State.Facilities)
+	{
+		const FCozyFacilityRow* Def = GetFacilityDef(Facility.DefinitionId);
+		if (!Def || !Def->bProductionItemSelectable || Facility.SelectedCropId.IsNone() || IsCropUnlocked(Facility.SelectedCropId))
+		{
+			continue;
+		}
+		const FName* Fallback = Def->ProductionItems.FindByPredicate([this](const FName& CropId) { return IsCropUnlocked(CropId); });
+		if (!Fallback)
+		{
+			continue;
+		}
+		const FName OldCrop = Facility.SelectedCropId;
+		const FGuid FacilityId = Facility.InstanceId;
+		State.Jobs.RemoveAll([&FacilityId](const FCozyJobRecord& Job) { return Job.FacilityId == FacilityId && Job.Type == ECozyJobType::Production; });
+		Facility.ActiveJobId.Invalidate();
+		Facility.SelectedCropId = *Fallback;
+		int32 Moved = 0;
+		if (Facility.UnclaimedAmount > 0)
+		{
+			Moved = AddResource(Facility.UnclaimedItemId, Facility.UnclaimedAmount);
+			Facility.UnclaimedAmount -= Moved;
+			if (Facility.UnclaimedAmount <= 0)
+			{
+				Facility.UnclaimedAmount = 0;
+				Facility.UnclaimedItemId = NAME_None;
+			}
+		}
+		UE_LOG(LogCozyRealm, Log, TEXT("[불러오기 검사] 잠긴 작물 %s → %s (%s) · 미수령 %d개 창고로 · 밭에 남음 %d개"),
+			*OldCrop.ToString(), *Facility.SelectedCropId.ToString(), *Facility.InstanceId.ToString(), Moved, Facility.UnclaimedAmount);
+	}
 	// 앞 작업이 정리돼 칸이 비었는데 대기 작업만 남은 경우 지금부터 시작
 	for (const FCozyFacilityState& Facility : State.Facilities)
 	{
@@ -510,6 +601,7 @@ void UCozyEstateSubsystem::DebugReloadFromSave()
 	{
 		ApplyOfflineProgress((FDateTime::UtcNow() - SavedUtc).GetTotalSeconds(), TEXT("불러오기"));
 	}
+	LastProcessedUtc = FDateTime::UtcNow();
 	SaveEstate(TEXT("불러온 직후"));
 	NotifyChanged(true);
 }
@@ -537,24 +629,20 @@ void UCozyEstateSubsystem::ApplyOfflineProgress(double AwaySeconds, const TCHAR*
 	}
 
 	// 접속 중과 같은 규칙으로 1초씩 진행: 주민 조건 · 미수령 한도 · 가공은 선택한 남은 회차까지 · 업그레이드는 시간이 지나면 완료 (D44)
+	// 방치 재화(🤖 2시간당 시간 부적 1 · 1시간당 심상 조각 1)도 켜 둔 동안과 같은 누적 시간으로 · 남는 시간은 저장 상태에 남아 다음에 이어짐
+	int32 Talismans = 0;
+	int32 Shards = 0;
 	for (int32 Step = 0; Step < Steps; ++Step)
 	{
-		State.GameSeconds += 1.0;
-		StepJobs();
+		AdvanceOneSecond(Talismans, Shards);
 	}
-
-	// 방치 재화 (🤖 2시간당 시간 부적 1 · 1시간당 심상 조각 1 · 남는 시간은 다음으로 이어지지 않음)
-	const int32 Talismans = Config.OfflineTalismanEverySeconds > 0.f ? FMath::FloorToInt(OfflineReport.AppliedSeconds / Config.OfflineTalismanEverySeconds) : 0;
-	const int32 Shards = Config.OfflineMindShardEverySeconds > 0.f ? FMath::FloorToInt(OfflineReport.AppliedSeconds / Config.OfflineMindShardEverySeconds) : 0;
 	if (Talismans > 0)
 	{
-		AddResource(Config.SpeedupItemId, Talismans);
 		OfflineReport.Lines.Add(FText::Format(LOCTEXT("OffTalisman", "{0} +{1}"), GetItemName(Config.SpeedupItemId), FText::AsNumber(Talismans)));
 	}
 	if (Shards > 0)
 	{
-		AddResource(TEXT("MindShard"), Shards);
-		OfflineReport.Lines.Add(FText::Format(LOCTEXT("OffShard", "{0} +{1}"), GetItemName(TEXT("MindShard")), FText::AsNumber(Shards)));
+		OfflineReport.Lines.Add(FText::Format(LOCTEXT("OffShard", "{0} +{1}"), GetItemName(Config.OfflineShardItemId), FText::AsNumber(Shards)));
 	}
 
 	// 시설별 결과: 미수령분 증가 · 업그레이드 완료
@@ -572,7 +660,7 @@ void UCozyEstateSubsystem::ApplyOfflineProgress(double AwaySeconds, const TCHAR*
 		const int32* OldLevel = LevelBefore.Find(Facility.InstanceId);
 		if (OldLevel && Facility.Level > *OldLevel)
 		{
-			OfflineReport.Lines.Add(FText::Format(LOCTEXT("OffLevel", "{0}: 업그레이드 완료 Lv{1} → Lv{2}"), Name, FText::AsNumber(*OldLevel), FText::AsNumber(Facility.Level)));
+			OfflineReport.Lines.Add(FText::Format(LOCTEXT("OffLevel", "{0}: 업그레이드 완료 Lv.{1} → Lv.{2}"), Name, FText::AsNumber(*OldLevel), FText::AsNumber(Facility.Level)));
 		}
 	}
 	// 받은 것이 있을 때만 팝업 (잠깐 껐다 켠 경우 등은 로그만)
@@ -586,7 +674,95 @@ void UCozyEstateSubsystem::ApplyOfflineProgress(double AwaySeconds, const TCHAR*
 void UCozyEstateSubsystem::DebugSkipOffline(double Seconds)
 {
 	ApplyOfflineProgress(Seconds, TEXT("디버그 건너뛰기"));
-	SaveEstate(TEXT("방치 정산 직후"));
+	if (bStarted)
+	{
+		SaveEstate(TEXT("방치 정산 직후"));
+	}
+}
+
+int32 UCozyEstateSubsystem::AdvanceRealSeconds(double RealSeconds, const TCHAR* Source)
+{
+	// 시계를 뒤로 돌렸거나(음수) 시간이 흐르지 않았으면 아무것도 하지 않음
+	if (!(RealSeconds > 0.0))
+	{
+		return 0;
+	}
+	// 절전·멈춤 복귀처럼 크게 비었으면 방치 정산과 같은 경로 (최대 12시간 · 결과 창 · 바로 저장)
+	if (Config.CatchupGapSeconds > 0.f && RealSeconds >= Config.CatchupGapSeconds)
+	{
+		StepAccumulator = 0.0;
+		ApplyOfflineProgress(RealSeconds, Source);
+		if (bStarted)
+		{
+			SaveEstate(TEXT("따라잡기 정산 직후"));
+		}
+		return 0;
+	}
+	StepAccumulator += RealSeconds * TimeScale;
+	int32 Steps = 0;
+	int32 Talismans = 0;
+	int32 Shards = 0;
+	while (StepAccumulator >= 1.0 && Steps < CozyEstate::MaxStepsPerTick)
+	{
+		StepAccumulator -= 1.0;
+		AdvanceOneSecond(Talismans, Shards);
+		++Steps;
+	}
+	if (Talismans > 0 || Shards > 0)
+	{
+		UE_LOG(LogCozyRealm, Log, TEXT("방치 재화(켜 둔 동안): 시간 부적 +%d · 심상 조각 +%d"), Talismans, Shards);
+		bStructuralPending = true;
+	}
+	return Steps;
+}
+
+void UCozyEstateSubsystem::AdvanceOneSecond(int32& OutTalismans, int32& OutShards)
+{
+	State.GameSeconds += 1.0;
+	StepJobs();
+	AccrueIdleRewards(1.0, OutTalismans, OutShards);
+}
+
+void UCozyEstateSubsystem::AccrueIdleRewards(double Seconds, int32& OutTalismans, int32& OutShards)
+{
+	// 🤖 지급 간격만큼 찰 때마다 1개 · 남는 시간은 상태에 남아 저장되고 다음에 이어짐 (켜 둔 동안·꺼 둔 동안 같은 규칙 · D44)
+	auto Accrue = [this, Seconds](double& Progress, float Every, FName ItemId) -> int32
+	{
+		if (Every <= 0.f || !GetItemDef(ItemId))
+		{
+			Progress = 0.0;
+			return 0;
+		}
+		Progress += Seconds;
+		const int32 Count = FMath::FloorToInt32(Progress / Every);
+		if (Count > 0)
+		{
+			Progress -= static_cast<double>(Count) * Every;
+			AddResource(ItemId, Count);
+		}
+		return Count;
+	};
+	OutTalismans += Accrue(State.TalismanRewardSeconds, Config.OfflineTalismanEverySeconds, Config.SpeedupItemId);
+	OutShards += Accrue(State.MindShardRewardSeconds, Config.OfflineMindShardEverySeconds, Config.OfflineShardItemId);
+}
+
+void UCozyEstateSubsystem::RequestSave(const TCHAR* Reason)
+{
+	if (!bStarted)
+	{
+		return;
+	}
+	// 처음 요청한 때부터 SaveRequestDelaySeconds 안의 요청은 한 번의 저장으로 묶음 (저장 쓰기는 이미 뒤에서 순서대로 처리됨)
+	if (!bSaveRequested)
+	{
+		bSaveRequested = true;
+		SaveRequestAge = 0.0;
+		SaveRequestReason = Reason;
+	}
+	else if (!SaveRequestReason.Contains(Reason))
+	{
+		SaveRequestReason += FString(TEXT(" · ")) + Reason;
+	}
 }
 
 void UCozyEstateSubsystem::DebugShiftSaveTime(double Seconds)
@@ -612,6 +788,7 @@ void UCozyEstateSubsystem::Deinitialize()
 		PollSave(true);
 		bStarted = false;
 	}
+	bSaveRequested = false;
 	Super::Deinitialize();
 }
 
@@ -647,6 +824,7 @@ bool UCozyEstateSubsystem::LoadAllData(FString& OutErrors)
 	StartResidentTable = LoadCsvTable(TEXT("StartResidents.csv"), FCozyStartResidentRow::StaticStruct(), OutErrors);
 	StartResourceTable = LoadCsvTable(TEXT("StartResources.csv"), FCozyStartResourceRow::StaticStruct(), OutErrors);
 	RewardTable = LoadCsvTable(TEXT("Rewards.csv"), FCozyRewardRow::StaticStruct(), OutErrors);
+	TutorialTable = LoadCsvTable(TEXT("Tutorial.csv"), FCozyTutorialRow::StaticStruct(), OutErrors);
 	DecorationTable = LoadCsvTable(TEXT("Decorations.csv"), FCozyDecorationRow::StaticStruct(), OutErrors);
 	RegisterDecorationFacilities(OutErrors);
 
@@ -735,6 +913,50 @@ void UCozyEstateSubsystem::ValidateData() const
 			if (!Row.ManagerFacilityId.IsNone() && !GetFacilityDef(Row.ManagerFacilityId))
 			{
 				Warn(FString::Printf(TEXT("시설 %s: 없는 관리 시설 참조 %s"), *Key.ToString(), *Row.ManagerFacilityId.ToString()));
+			}
+			// 🙋 방치 보상 최대 12시간치가 전부 쌓이려면 미수령 한도 ≥ 최대 속도 12시간 생산량
+			const int32 MaxOffline = GetMaxOfflineOutput(Key);
+			if (MaxOffline > 0 && Row.UnclaimedCapacity < MaxOffline)
+			{
+				Warn(FString::Printf(TEXT("시설 %s: 미수령 한도 %d가 최대 속도 방치 %.0f시간 생산량 %d보다 작아 방치 보상이 덜 쌓임"), *Key.ToString(), Row.UnclaimedCapacity, Config.OfflineMaxSeconds / 3600.f, MaxOffline));
+			}
+		});
+	}
+
+	// 쓸 곳(레시피 재료·업그레이드 비용·장식 가격)도 판매가도 없는 재료 (예: 팥 · 고르면 진행이 막힘)
+	{
+		TArray<FName> DeadEnd, Unused;
+		FindUnusableMaterials(DeadEnd, Unused);
+		for (const FName& ItemId : DeadEnd)
+		{
+			Warn(FString::Printf(TEXT("재료 %s: 만들 수 있지만 쓰는 곳도 판매가도 없어 쌓이기만 함 (진행이 막힐 수 있음)"), *ItemId.ToString()));
+		}
+		for (const FName& ItemId : Unused)
+		{
+			Warn(FString::Printf(TEXT("재료 %s: 만드는 곳도 쓰는 곳도 판매가도 없음 (숨긴 재료면 해금할 때 함께 정하기)"), *ItemId.ToString()));
+		}
+	}
+
+	if (TutorialTable)
+	{
+		TutorialTable->ForeachRow<FCozyTutorialRow>(TEXT("Validate"), [&](const FName& Key, const FCozyTutorialRow& Row)
+		{
+			if (!Row.TargetFacility.IsNone() && !GetFacilityDef(Row.TargetFacility))
+			{
+				Warn(FString::Printf(TEXT("안내 %s: 없는 시설 참조 %s"), *Key.ToString(), *Row.TargetFacility.ToString()));
+			}
+			if (!Row.GoalItem.IsNone() && !GetItemDef(Row.GoalItem))
+			{
+				Warn(FString::Printf(TEXT("안내 %s: 없는 재료 참조 %s"), *Key.ToString(), *Row.GoalItem.ToString()));
+			}
+			bool bRewardFound = Row.RewardId.IsNone();
+			if (RewardTable && !bRewardFound)
+			{
+				RewardTable->ForeachRow<FCozyRewardRow>(TEXT("Validate"), [&](const FName&, const FCozyRewardRow& Reward) { bRewardFound |= Reward.RewardId == Row.RewardId; });
+			}
+			if (!bRewardFound)
+			{
+				Warn(FString::Printf(TEXT("안내 %s: Rewards.csv에 없는 보상 %s"), *Key.ToString(), *Row.RewardId.ToString()));
 			}
 		});
 	}
@@ -915,6 +1137,10 @@ void UCozyEstateSubsystem::ValidateData() const
 	{
 		Warn(FString::Printf(TEXT("영지 설정: 판매 대금 재화 %s가 Items.csv에 없음"), *Config.SaleCurrencyId.ToString()));
 	}
+	if (Config.OfflineMindShardEverySeconds > 0.f && !GetItemDef(Config.OfflineShardItemId))
+	{
+		Warn(FString::Printf(TEXT("영지 설정: 방치 보상 심상 조각 재화 %s가 Items.csv에 없음"), *Config.OfflineShardItemId.ToString()));
+	}
 
 	if (DecorationTable)
 	{
@@ -1062,7 +1288,7 @@ void UCozyEstateSubsystem::ValidateProgression(TFunctionRef<void(const FString&)
 			}
 			else if (ShrineLevelOf() < Step.Row->RequiredShrineLevel)
 			{
-				Reason = FString::Printf(TEXT("신사 Lv%d이 필요하지만 신사는 최대 Lv%d까지만 오를 수 있음"), Step.Row->RequiredShrineLevel, ShrineLevelOf());
+				Reason = FString::Printf(TEXT("신사 Lv.%d이 필요하지만 신사는 최대 Lv.%d까지만 오를 수 있음"), Step.Row->RequiredShrineLevel, ShrineLevelOf());
 			}
 			else
 			{
@@ -1330,7 +1556,8 @@ FGuid UCozyEstateSubsystem::FindNearestFacility(const FVector& Location, float R
 	const FVector2D Point(Location.X, Location.Y);
 	for (const FCozyFacilityState& Facility : State.Facilities)
 	{
-		if (Facility.bStored)
+		// 장식은 시설 메뉴가 없으므로 상호작용 대상이 아님 (배치 모드에서만 선택)
+		if (Facility.bStored || IsDecoration(Facility.DefinitionId))
 		{
 			continue;
 		}
@@ -1627,7 +1854,7 @@ bool UCozyEstateSubsystem::ConfirmPlacement(FText& OutMessage)
 	else
 	{
 		OutMessage = bFromStorage
-			? FText::Format(LOCTEXT("PlacedFromStorage", "{0}|hpp(을,를) 다시 배치했습니다 · Lv{1} 그대로"), Name, FText::AsNumber(Facility->Level))
+			? FText::Format(LOCTEXT("PlacedFromStorage", "{0}|hpp(을,를) 다시 배치했습니다 · Lv.{1} 그대로"), Name, FText::AsNumber(Facility->Level))
 			: FText::Format(LOCTEXT("Moved", "{0}|hpp(을,를) 옮겼습니다 · 진행 중인 작업은 그대로 이어집니다"), Name);
 	}
 	UE_LOG(LogCozyRealm, Log, TEXT("배치 확정: %s (%d,%d)→(%d,%d) 회전 %d%s"), *Name.ToString(), From.X, From.Y, PlacementCoord.X, PlacementCoord.Y, PlacementRotation, bFromStorage ? TEXT(" · 보관함에서 꺼냄") : TEXT(""));
@@ -2098,6 +2325,7 @@ FCozyCollectResult UCozyEstateSubsystem::CollectUnclaimed(const FGuid& FacilityI
 	}
 	UE_LOG(LogCozyRealm, Log, TEXT("수령: %s · 옮김 %d · 남음 %d"), *GetFacilityDisplayName(FacilityId).ToString(), Result.Moved, Result.Remaining);
 	NotifyChanged();
+	RequestSave(TEXT("수령"));
 	return Result;
 }
 
@@ -2186,6 +2414,7 @@ bool UCozyEstateSubsystem::SellItem(const FGuid& ShopFacilityId, FName ItemId, i
 	OutMessage = FText::Format(LOCTEXT("SellOk", "{0} {1}개를 팔아 {2} {3}|hpp(을,를) 받았습니다"), Quote.ItemName, FText::AsNumber(Quote.Amount), Quote.CurrencyName, FText::AsNumber(Quote.TotalPrice));
 	UE_LOG(LogCozyRealm, Log, TEXT("판매: %s ×%d · 개당 %d · %s %d → %d (+%d)"), *ItemId.ToString(), Quote.Amount, Quote.UnitPrice, *Config.SaleCurrencyId.ToString(), Before, After, After - Before);
 	NotifyChanged();
+	RequestSave(TEXT("판매"));
 	return true;
 }
 
@@ -2360,19 +2589,26 @@ void UCozyEstateSubsystem::Tick(float DeltaTime)
 	{
 		SaveEstate(TEXT("자동"));
 	}
+	else if (bSaveRequested && !bAutosavePaused)
+	{
+		// 판매·가공·업그레이드·부적·구매 직후 요청을 짧게 묶어 저장
+		SaveRequestAge += DeltaTime;
+		if (SaveRequestAge >= Config.SaveRequestDelaySeconds)
+		{
+			bSaveRequested = false;
+			SaveEstate(SaveRequestReason);
+		}
+	}
 
 	// 게임 시계는 현실 시각을 따르고, 디버그 배속을 올린 만큼만 앞당긴다
 	DayClockBoostSeconds += static_cast<double>(DeltaTime) * FMath::Max(0.f, TimeScale - 1.f);
 
-	StepAccumulator += static_cast<double>(DeltaTime) * TimeScale;
-	int32 Steps = 0;
-	while (StepAccumulator >= 1.0 && Steps < CozyEstate::MaxStepsPerTick)
-	{
-		StepAccumulator -= 1.0;
-		State.GameSeconds += 1.0;
-		StepJobs();
-		++Steps;
-	}
+	// 켜 둔 동안 진행: DeltaTime 누적 대신 마지막 처리 시각(UTC)과의 차이 → 절전·창 멈춤 동안의 시간도 사라지지 않음
+	// 큰 간격은 방치 정산과 같은 경로(최대 12시간) · 시계를 뒤로 돌린 음수 시간은 무시 (출시 품질 점검 2026-10-30)
+	const FDateTime Now = FDateTime::UtcNow();
+	const double RealSeconds = LastProcessedUtc.GetTicks() > 0 ? (Now - LastProcessedUtc).GetTotalSeconds() : static_cast<double>(DeltaTime);
+	LastProcessedUtc = Now;
+	const int32 Steps = AdvanceRealSeconds(RealSeconds, TEXT("절전·멈춤 복귀"));
 	if (Steps > 0)
 	{
 		// 시간만 흐름: UI는 숫자·진행 바만 갱신 (버튼을 다시 만들면 클릭이 끊김)
@@ -2507,7 +2743,10 @@ void UCozyEstateSubsystem::StepProduction(FCozyFacilityState& Facility, const FC
 		// 🙋 이 시설의 미수령 공간이 꽉 차면 이 시설만 생산을 멈춘다 (D27 · 공용 창고 한도와 별개)
 		if (!HasUnclaimedSpace())
 		{
-			CozyEstate::HoldJob(*Job, State.GameSeconds, LOCTEXT("UnclaimedFull", "미수령 공간이 가득 차 생산을 멈췄습니다"));
+			const bool bOtherItem = Facility.UnclaimedAmount > 0 && Facility.UnclaimedItemId != Crop->ProducedItem;
+			CozyEstate::HoldJob(*Job, State.GameSeconds, bOtherItem
+				? FText::Format(LOCTEXT("UnclaimedOther", "미수령 {0}|hpp(이,가) 남아 있어 생산을 멈췄습니다 · 수확하면 이어서 생산합니다"), GetItemName(Facility.UnclaimedItemId))
+				: LOCTEXT("UnclaimedFull", "미수령 공간이 가득 차 생산을 멈췄습니다"));
 			break;
 		}
 		// 완료분은 보유 재료가 아니라 시설의 미수령분으로 · 주기 기록과 함께 (같은 주기를 두 번 넘기지 않음)
@@ -2750,6 +2989,7 @@ bool UCozyEstateSubsystem::StartProcessing(const FGuid& FacilityId, FName Recipe
 			Quote.OutputName, FText::AsNumber(Runs), FText::AsNumber(Quote.TotalOutput), FText::FromString(UsedText));
 		UE_LOG(LogCozyRealm, Log, TEXT("가공 추가: %s %s ×%d · 재료 %s 차감 · 추가 확보 %d · 같은 품목 남은 회차 %d → %d"), *GetFacilityDisplayName(FacilityId).ToString(), *RecipeId.ToString(), Runs, *UsedText, Quote.TotalOutput, Quote.CurrentRemainingRuns, Quote.CurrentRemainingRuns + Runs);
 		NotifyChanged();
+		RequestSave(TEXT("가공 추가"));
 		return true;
 	}
 
@@ -2762,6 +3002,7 @@ bool UCozyEstateSubsystem::StartProcessing(const FGuid& FacilityId, FName Recipe
 		Quote.OutputName, FText::AsNumber(Runs), FText::AsNumber(Quote.TotalOutput), FText::FromString(UsedText));
 	UE_LOG(LogCozyRealm, Log, TEXT("가공 시작: %s %s ×%d · 재료 %s 차감 · 확보 %d"), *GetFacilityDisplayName(FacilityId).ToString(), *RecipeId.ToString(), Runs, *UsedText, Quote.TotalOutput);
 	NotifyChanged();
+	RequestSave(TEXT("가공 시작"));
 	return true;
 }
 
@@ -2788,6 +3029,7 @@ bool UCozyEstateSubsystem::CancelProcessing(const FGuid& JobId, FText& OutMessag
 		GetItemName(Job.OutputItemId), FText::AsNumber(Done), FText::AsNumber(Done * Job.OutputPerRun), FText::AsNumber(Dropped));
 	UE_LOG(LogCozyRealm, Log, TEXT("가공 취소: %s · 완성 %d회 유지 · 미완료 %d회 종료(반환 없음)"), *GetFacilityDisplayName(Job.FacilityId).ToString(), Done, Dropped);
 	NotifyChanged();
+	RequestSave(TEXT("가공 취소"));
 	return true;
 }
 
@@ -2945,12 +3187,13 @@ const FCozyGrowthRow* UCozyEstateSubsystem::FindGrowthRow(FName DefinitionId, in
 	return Found;
 }
 
-int32 UCozyEstateSubsystem::GetHighestLevelOf(FName DefinitionId) const
+int32 UCozyEstateSubsystem::GetHighestLevelOf(FName DefinitionId, bool bIncludeStored) const
 {
 	int32 Level = 0;
 	for (const FCozyFacilityState& Facility : State.Facilities)
 	{
-		if (Facility.DefinitionId == DefinitionId)
+		// 보관함 시설은 레벨 효과(관리 속도·선행 조건)에 넣지 않음 (보관 = 영지에 없음 · D45)
+		if (Facility.DefinitionId == DefinitionId && (bIncludeStored || !Facility.bStored))
 		{
 			Level = FMath::Max(Level, Facility.Level);
 		}
@@ -3052,7 +3295,7 @@ FCozyUpgradeQuote UCozyEstateSubsystem::GetUpgradeQuote(const FGuid& FacilityId)
 	if (!Row)
 	{
 		Quote.BlockReason = Quote.bUpgrading ? LOCTEXT("UpBusyNoRow", "업그레이드 중입니다")
-			: FText::Format(LOCTEXT("UpNoRow", "다음 단계(Lv{0} → Lv{1}) 업그레이드가 아직 없습니다"), FText::AsNumber(Quote.FromLevel), FText::AsNumber(Quote.ToLevel));
+			: FText::Format(LOCTEXT("UpNoRow", "다음 단계(Lv.{0} → Lv.{1}) 업그레이드가 아직 없습니다"), FText::AsNumber(Quote.FromLevel), FText::AsNumber(Quote.ToLevel));
 		return Quote;
 	}
 	Quote.bValid = true;
@@ -3083,13 +3326,13 @@ FCozyUpgradeQuote UCozyEstateSubsystem::GetUpgradeQuote(const FGuid& FacilityId)
 			}
 		}
 		const int32 ShrineNow = GetShrineLevel();
-		Quote.Conditions.Add({ FText::Format(LOCTEXT("CondShrine", "신사 Lv{0}"), FText::AsNumber(Row->RequiredShrineLevel)),
+		Quote.Conditions.Add({ FText::Format(LOCTEXT("CondShrine", "신사 Lv.{0}"), FText::AsNumber(Row->RequiredShrineLevel)),
 			ShrineNow >= Row->RequiredShrineLevel, ShrineDefId, ShrineNow });
 	}
 	for (const TPair<FName, int32>& Required : Row->RequiredFacilities)
 	{
 		const int32 Have = GetHighestLevelOf(Required.Key);
-		Quote.Conditions.Add({ FText::Format(LOCTEXT("CondFacility", "{0} Lv{1}"), GetFacilityDefName(Required.Key), FText::AsNumber(Required.Value)),
+		Quote.Conditions.Add({ FText::Format(LOCTEXT("CondFacility", "{0} Lv.{1}"), GetFacilityDefName(Required.Key), FText::AsNumber(Required.Value)),
 			Have >= Required.Value, Required.Key, Have });
 	}
 	if (Def->Functions.Contains(ECozyFacilityFunction::FieldManagement))
@@ -3143,12 +3386,12 @@ FCozyUpgradeQuote UCozyEstateSubsystem::GetUpgradeQuote(const FGuid& FacilityId)
 	}
 	else if (ShrineLevel < Row->RequiredShrineLevel)
 	{
-		Quote.BlockReason = FText::Format(LOCTEXT("UpShrine", "신사 Lv{0} 이상이 필요합니다 (지금 신사 Lv{1})"), FText::AsNumber(Row->RequiredShrineLevel), FText::AsNumber(ShrineLevel));
+		Quote.BlockReason = FText::Format(LOCTEXT("UpShrine", "신사 Lv.{0} 이상이 필요합니다 (지금 신사 Lv.{1})"), FText::AsNumber(Row->RequiredShrineLevel), FText::AsNumber(ShrineLevel));
 	}
 	else if (const FCozyUpgradeQuote::FCondition* Missing = Quote.Conditions.FindByPredicate([](const FCozyUpgradeQuote::FCondition& Condition) { return !Condition.bMet; }))
 	{
 		// 🙋 선행 시설 조건 (D41) · 비용 차감·작업 등록 없음
-		Quote.BlockReason = FText::Format(LOCTEXT("UpRequired", "선행 조건이 부족합니다 · {0} 필요 (지금 Lv{1})"), Missing->Label, FText::AsNumber(Missing->Current));
+		Quote.BlockReason = FText::Format(LOCTEXT("UpRequired", "선행 조건이 부족합니다 · {0} 필요 (지금 Lv.{1})"), Missing->Label, FText::AsNumber(Missing->Current));
 	}
 	else
 	{
@@ -3233,13 +3476,14 @@ bool UCozyEstateSubsystem::StartUpgrade(const FGuid& FacilityId, FText& OutMessa
 
 	const FText FacilityName = GetFacilityDisplayName(FacilityId);
 	OutMessage = EndedJobs > 0
-		? FText::Format(LOCTEXT("UpStartedRefund", "{0} Lv{1} → Lv{2} 업그레이드를 시작했습니다 · 비용 {3} · 가공 {4}건 종료, 재료 {5} 반환 (완성품은 시설에 남음)"),
+		? FText::Format(LOCTEXT("UpStartedRefund", "{0} Lv.{1} → Lv.{2} 업그레이드를 시작했습니다 · 비용 {3} · 가공 {4}건 종료, 재료 {5} 반환 (완성품은 시설에 남음)"),
 			FacilityName, FText::AsNumber(Quote.FromLevel), FText::AsNumber(Quote.ToLevel), FText::FromString(CostText.IsEmpty() ? TEXT("없음") : CostText), FText::AsNumber(EndedJobs), FText::FromString(RefundText))
-		: FText::Format(LOCTEXT("UpStarted", "{0} Lv{1} → Lv{2} 업그레이드를 시작했습니다 · 비용 {3}"),
+		: FText::Format(LOCTEXT("UpStarted", "{0} Lv.{1} → Lv.{2} 업그레이드를 시작했습니다 · 비용 {3}"),
 			FacilityName, FText::AsNumber(Quote.FromLevel), FText::AsNumber(Quote.ToLevel), FText::FromString(CostText.IsEmpty() ? TEXT("없음") : CostText));
 	UE_LOG(LogCozyRealm, Log, TEXT("업그레이드 시작: %s Lv%d→%d · 비용 %s · 가공 종료 %d건 · 반환 %s · %.0f초"),
 		*FacilityName.ToString(), Quote.FromLevel, Quote.ToLevel, *CostText, EndedJobs, *RefundText, Quote.Seconds);
 	NotifyChanged();
+	RequestSave(TEXT("업그레이드 시작"));
 	return true;
 }
 
@@ -3326,6 +3570,7 @@ bool UCozyEstateSubsystem::ApplySpeedup(const FGuid& JobId, int32 Count, FText& 
 	StepGrowth();
 	NotifyChanged(bStructuralPending);
 	bStructuralPending = false;
+	RequestSave(TEXT("부적 사용"));
 	return true;
 }
 
@@ -3367,7 +3612,180 @@ bool UCozyEstateSubsystem::GrantOneTimeReward(FName RewardId, FText& OutMessage)
 	OutMessage = FText::Format(LOCTEXT("RewardGiven", "보상을 받았습니다 · {0}"), FText::FromString(Given));
 	UE_LOG(LogCozyRealm, Log, TEXT("일회성 보상 지급: %s · %s"), *RewardId.ToString(), *Given);
 	NotifyChanged();
+	RequestSave(TEXT("일회성 보상"));
 	return true;
+}
+
+TArray<const FCozyTutorialRow*> UCozyEstateSubsystem::GetTutorialSteps() const
+{
+	TArray<const FCozyTutorialRow*> Steps;
+	if (TutorialTable)
+	{
+		TArray<FName> Names = TutorialTable->GetRowNames();
+		Names.Sort([](const FName& A, const FName& B) { return A.LexicalLess(B); });
+		for (const FName& Name : Names)
+		{
+			if (const FCozyTutorialRow* Row = TutorialTable->FindRow<FCozyTutorialRow>(Name, TEXT("Tutorial"), false))
+			{
+				Steps.Add(Row);
+			}
+		}
+	}
+	return Steps;
+}
+
+void UCozyEstateSubsystem::SetTutorialDone(bool bDone)
+{
+	if (State.bTutorialDone == bDone)
+	{
+		return;
+	}
+	State.bTutorialDone = bDone;
+	RequestSave(TEXT("안내 완료"));
+}
+
+int32 UCozyEstateSubsystem::GetMaxFacilityLevel(FName DefinitionId) const
+{
+	int32 MaxLevel = 1;
+	if (GrowthTable)
+	{
+		GrowthTable->ForeachRow<FCozyGrowthRow>(TEXT("MaxLevel"), [&](const FName& Key, const FCozyGrowthRow& Row)
+		{
+			if (Row.TargetFacilityId == DefinitionId)
+			{
+				MaxLevel = FMath::Max(MaxLevel, Row.FromLevel + 1);
+			}
+		});
+	}
+	return MaxLevel;
+}
+
+int32 UCozyEstateSubsystem::GetMaxOfflineOutput(FName DefinitionId) const
+{
+	const FCozyFacilityRow* Def = GetFacilityDef(DefinitionId);
+	if (!Def || Config.OfflineMaxSeconds <= 0.f)
+	{
+		return 0;
+	}
+	// 최대 속도 = 성장 최대 단계 배율 (관리 시설이 정해진 시설은 관리 시설의 최대 단계 · D39) × 꾸미기 최대 보너스
+	double Growth = 1.0 + Def->SpeedBonusPerLevel * (GetMaxFacilityLevel(DefinitionId) - 1);
+	if (!Def->ManagerFacilityId.IsNone())
+	{
+		const FCozyFacilityRow* Manager = GetFacilityDef(Def->ManagerFacilityId);
+		Growth = Manager ? 1.0 + Manager->SpeedBonusPerLevel * (GetMaxFacilityLevel(Def->ManagerFacilityId) - 1) : 1.0;
+	}
+	const double Speed = Growth * (1.0 + FMath::Max(0.f, Config.DecorBonusMax));
+	auto Output = [this, Speed](float Seconds, int32 Amount) -> int32
+	{
+		// 작은 소수 오차로 1개 덜 세지 않게 아주 작은 여유를 둠
+		return Seconds > 0.f ? FMath::FloorToInt32(Config.OfflineMaxSeconds * Speed / Seconds + UE_KINDA_SMALL_NUMBER) * FMath::Max(0, Amount) : 0;
+	};
+	int32 Best = 0;
+	if (Def->Functions.Contains(ECozyFacilityFunction::Production))
+	{
+		for (const FName& CropId : Def->ProductionItems)
+		{
+			if (const FCozyCropRow* Crop = GetCropDef(CropId))
+			{
+				Best = FMath::Max(Best, Output(Crop->ProductionSeconds, Crop->ProducedAmount));
+			}
+		}
+	}
+	if (Def->Functions.Contains(ECozyFacilityFunction::Processing) && RecipeTable)
+	{
+		RecipeTable->ForeachRow<FCozyRecipeRow>(TEXT("MaxOffline"), [&](const FName& Key, const FCozyRecipeRow& Row)
+		{
+			if (Row.FacilityId == DefinitionId && !Row.bTestOnly)
+			{
+				Best = FMath::Max(Best, Output(Row.Seconds, Row.OutputAmount));
+			}
+		});
+	}
+	return Best;
+}
+
+void UCozyEstateSubsystem::FindUnusableMaterials(TArray<FName>& OutDeadEnd, TArray<FName>& OutUnused) const
+{
+	OutDeadEnd.Reset();
+	OutUnused.Reset();
+	if (!ItemTable)
+	{
+		return;
+	}
+	TSet<FName> Produced, Used;
+	// 만드는 곳: 데모에서 고를 수 있는 작물(처음부터 열림 · 해금 단계 있음) · 시험용이 아닌 레시피 · 시작 재료 · 보상
+	if (FacilityTable)
+	{
+		FacilityTable->ForeachRow<FCozyFacilityRow>(TEXT("Usage"), [&](const FName& Key, const FCozyFacilityRow& Row)
+		{
+			for (const FName& CropId : Row.ProductionItems)
+			{
+				const FCozyCropRow* Crop = GetCropDef(CropId);
+				if (Crop && (Crop->bStartUnlocked || HasCropUnlockPath(CropId)))
+				{
+					Produced.Add(Crop->ProducedItem);
+				}
+			}
+		});
+	}
+	if (RecipeTable)
+	{
+		RecipeTable->ForeachRow<FCozyRecipeRow>(TEXT("Usage"), [&](const FName& Key, const FCozyRecipeRow& Row)
+		{
+			if (Row.bTestOnly)
+			{
+				return;
+			}
+			Produced.Add(Row.OutputItem);
+			for (const TPair<FName, int32>& Input : Row.Inputs)
+			{
+				Used.Add(Input.Key);
+			}
+		});
+	}
+	if (StartResourceTable)
+	{
+		StartResourceTable->ForeachRow<FCozyStartResourceRow>(TEXT("Usage"), [&](const FName& Key, const FCozyStartResourceRow& Row)
+		{
+			if (Row.Amount > 0)
+			{
+				Produced.Add(Row.ItemId);
+			}
+		});
+	}
+	if (RewardTable)
+	{
+		RewardTable->ForeachRow<FCozyRewardRow>(TEXT("Usage"), [&](const FName& Key, const FCozyRewardRow& Row) { Produced.Add(Row.ItemId); });
+	}
+	// 쓰는 곳: 레시피 재료(위) · 업그레이드 비용 · 장식 가격
+	if (GrowthTable)
+	{
+		GrowthTable->ForeachRow<FCozyGrowthRow>(TEXT("Usage"), [&](const FName& Key, const FCozyGrowthRow& Row)
+		{
+			for (const TPair<FName, int32>& Cost : Row.StartCost)
+			{
+				Used.Add(Cost.Key);
+			}
+		});
+	}
+	if (DecorationTable)
+	{
+		DecorationTable->ForeachRow<FCozyDecorationRow>(TEXT("Usage"), [&](const FName& Key, const FCozyDecorationRow& Row)
+		{
+			for (const TPair<FName, int32>& Cost : Row.Cost)
+			{
+				Used.Add(Cost.Key);
+			}
+		});
+	}
+	ItemTable->ForeachRow<FCozyItemRow>(TEXT("Usage"), [&](const FName& Key, const FCozyItemRow& Row)
+	{
+		if (Row.Category != ECozyItemCategory::Material || Used.Contains(Key) || Row.SellPrice > 0)
+		{
+			return;
+		}
+		(Produced.Contains(Key) ? OutDeadEnd : OutUnused).Add(Key);
+	});
 }
 
 void UCozyEstateSubsystem::StepGrowth()
@@ -3461,7 +3879,8 @@ bool UCozyEstateSubsystem::IsCropUnlocked(FName CropId) const
 	{
 		GrowthTable->ForeachRow<FCozyGrowthRow>(TEXT("Unlock"), [&](const FName& Key, const FCozyGrowthRow& Row)
 		{
-			if (!bUnlocked && Row.UnlockCrops.Contains(CropId) && GetHighestLevelOf(Row.TargetFacilityId) > Row.FromLevel)
+			// 해금은 진행 기록이라 그 시설을 보관해도 유지
+			if (!bUnlocked && Row.UnlockCrops.Contains(CropId) && GetHighestLevelOf(Row.TargetFacilityId, true) > Row.FromLevel)
 			{
 				bUnlocked = true;
 			}
@@ -3470,9 +3889,42 @@ bool UCozyEstateSubsystem::IsCropUnlocked(FName CropId) const
 	return bUnlocked;
 }
 
+bool UCozyEstateSubsystem::HasCropUnlockPath(FName CropId) const
+{
+	bool bFound = false;
+	if (GrowthTable)
+	{
+		GrowthTable->ForeachRow<FCozyGrowthRow>(TEXT("UnlockPath"), [&](const FName& Key, const FCozyGrowthRow& Row)
+		{
+			bFound |= Row.UnlockCrops.Contains(CropId);
+		});
+	}
+	return bFound;
+}
+
+TArray<FName> UCozyEstateSubsystem::GetCropChoices(const FGuid& FacilityId) const
+{
+	TArray<FName> Result;
+	const FCozyFacilityState* Facility = FindFacility(FacilityId);
+	const FCozyFacilityRow* Def = Facility ? GetFacilityDef(Facility->DefinitionId) : nullptr;
+	if (!Def || !Def->bProductionItemSelectable)
+	{
+		return Result;
+	}
+	for (const FName& CropId : Def->ProductionItems)
+	{
+		// 🙋 해금 단계가 없는 잠긴 작물(데모의 팥)은 목록에서 숨김 · 해금 단계가 있으면 '(잠김)'으로 보여 줌
+		if (GetCropDef(CropId) && (IsCropUnlocked(CropId) || HasCropUnlockPath(CropId) || Facility->SelectedCropId == CropId))
+		{
+			Result.Add(CropId);
+		}
+	}
+	return Result;
+}
+
 bool UCozyEstateSubsystem::IsFacilityUnlocked(FName DefinitionId) const
 {
-	if (GetHighestLevelOf(DefinitionId) > 0)
+	if (GetHighestLevelOf(DefinitionId, true) > 0)
 	{
 		return true;
 	}
@@ -3482,7 +3934,7 @@ bool UCozyEstateSubsystem::IsFacilityUnlocked(FName DefinitionId) const
 	{
 		GrowthTable->ForeachRow<FCozyGrowthRow>(TEXT("UnlockFacility"), [&](const FName& Key, const FCozyGrowthRow& Row)
 		{
-			if (!bUnlocked && Row.UnlockFacilities.Contains(DefinitionId) && GetHighestLevelOf(Row.TargetFacilityId) > Row.FromLevel)
+			if (!bUnlocked && Row.UnlockFacilities.Contains(DefinitionId) && GetHighestLevelOf(Row.TargetFacilityId, true) > Row.FromLevel)
 			{
 				bUnlocked = true;
 			}
@@ -3503,9 +3955,9 @@ FText UCozyEstateSubsystem::GetCropUnlockHint(FName CropId) const
 			{
 				bFound = true;
 				const FText Name = GetFacilityDefName(Row.TargetFacilityId);
-				Hint = GetHighestLevelOf(Row.TargetFacilityId) > 0
-					? FText::Format(LOCTEXT("CropLockedHint", "{0} Lv{1}에서 해금"), Name, FText::AsNumber(Row.FromLevel + 1))
-					: FText::Format(LOCTEXT("CropLockedNoFacility", "{0} Lv{1}에서 해금 ({0}이 아직 없습니다)"), Name, FText::AsNumber(Row.FromLevel + 1));
+				Hint = GetHighestLevelOf(Row.TargetFacilityId, true) > 0
+					? FText::Format(LOCTEXT("CropLockedHint", "{0} Lv.{1}에서 해금"), Name, FText::AsNumber(Row.FromLevel + 1))
+					: FText::Format(LOCTEXT("CropLockedNoFacility", "{0} Lv.{1}에서 해금 ({0}|hpp(이,가) 아직 없습니다)"), Name, FText::AsNumber(Row.FromLevel + 1));
 			}
 		});
 	}
@@ -3558,6 +4010,7 @@ bool UCozyEstateSubsystem::SelectCrop(const FGuid& FacilityId, FName CropId, FTe
 	OutMessage = FText::Format(LOCTEXT("CropChanged", "키우는 작물을 {0}|hpp(으로,로) 바꿨습니다"), Crop->DisplayName);
 	UE_LOG(LogCozyRealm, Log, TEXT("작물 변경: %s → %s"), *GetFacilityDisplayName(FacilityId).ToString(), *CropId.ToString());
 	NotifyChanged();
+	RequestSave(TEXT("작물 변경"));
 	return true;
 }
 
@@ -3647,10 +4100,7 @@ bool UCozyEstateSubsystem::BuyDecoration(FName DecorationId, FText& OutMessage)
 		Quote.Name, FText::FromString(Paid), FText::AsNumber(Quote.Points));
 	UE_LOG(LogCozyRealm, Log, TEXT("꾸미기 구매: %s (%s) · 보관함 %d개 · %s"), *Quote.Name.ToString(), *DecorationId.ToString(), Quote.Stored + 1, *Paid);
 	NotifyChanged(true);
-	if (bStarted)
-	{
-		SaveEstate(TEXT("꾸미기 구매"));
-	}
+	RequestSave(TEXT("꾸미기 구매"));
 	return true;
 }
 
@@ -3824,6 +4274,7 @@ void UCozyEstateSubsystem::DebugRestartNewGame()
 	BuildNewGameState();
 	SpawnFacilityActors();
 	StepAccumulator = 0.0;
+	LastProcessedUtc = FDateTime::UtcNow();
 	bNewGameSession = true;
 	SaveEstate(TEXT("새 게임"));
 	NotifyChanged();

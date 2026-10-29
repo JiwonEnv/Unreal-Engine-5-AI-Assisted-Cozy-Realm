@@ -1,5 +1,6 @@
-﻿---,Goal,TargetFacility,Title,Body,Note
-Step1,AssignField,Field,밭에 오니비 배치,밭을 누르고 '주민'에서 오니비를 배치하세요. 주민이 있어야 밭이 일합니다.,🙋 순서 배치→수확→가공→판매 (2026-10-22 사용자 결정) / 🤖 문구 Claude 제안
-Step2,CollectField,Field,밀 수확,밭 위에 밀 배지가 뜨면 눌러서 창고로 옮기세요. (Space = 전부 수확),🤖 문구 Claude 제안
-Step3,StartProcessing,Mill,밀가루 만들기,제분소를 누르고 '가공'에서 밀가루 제작을 시작하세요. 제분소에도 오니비가 있어야 합니다.,🤖 문구 Claude 제안
-Step4,Sell,Shop,팔아서 골드 얻기,판매소를 누르고 '판매'에서 밀가루를 팔아 보세요. 제분소 위 밀가루 배지를 먼저 눌러 창고로 옮겨야 합니다.,🤖 문구 Claude 제안
+﻿---,Goal,TargetFacility,GoalItem,GoalAmount,RewardId,Title,Body,Note
+Step1,AssignField,Field,,0,,밭에 오니비 배치,밭을 누르고 '주민'에서 오니비를 배치하세요. 주민이 있어야 밭이 일합니다.,🙋 순서 배치→수확→가공→판매 (2026-10-22 사용자 결정) / 🤖 문구 Claude 제안 / 🤖 2026-10-30 목표 대상(TargetFacility)을 코드에서 이 표로 옮김
+Step2,CollectField,Field,Wheat,3,,밀 수확,"밭 위에 밀 배지가 뜨면 눌러서 창고로 옮기세요. 밀가루 1개에 밀 3개가 필요하니 3개 이상 모아 보세요. (Space = 전부 수확)",🤖 문구 Claude 제안 / 🙋 2026-10-30 출시 점검: 목표를 밀 1개 → 3개로 (3단계 밀가루 1회에 밀 3개 필요) · 창고 밀이 늘었고 GoalAmount개 이상이면 다음 단계
+Step3,StartProcessing,Mill,Flour,1,,밀가루 만들기,제분소를 누르고 '가공'에서 밀가루 제작을 시작하세요. 제분소에도 오니비가 있어야 합니다.,🤖 문구 Claude 제안 / 🤖 TargetFacility에서 가공이 시작됐거나 GoalItem이 GoalAmount개 이상 늘면 다음 단계
+Step4,Sell,Shop,Gold,1,,팔아서 골드 얻기,판매소를 누르고 '판매'에서 밀가루를 팔아 보세요. 제분소 위 밀가루 배지를 먼저 눌러 창고로 옮겨야 합니다.,🤖 문구 Claude 제안 / 🤖 GoalItem(골드)이 GoalAmount 이상 늘면 다음 단계
+Step5,Speedup,Hushinso,TimeTalisman,1,Tutorial_FirstSpeedup,신사 업그레이드와 시간 단축,"후신소를 누르고 신사 업그레이드를 시작한 뒤, 진행 중인 업그레이드에 시간 부적을 써서 시간을 줄여 보세요. 첫 체험용 시간 부적 1장을 드렸습니다. (신사 업그레이드 재료는 후신소 창에서 확인)",🙋 2026-10-30 출시 점검: 5단계 '신사 업그레이드 + 시간 부적으로 첫 단축 체험' 추가 · 이 단계에 들어갈 때 RewardId 보상(튜토리얼 부적 1장)을 한 번만 지급 / 🤖 문구 Claude 제안 / 🤖 GoalItem(시간 부적)을 GoalAmount장 이상 쓰면 끝
