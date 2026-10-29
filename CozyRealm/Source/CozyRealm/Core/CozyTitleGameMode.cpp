@@ -54,6 +54,7 @@ void ACozyTitlePlayerController::BeginPlay()
 	{
 		Settings->ApplySavedAudio(this);
 		Settings->ApplyWindowState(this);
+		Settings->PlayLevelMusic(this, true);
 	}
 
 	Title = CreateWidget<UCozyTitleWidget>(this, UCozyTitleWidget::StaticClass());

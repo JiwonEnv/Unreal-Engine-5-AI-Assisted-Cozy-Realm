@@ -5,6 +5,7 @@
 #include "Tickable.h"
 #include "GenericPlatform/GenericWindow.h"
 #include "UI/Kit/CozyUiTypes.h"
+#include "Data/CozyRealmDataTypes.h"
 #include "CozySettingsSubsystem.generated.h"
 
 class APlayerController;
@@ -59,6 +60,11 @@ public:
 	/** 저장된 음량을 지금 월드에 적용 (게임 시작 · 레벨 시작 때) */
 	void ApplySavedAudio(const UObject* WorldContext);
 
+	/** 레벨 배경음 재생 (Cozy Audio의 Estate Music · Title Music · 비어 있으면 무음 · 레벨이 바뀌면 함께 멈춤) */
+	void PlayLevelMusic(const UObject* WorldContext, bool bTitle);
+	/** 영지 일 알림 소리 (Cozy Audio의 Event Sounds · 없으면 무음) */
+	void PlayEventSound(const UObject* WorldContext, ECozyEstateEventKind Kind) const;
+
 	/** 작은 창 크기 (게임 화면 · 화면 구석에 붙음) */
 	static constexpr int32 CompactWidth = 640;
 	static constexpr int32 CompactHeight = 360;
@@ -70,7 +76,18 @@ public:
 	// FTickableGameObject
 	virtual void Tick(float DeltaTime) override;
 	virtual TStatId GetStatId() const override { RETURN_QUICK_DECLARE_CYCLE_STAT(UCozySettingsSubsystem, STATGROUP_Tickables); }
-	virtual bool IsTickable() const override { return bConfirmActive || CompactMoveFrames > 0 || MaximizeFrames > 0 || WindowStateFrames > 0 || CompactRequestFrames > 0; }
+	/** 실행 파일(에디터 밖)에서는 늘 돌아 창이 뒤에 있는지·작은 창인지 보고 프레임을 낮춤 (UpdateFrameThrottle) */
+	virtual bool IsTickable() const override { return !GIsEditor || bConfirmActive || CompactMoveFrames > 0 || MaximizeFrames > 0 || WindowStateFrames > 0 || CompactRequestFrames > 0; }
+
+	/**
+	 *  창이 뒤에 있거나 최소화되면 · 작은 창이면 최대 프레임을 낮춘다 (값은 Cozy Performance · 플레이어가 고른 값보다 높이지 않음).
+	 *  돌아오면 플레이어가 고른 최대 프레임으로 되돌림 · 순수 계산은 ComputeThrottledFps (자동 시험)
+	 */
+	void UpdateFrameThrottle();
+	/** 고른 최대 프레임(0 = 제한 없음)에 상황별 상한을 씌운 값 · 상한 0은 '낮추지 않음' */
+	static int32 ComputeThrottledFps(int32 UserLimit, bool bForeground, bool bCompactMode, int32 BackgroundLimit, int32 CompactLimit);
+	/** 그래픽 품질 이름 (0 낮음 · 1 중간 · 2 높음 · 3 최고 · 그 밖 = 사용자 지정) */
+	static FText QualityName(int32 Quality);
 	virtual bool IsTickableWhenPaused() const override { return true; }
 	virtual ETickableTickType GetTickableTickType() const override { return IsTemplate() ? ETickableTickType::Never : ETickableTickType::Conditional; }
 
@@ -86,7 +103,9 @@ private:
 		bool bVSync = false;
 		int32 FrameLimit = 0;
 		bool bCompactTop = false;
-		bool operator==(const FDisplayChoice& O) const { return Mode == O.Mode && Resolution == O.Resolution && bVSync == O.bVSync && FrameLimit == O.FrameLimit && bCompactTop == O.bCompactTop; }
+		/** 그래픽 품질 (Scalability 전체 단계 0~3 · -1 = 항목별로 따로 바꾼 사용자 지정) */
+		int32 Quality = 3;
+		bool operator==(const FDisplayChoice& O) const { return Mode == O.Mode && Resolution == O.Resolution && bVSync == O.bVSync && FrameLimit == O.FrameLimit && bCompactTop == O.bCompactTop && Quality == O.Quality; }
 	};
 
 	TSharedPtr<class SWindow> GetGameWindow(const UWorld* World) const;
@@ -156,5 +175,7 @@ private:
 	FVector2D SavedPosition = FVector2D::ZeroVector;
 	/** 창 크기가 바뀐 뒤 위치를 맞출 남은 프레임 (해상도 변경은 한두 프레임 늦게 적용됨) */
 	int32 CompactMoveFrames = 0;
+	/** 지금 프레임 낮추기로 적용 중인 최대 프레임 (-1 = 낮추지 않음 · 플레이어 값 그대로) */
+	int32 ThrottleFps = -1;
 	bool bMoveToCorner = false;
 };
