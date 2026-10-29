@@ -2546,7 +2546,8 @@ TArray<FName> UCozyEstateSubsystem::GetFacilityRecipes(const FGuid& FacilityId) 
 	}
 	RecipeTable->ForeachRow<FCozyRecipeRow>(TEXT("Recipes"), [&](const FName& Key, const FCozyRecipeRow& Row)
 	{
-		if (Row.FacilityId == Facility->DefinitionId && (!Row.bTestOnly || bShowTestRecipes))
+		// 시험용 레시피는 디버그 도구를 쓸 수 있는 실행에서 '테스트 레시피 보이기'를 켰을 때만 (출시·일반 실행에서는 항상 숨김)
+		if (Row.FacilityId == Facility->DefinitionId && (!Row.bTestOnly || (bShowTestRecipes && CozyDebug::IsEnabled())))
 		{
 			Result.Add(Key);
 		}
@@ -2572,7 +2573,9 @@ FCozyRecipeQuote UCozyEstateSubsystem::GetRecipeQuote(const FGuid& FacilityId, F
 	const FCozyFacilityState* Facility = FindFacility(FacilityId);
 	const FCozyFacilityRow* Def = Facility ? GetFacilityDef(Facility->DefinitionId) : nullptr;
 	const FCozyRecipeRow* Recipe = GetRecipeDef(RecipeId);
-	if (!Def || !Recipe || Recipe->FacilityId != Facility->DefinitionId || !Def->Functions.Contains(ECozyFacilityFunction::Processing))
+	// 시험용 레시피는 디버그가 꺼진 실행에서는 목록뿐 아니라 시작 요청도 받지 않음
+	if (!Def || !Recipe || Recipe->FacilityId != Facility->DefinitionId || !Def->Functions.Contains(ECozyFacilityFunction::Processing)
+		|| (Recipe->bTestOnly && !CozyDebug::IsEnabled()))
 	{
 		Quote.BlockReason = LOCTEXT("QuoteInvalid", "이 시설에서 만들 수 없는 레시피입니다");
 		return Quote;

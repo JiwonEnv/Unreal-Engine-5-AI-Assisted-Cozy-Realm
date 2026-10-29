@@ -185,29 +185,34 @@ void UCozyHudWidget::BuildLayout()
 	WindowOverlay->SetContent(WindowScreenSize);
 	WindowOverlay->SetVisibility(ESlateVisibility::Collapsed);
 
-	// 디버그 메뉴 (F1)
-	DebugPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("DebugPanel"));
-	DebugPanel->SetBrushColor(CozyHud::PanelColor);
-	DebugPanel->SetPadding(FMargin(12.f));
-	DebugContent = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("DebugContent"));
-	// 길어도 화면 안에 들어가게 높이 상한(매 프레임 화면 높이에 맞춤) + 스크롤
-	DebugSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("DebugSize"));
-	UScrollBox* DebugScroll = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("DebugScroll"));
-	DebugScroll->AddChild(DebugContent);
-	DebugSize->SetContent(DebugScroll);
-	DebugSize->SetMaxDesiredHeight(700.f);
-	DebugSize->SetWidthOverride(500.f);
-	DebugPanel->SetContent(DebugSize);
-	if (UCanvasPanelSlot* DebugSlot = RootCanvas->AddChildToCanvas(DebugPanel))
+	// 디버그 메뉴 (F1) · 출시 빌드에는 만들지 않음 · 개발 빌드도 에디터나 -CozyDebugCommands일 때만 (출시 품질 점검 2026-10-30)
+#if !UE_BUILD_SHIPPING
+	if (CozyDebug::IsEnabled())
 	{
-		DebugSlot->SetZOrder(6);
-		DebugSlot->SetAnchors(FAnchors(1.f, 0.f));
-		DebugSlot->SetAlignment(FVector2D(1.f, 0.f));
-		// 위쪽 HUD 버튼 줄 아래에서 시작 (56이면 큰 화면에서 제목 줄이 버튼에 가렸음)
-		DebugSlot->SetPosition(FVector2D(-12.f, CozyHud::HudTopSafe));
-		DebugSlot->SetAutoSize(true);
+		DebugPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("DebugPanel"));
+		DebugPanel->SetBrushColor(CozyHud::PanelColor);
+		DebugPanel->SetPadding(FMargin(12.f));
+		DebugContent = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("DebugContent"));
+		// 길어도 화면 안에 들어가게 높이 상한(매 프레임 화면 높이에 맞춤) + 스크롤
+		DebugSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("DebugSize"));
+		UScrollBox* DebugScroll = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("DebugScroll"));
+		DebugScroll->AddChild(DebugContent);
+		DebugSize->SetContent(DebugScroll);
+		DebugSize->SetMaxDesiredHeight(700.f);
+		DebugSize->SetWidthOverride(500.f);
+		DebugPanel->SetContent(DebugSize);
+		if (UCanvasPanelSlot* DebugSlot = RootCanvas->AddChildToCanvas(DebugPanel))
+		{
+			DebugSlot->SetZOrder(6);
+			DebugSlot->SetAnchors(FAnchors(1.f, 0.f));
+			DebugSlot->SetAlignment(FVector2D(1.f, 0.f));
+			// 위쪽 HUD 버튼 줄 아래에서 시작 (56이면 큰 화면에서 제목 줄이 버튼에 가렸음)
+			DebugSlot->SetPosition(FVector2D(-12.f, CozyHud::HudTopSafe));
+			DebugSlot->SetAutoSize(true);
+		}
+		DebugPanel->SetVisibility(ESlateVisibility::Collapsed);
 	}
-	DebugPanel->SetVisibility(ESlateVisibility::Collapsed);
+#endif
 
 	// HUD 화면 연결이 빠졌으면 알림 (알림 글자를 만든 뒤에)
 	if (!HudScreen)
@@ -260,7 +265,7 @@ void UCozyHudWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		}
 	}
 
-	if (DebugSize)
+	if (DebugSize && DebugPanel)
 	{
 		// HUD 아래부터 화면 끝 12px 전까지 (패널 안쪽 위아래 여백 포함)
 		const float DebugMax = FMath::Max(240.f, MyGeometry.GetLocalSize().Y - CozyHud::HudTopSafe - 12.f - DebugPanel->GetPadding().GetTotalSpaceAlong<Orient_Vertical>());
@@ -1619,6 +1624,15 @@ void UCozyHudWidget::UpdateTutorial(float DeltaTime)
 
 void UCozyHudWidget::ToggleDebugPanel()
 {
+#if UE_BUILD_SHIPPING
+	bDebugVisible = false;
+	return;
+#else
+	// 디버그 도구를 쓸 수 없는 실행(일반 패키지)에서는 열지 않음 · 닫기는 언제나 가능
+	if (!bDebugVisible && (!CozyDebug::IsEnabled() || !DebugPanel))
+	{
+		return;
+	}
 	bDebugVisible = !bDebugVisible;
 	if (DebugPanel)
 	{
@@ -1628,12 +1642,14 @@ void UCozyHudWidget::ToggleDebugPanel()
 	{
 		RefreshDebugPanel();
 	}
+#endif
 }
 
 void UCozyHudWidget::RefreshDebugPanel()
 {
+#if !UE_BUILD_SHIPPING
 	UCozyEstateSubsystem* Estate = GetEstate();
-	if (!DebugContent || !Estate)
+	if (!DebugContent || !Estate || !CozyDebug::IsEnabled())
 	{
 		return;
 	}
@@ -2025,6 +2041,7 @@ void UCozyHudWidget::RefreshDebugPanel()
 	});
 
 	ActionSink = nullptr;
+#endif
 }
 
 #undef LOCTEXT_NAMESPACE

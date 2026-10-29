@@ -305,6 +305,11 @@ TArray<FCozyUiElementEntry> UCozyUiScreen::GetElementsForArea(FName AreaId) cons
 		{
 			if (Each.Area == AreaId && IsElementShown(Each.Id))
 			{
+				// 디버그 창 버튼은 디버그 도구를 쓸 수 있을 때만 (출시·일반 실행에서는 영역에 넣지 않음)
+				if (Each.Action == ECozyUiAction::ToggleDebug && !IsDesignTime() && !CozyDebug::IsEnabled())
+				{
+					continue;
+				}
 				// 목록과 상세 영역은 동시에 보여 주지 않는다. 편집 에셋의 배치는 그대로 유지한다.
 				const bool bDetail = SelectedUpgradeFacility.IsValid();
 				if ((Each.ListSource == ECozyUiListSource::UpgradeFacilities && Each.ValueParam == TEXT("Overview") && bDetail)

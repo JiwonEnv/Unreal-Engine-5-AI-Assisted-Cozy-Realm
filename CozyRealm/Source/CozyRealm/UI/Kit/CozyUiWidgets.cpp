@@ -1,5 +1,6 @@
 ﻿#include "UI/Kit/CozyUiWidgets.h"
 #include "UI/Kit/CozyUiScreen.h"
+#include "CozyRealm.h"
 #include "UI/Kit/CozyUiTheme.h"
 #include "Settings/CozyGameUserSettings.h"
 #include "Components/Button.h"
@@ -470,7 +471,9 @@ void UCozyUiElementWidget::ApplyCozyTheme(const UCozyUiScreen& Screen)
 	}
 	// 요소 자신은 마우스를 통과시키고, 안의 Button만 클릭을 받는다
 	// 작은 창 모드 규칙은 디자이너에 놓은 요소(자유 배치)에도 적용 (영역이 만든 요소는 영역에서 이미 걸러짐)
-	const bool bShown = Entry.bVisible && (bFromArea || Screen.IsElementShown(Entry.Id));
+	// 디버그 창 버튼은 디버그 도구를 쓸 수 있을 때만 (출시·일반 실행에서는 숨김)
+	const bool bDebugAllowed = Entry.Action != ECozyUiAction::ToggleDebug || IsDesignTime() || CozyDebug::IsEnabled();
+	const bool bShown = Entry.bVisible && bDebugAllowed && (bFromArea || Screen.IsElementShown(Entry.Id));
 	SetVisibility(bShown ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 }
 
