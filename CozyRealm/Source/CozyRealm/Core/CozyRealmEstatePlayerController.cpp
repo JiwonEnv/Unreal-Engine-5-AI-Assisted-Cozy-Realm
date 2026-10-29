@@ -234,6 +234,12 @@ void ACozyRealmEstatePlayerController::PlayerTick(float DeltaTime)
 		ClearSelection();
 		Hud->ToggleStorageWindow();
 	}
+	// 🤖 K: 꾸미기 상점 (4주차 기능 2 · HUD '꾸미기' 버튼과 같음)
+	if (Hud && !bCompact && WasInputKeyJustPressed(EKeys::K))
+	{
+		ClearSelection();
+		Hud->ToggleDecorShopWindow();
+	}
 
 	// 카메라: 휠 줌 · 휠 버튼 드래그 회전 (창이 열려 있으면 창 스크롤이 우선)
 	if (ACozyRealmCameraPawn* CameraPawn = Cast<ACozyRealmCameraPawn>(GetPawn()))

@@ -480,6 +480,16 @@ void UCozyHudWidget::ToggleStorageWindow()
 	OpenWindow(ECozyWindowKind::Storage, FGuid());
 }
 
+void UCozyHudWidget::ToggleDecorShopWindow()
+{
+	if (WindowKind == ECozyWindowKind::DecorShop)
+	{
+		CloseWindow();
+		return;
+	}
+	OpenWindow(ECozyWindowKind::DecorShop, FGuid());
+}
+
 void UCozyHudWidget::ShowPendingOfflineReport()
 {
 	UCozyEstateSubsystem* Estate = GetEstate();
@@ -1166,6 +1176,7 @@ FName UCozyHudWidget::GetWindowName(ECozyWindowKind Kind)
 	case ECozyWindowKind::OfflineReport: return TEXT("OfflineReport");
 	case ECozyWindowKind::Shrine: return TEXT("Shrine");
 	case ECozyWindowKind::Settings: return TEXT("Settings");
+	case ECozyWindowKind::DecorShop: return TEXT("DecorShop");
 	default: return NAME_None;
 	}
 }
@@ -1748,6 +1759,7 @@ void UCozyHudWidget::RefreshDebugPanel()
 	Row();
 	AddRes(LOCTEXT("AddTalisman", "시간 부적 +5"), TEXT("TimeTalisman"), 5);
 	AddRes(LOCTEXT("AddRice", "쌀 +10 (테스트 레시피용)"), TEXT("Rice"), 10);
+	AddRes(LOCTEXT("AddMindShard", "심상 조각 +5"), TEXT("MindShard"), 5);
 	EndRow();
 	Row();
 	SetRes(LOCTEXT("SetWheat10", "창고 밀 10개로"), TEXT("Wheat"), 10);
@@ -1762,6 +1774,26 @@ void UCozyHudWidget::RefreshDebugPanel()
 	SetRes(LOCTEXT("SetFlour98", "창고 밀가루 98개로"), TEXT("Flour"), 98);
 	SetRes(LOCTEXT("SetFlour100", "밀가루 100 (가득)"), TEXT("Flour"), 100);
 	EndRow();
+
+	// 꾸미기 점수 (4주차 기능 2)
+	{
+		const FCozyDecorationScoreView Decor = Estate->GetDecorationScoreView();
+		Section(FText::Format(LOCTEXT("DbgDecor", "꾸미기 — 점수 {0}점 · 생산 +{1}%"), FText::AsNumber(Decor.Score), FText::AsNumber(FMath::RoundToInt(Decor.Bonus * 100.f))),
+			LOCTEXT("DbgDecorHelp", "영지에 놓인 장식 점수 합계와 생산 보너스입니다 (보관함 장식은 점수 없음). 콘솔 명령 Cozy.DecorScore도 같은 내용을 로그에 남깁니다."));
+		Row();
+		Btn(LOCTEXT("DbgDecorPrint", "꾸미기 점수 로그로"), LOCTEXT("DbgDecorPrintTip", "점수 · 보너스 · 다음 단계까지 · 장식 목록을 출력 로그([꾸미기])와 알림으로 보여 줍니다"), [this]()
+		{
+			if (UCozyEstateSubsystem* EstateNow = GetEstate())
+			{
+				ShowToast(FText::FromString(EstateNow->DebugDescribeDecorations()));
+			}
+		});
+		Btn(LOCTEXT("DbgDecorShop", "꾸미기 상점 열기"), LOCTEXT("DbgDecorShopTip", "꾸미기 상점 창을 엽니다 (HUD의 '꾸미기' 버튼과 같음)"), [this]()
+		{
+			OpenWindow(ECozyWindowKind::DecorShop, FGuid());
+		});
+		EndRow();
+	}
 
 	// ③ 시험용 시설 · 레시피 · 보상
 	Section(LOCTEXT("DbgTest", "③ 시험용 시설 · 레시피 · 보상 (저장 데이터가 바뀜)"),
@@ -1958,6 +1990,7 @@ void UCozyHudWidget::RefreshDebugPanel()
 			{ ECozyWindowKind::FieldManagement, LOCTEXT("PvWinField", "밭 관리") },
 			{ ECozyWindowKind::Nagaya, LOCTEXT("PvWinNagaya", "나가야") },
 			{ ECozyWindowKind::OfflineReport, LOCTEXT("PvWinOffline", "방치 보상") },
+			{ ECozyWindowKind::DecorShop, LOCTEXT("PvWinDecor", "꾸미기 상점") },
 		};
 		int32 Count = 0;
 		for (const FPreviewWindow& Each : Windows)

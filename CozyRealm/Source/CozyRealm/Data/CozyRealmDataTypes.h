@@ -366,6 +366,49 @@ struct FCozyRewardRow : public FTableRowBase
 	FString Note;
 };
 
+/** 꾸미기 장식 (Decorations.csv · 1행 = 1종 · 상점에서 사서 보관함 → 배치 모드로 놓음) */
+USTRUCT(BlueprintType)
+struct FCozyDecorationRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	/** 화면에 보이는 이름 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Decoration")
+	FText DisplayName;
+
+	/** 차지하는 칸 수 (가로 X · 세로 Y · 1×1~2×2) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Decoration")
+	FIntPoint Size = FIntPoint(1, 1);
+
+	/** 임시 모습 도형 (엔진 기본 도형: Cube · Sphere · Cylinder · Cone) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Decoration")
+	FName GreyboxShape = TEXT("Cube");
+
+	/** 임시 모습 높이 (cm) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Decoration")
+	float GreyboxHeight = 50.f;
+
+	/** 임시 모습 색 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Decoration")
+	FLinearColor GreyboxColor = FLinearColor(0.6f, 0.6f, 0.6f);
+
+	/** 영지에 놓여 있을 때 더해지는 꾸미기 점수 (🙋 1~5점 · 보관함에 있으면 0) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Decoration")
+	int32 Points = 1;
+
+	/** 1개 가격 (재화 ID → 개수 · 골드 또는 심상 조각) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Decoration")
+	TMap<FName, int32> Cost;
+
+	/** 주인공이 위로 걸어갈 수 있는가 (돌길처럼 낮은 장식) · 시설·장식과는 여전히 칸이 겹칠 수 없음 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Decoration")
+	bool bWalkable = false;
+
+	/** 🙋/🤖/❓ 표시와 메모 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Note")
+	FString Note;
+};
+
 /** 영지 공통 설정 (Default 1행) */
 USTRUCT(BlueprintType)
 struct FCozyEstateConfigRow : public FTableRowBase
@@ -427,6 +470,18 @@ struct FCozyEstateConfigRow : public FTableRowBase
 	/** 방치 보상 심상 조각: 이 시간마다 1개 (🤖 1시간 · 0이면 없음) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Offline")
 	float OfflineMindShardEverySeconds = 3600.f;
+
+	/** 꾸미기 점수: 이 점수마다 생산 속도 보너스 한 단계 (🙋 50점 · 0이면 보너스 없음) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Decoration")
+	int32 DecorPointsPerStep = 50;
+
+	/** 꾸미기 보너스 한 단계의 생산·가공 속도 증가율 (🙋 0.05 = +5%) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Decoration")
+	float DecorBonusPerStep = 0.05f;
+
+	/** 꾸미기 보너스 최대치 (🙋 0.25 = +25%) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Decoration")
+	float DecorBonusMax = 0.25f;
 
 	/** 🙋/🤖/❓ 표시와 메모 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Note")

@@ -435,6 +435,8 @@ FCozyUiValueResult UCozyUiScreen::GetPreviewValue(ECozyUiValue Value) const
 	case ECozyUiValue::CropOption: R.Text = LOCTEXT("PvCrop", "밀"); break;
 	case ECozyUiValue::SpeedCount: R.Text = LOCTEXT("PvSpeedCount", "1장 (보유 3장)"); break;
 	case ECozyUiValue::StoredLabel: R.Text = LOCTEXT("PvStored", "제분소 Lv2"); break;
+	case ECozyUiValue::DecorScore: R.Current = 62.f; R.Max = 100.f; R.Text = LOCTEXT("PvDecorScore", "꾸미기 점수 62점 · 생산 +5% · 다음 단계까지 38점"); R.StateColor = ECozyUiColor::Point; break;
+	case ECozyUiValue::DecorLine: R.Current = 3.f; R.Text = LOCTEXT("PvDecorLine", "1×1 · 3점 · 골드 30 · 보유 1 (놓음 1)"); R.StateColor = ECozyUiColor::InkMuted; break;
 	case ECozyUiValue::FacilityName: R.Text = LOCTEXT("PvFacName", "제분소  Lv.2 (예시)"); break;
 	case ECozyUiValue::UpgradeSlots: R.Current = PreviewState == ECozyUiPreviewState::Empty ? 0.f : 1.f; R.Max = 1.f; break;
 	case ECozyUiValue::StoredFacilities: R.Current = 1.f; R.Max = 0.f; break;
@@ -665,6 +667,12 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 				: View.GrowthSourceLevel > 0
 					? FText::Format(LOCTEXT("GrowthLine", "공통 관리 효과: 생산 속도 ×{0} ({1} Lv{2}) · 단계가 오르면 다음 주기부터 적용"), CozyUiScreenUtil::Multiplier(View.SpeedMultiplier), View.GrowthSourceName, FText::AsNumber(View.GrowthSourceLevel))
 					: FText::Format(LOCTEXT("GrowthLineNone", "공통 관리 효과: 기본 속도 ×{0} ({1}|hpp(이,가) 아직 없습니다)"), CozyUiScreenUtil::Multiplier(View.SpeedMultiplier), View.GrowthSourceName);
+			// 꾸미기 보너스가 있으면 위 배율에 포함되어 있음을 밝힘
+			const float DecorBonus = Estate->GetDecorationScoreView().Bonus;
+			if (!R.Text.IsEmpty() && DecorBonus > 0.f)
+			{
+				R.Text = FText::Format(LOCTEXT("GrowthLineDecor", "{0} · 꾸미기 +{1}% 포함"), R.Text, FText::AsNumber(FMath::RoundToInt(DecorBonus * 100.f)));
+			}
 		}
 		break;
 	case ECozyUiValue::CurrentCrop:
@@ -1096,6 +1104,13 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 	case ECozyUiValue::StoredLabel:
 		if (const FCozyFacilityState* Facility = FindFirst(Param))
 		{
+			// 꾸미기 장식은 레벨 대신 점수 (놓으면 더해짐)
+			if (const FCozyDecorationRow* Decoration = Estate->GetDecorationDef(Facility->DefinitionId))
+			{
+				R.Current = Decoration->Points;
+				R.Text = FText::Format(LOCTEXT("StoredDecor", "{0} · 꾸미기 {1}점"), Decoration->DisplayName, FText::AsNumber(Decoration->Points));
+				break;
+			}
 			R.Current = Facility->Level;
 			FString Label = FString::Printf(TEXT("%s Lv%d"), *Estate->GetFacilityDisplayName(Facility->InstanceId).ToString(), Facility->Level);
 			if (const FCozyCropRow* Crop = Facility->SelectedCropId.IsNone() ? nullptr : Estate->GetCropDef(Facility->SelectedCropId))
@@ -1105,6 +1120,39 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 			R.Text = FText::FromString(Label);
 		}
 		break;
+	case ECozyUiValue::DecorScore:
+	{
+		const FCozyDecorationScoreView View = Estate->GetDecorationScoreView();
+		R.Current = View.Score;
+		R.Max = View.bMaxed ? 0.f : View.Score + View.PointsToNext;
+		R.Text = View.bMaxed
+			? FText::Format(LOCTEXT("DecorScoreMax", "꾸미기 점수 {0}점 · 모든 생산 +{1}% (최대)"), FText::AsNumber(View.Score), FText::AsNumber(FMath::RoundToInt(View.Bonus * 100.f)))
+			: FText::Format(LOCTEXT("DecorScore", "꾸미기 점수 {0}점 · 모든 생산 +{1}% · 다음 단계(+{2}%)까지 {3}점"), FText::AsNumber(View.Score), FText::AsNumber(FMath::RoundToInt(View.Bonus * 100.f)),
+				FText::AsNumber(FMath::RoundToInt((View.Bonus + Estate->GetConfig().DecorBonusPerStep) * 100.f)), FText::AsNumber(View.PointsToNext));
+		R.StateColor = View.Bonus > 0.f ? ECozyUiColor::Ok : ECozyUiColor::InkMuted;
+		break;
+	}
+	case ECozyUiValue::DecorLine:
+	{
+		const FCozyDecorationQuote Quote = Estate->GetDecorationQuote(Param);
+		if (!Quote.bValid)
+		{
+			R.Text = Quote.BlockReason;
+			R.StateColor = ECozyUiColor::Locked;
+			break;
+		}
+		TArray<FText> Prices;
+		for (const FCozyDecorationQuote::FAmount& Cost : Quote.Costs)
+		{
+			Prices.Add(FText::Format(LOCTEXT("DecorPrice", "{0} {1}"), CozyUiScreenUtil::ItemName(Estate, Cost.ItemId), FText::AsNumber(Cost.Amount)));
+		}
+		R.Current = Quote.Points;
+		const FText Line = FText::Format(LOCTEXT("DecorLine", "{0}×{1} · {2}점 · {3} · 보유 {4} (놓음 {5})"), FText::AsNumber(Quote.Size.X), FText::AsNumber(Quote.Size.Y),
+			FText::AsNumber(Quote.Points), FText::FromString(CozyUiScreenUtil::JoinTexts(Prices, TEXT(" + "))), FText::AsNumber(Quote.Placed + Quote.Stored), FText::AsNumber(Quote.Placed));
+		R.Text = Quote.bCanBuy ? Line : FText::Format(LOCTEXT("DecorLineBlocked", "{0} · 살 수 없음: {1}"), Line, Quote.BlockReason);
+		R.StateColor = Quote.bCanBuy ? ECozyUiColor::InkMuted : ECozyUiColor::Warning;
+		break;
+	}
 	case ECozyUiValue::ProcReserved:
 	{
 		const FCozyFacilityState* Facility = FindFirst(Param);
@@ -1353,6 +1401,13 @@ TArray<FCozyUiListRow> UCozyUiScreen::GetRealListRows(ECozyUiListSource Source, 
 		}
 		break;
 	}
+	case ECozyUiListSource::DecorCatalog:
+		for (const FName& DecorationId : Estate->GetDecorationCatalog())
+		{
+			const FCozyDecorationRow* Decoration = Estate->GetDecorationDef(DecorationId);
+			Rows.Add({ DecorationId, Decoration ? Decoration->DisplayName : FText::FromName(DecorationId) });
+		}
+		break;
 	case ECozyUiListSource::StoredFacilities:
 		for (const FGuid& Id : Estate->GetStoredFacilities())
 		{
@@ -1425,6 +1480,8 @@ FText UCozyUiScreen::GetActionName(ECozyUiAction Action)
 	case ECozyUiAction::ToggleCompactTop: return LOCTEXT("ActCompactTop", "작은 창을 항상 위에 켜기·끄기 (적용을 눌러야 저장)");
 	case ECozyUiAction::ToggleCompactTopNow: return LOCTEXT("ActCompactTopNow", "작은 창 항상 위 켜기·끄기 (핀만 = 켬 · 핀에 X = 끔)");
 	case ECozyUiAction::RestartTutorial: return LOCTEXT("ActTutorial", "첫 실행 안내를 처음부터 다시 봅니다");
+	case ECozyUiAction::OpenDecorShop: return LOCTEXT("ActDecorShop", "꾸미기 상점 창");
+	case ECozyUiAction::BuyDecoration: return LOCTEXT("ActBuyDecor", "장식 사기 (보관함으로)");
 	case ECozyUiAction::StartUpgrade: return LOCTEXT("ActUpStart", "업그레이드 시작");
 	case ECozyUiAction::GoToFacility: return LOCTEXT("ActGoTo", "그 시설로 이동");
 	case ECozyUiAction::TakeOutStored: return LOCTEXT("ActTakeOut", "보관함에서 꺼내기");
@@ -1496,6 +1553,12 @@ bool UCozyUiScreen::CanRunAction(const FCozyUiElementEntry& Entry, FText& OutRea
 	}
 	case ECozyUiAction::SelectCrop:
 		return Estate->CanSelectCrop(ContextFacility, Entry.ActionParam, OutReason);
+	case ECozyUiAction::BuyDecoration:
+	{
+		const FCozyDecorationQuote Quote = Estate->GetDecorationQuote(Entry.ActionParam);
+		OutReason = Quote.BlockReason;
+		return Quote.bCanBuy;
+	}
 	case ECozyUiAction::AssignResident:
 	{
 		FString ResidentText, FacilityText;
@@ -1744,6 +1807,16 @@ void UCozyUiScreen::RunAction(const FCozyUiElementEntry& Entry)
 	case ECozyUiAction::ToggleDebug: Hud->ToggleDebugPanel(); break;
 	case ECozyUiAction::CloseWindow: Hud->CloseWindow(); break;
 	case ECozyUiAction::RestartTutorial: Hud->CloseWindow(); Hud->StartTutorial(); break;
+	case ECozyUiAction::OpenDecorShop: Hud->ToggleDecorShopWindow(); break;
+	case ECozyUiAction::BuyDecoration:
+	{
+		FText Message;
+		Estate->BuyDecoration(Entry.ActionParam, Message);
+		Hud->SetFeedbackText(Message);
+		Hud->ShowToast(Message);
+		Hud->RefreshWindowScreen();
+		break;
+	}
 	case ECozyUiAction::ConfirmOfflineReport: Estate->DismissOfflineReport(); Hud->CloseWindow(); break;
 	case ECozyUiAction::CollectWindow: Hud->CollectFromWindow(ContextFacility); break;
 	case ECozyUiAction::OpenNagayaForWindow: Hud->OpenWindow(ECozyWindowKind::Nagaya, FGuid(), ContextFacility); break;
