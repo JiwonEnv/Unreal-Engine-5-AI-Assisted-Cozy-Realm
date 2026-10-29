@@ -13,6 +13,26 @@ class ACozyFacilityActor;
 /** bStructural: 배치·재료처럼 구조가 바뀌면 true, 시간만 흐르면 false */
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnCozyEstateChanged, bool /*bStructural*/);
 
+/**
+ *  영지 일 알림 하나 (소리·떠오르는 숫자·강조 효과용 · 출시 수정 2차 2026-10-30).
+ *  플레이어 행동과 켜 둔 동안의 진행에서만 보냄 · 방치 정산(꺼 둔 동안·절전 복귀) 중에는 보내지 않음
+ */
+struct FCozyEstateEvent
+{
+	ECozyEstateEventKind Kind = ECozyEstateEventKind::Harvest;
+	/** 일이 일어난 시설 고유 ID (없으면 빈 ID · 예: 바닥 칠하기) */
+	FGuid FacilityId;
+	/** 시설 정의 ID */
+	FName DefinitionId;
+	/** 품목 (수확·가공 = 완료품 · 판매 = 받은 재화 · 구매 = 장식·바닥 ID) */
+	FName ItemId;
+	/** 수량 (옮긴 개수 · 받은 재화 · 칸 수) */
+	int32 Amount = 0;
+	/** 업그레이드 완료면 새 레벨 */
+	int32 Level = 0;
+};
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnCozyEstateEvent, const FCozyEstateEvent&);
+
 /** 밤 판정 디버그 덮어쓰기 */
 UENUM(BlueprintType)
 enum class ECozyNightOverride : uint8
@@ -157,6 +177,8 @@ struct FCozyUpgradeQuote
 	TArray<FCondition> Conditions;
 	/** 관리 시설이면 완료 후 모든 밭의 속도 배율 (0이면 해당 없음 · D39) */
 	float NextFieldSpeedMultiplier = 0.f;
+	/** 레벨 효과 안내 (예: '동시 가공 1 → 2개' · '들일 수 있는 주민 3 → 4명' · 출시 수정 2차) */
+	TArray<FText> EffectLines;
 	/** 시작할 수 없는 이유 (시작 가능하면 비어 있음) */
 	FText BlockReason;
 };
@@ -244,6 +266,21 @@ struct FCozyDecorationScoreView
 	/** 다음 보너스 단계까지 필요한 점수 (최대 보너스면 0) */
 	int32 PointsToNext = 0;
 	bool bMaxed = false;
+};
+
+/** 바닥 칠하기 견적 (꾸미기 상점 '바닥' 줄 · 칠하기 직전 확인) */
+struct FCozyFloorQuote
+{
+	bool bValid = false;
+	bool bCanPay = false;
+	FText Name;
+	ECozyFloorTool Tool = ECozyFloorTool::Brush;
+	int32 Style = 0;
+	int32 Cells = 0;
+	struct FAmount { FName ItemId; int32 Amount = 0; int32 Have = 0; };
+	/** Cells칸 비용 (재화 ID · 총 개수 · 지금 보유량) */
+	TArray<FAmount> Costs;
+	FText BlockReason;
 };
 
 /** 수령 결과 (UI가 메시지로 보여 줌) */
@@ -413,8 +450,25 @@ public:
 	bool HasGrantedReward(FName RewardId) const;
 	/** 보상을 한 번만 지급 (지급 기록은 상태에 남아 저장된다) · 이미 받았거나 없는 보상이면 false */
 	bool GrantOneTimeReward(FName RewardId, FText& OutMessage);
-	/** 동시에 진행할 수 있는 업그레이드 수 (후신소 데이터) */
+	/** 동시에 진행할 수 있는 업그레이드 수 (후신소 데이터 · UpgradeSlots + SlotBonusLevels 중 닿은 레벨 수) */
 	int32 GetUpgradeSlotCount() const;
+	/** 이 가공 시설의 동시 가공 칸 수 (ProcessingSlots + SlotBonusLevels 중 닿은 레벨 수 · 출시 수정 2차) */
+	int32 GetProcessingSlotCount(const FGuid& FacilityId) const;
+	/** 영지에 들일 수 있는 주민 수 (영지에 놓인 숙소 시설의 ResidentCapacity + 레벨당 증가 · 숙소가 없으면 0) */
+	int32 GetResidentCapacity() const;
+	/** 숙소 한 곳의 주민 한도 (레벨 기준 · 숙소가 아니면 0) */
+	static int32 ComputeResidentCapacity(const FCozyFacilityRow& Def, int32 Level);
+	/** SlotBonusLevels 중 Level 이하인 개수 (레벨로 늘어난 칸 수) */
+	static int32 CountSlotBonus(const FCozyFacilityRow& Def, int32 Level);
+
+	// --- 데모 끝 (신사 최대 레벨 · 출시 수정 2차) ---
+
+	/** 데모의 마지막 신사 레벨 (성장 표의 신사 최대 레벨 · 신사가 없으면 0) */
+	int32 GetDemoFinalShrineLevel() const;
+	/** 신사가 데모 마지막 레벨에 닿았고 아직 '데모는 여기까지' 안내를 보여 주지 않았는가 */
+	bool ShouldShowDemoEnd() const;
+	/** 안내를 보여 줬다고 기록 (영지 저장 상태에 남아 다시 띄우지 않음) */
+	void MarkDemoEndShown();
 	bool IsFacilityUpgrading(const FGuid& FacilityId) const;
 	/** 해금된 시설인가 (이미 놓여 있음 또는 해금 단계를 지남 · 건설 기능에서 사용 · 따로 저장하지 않음) */
 	bool IsFacilityUnlocked(FName DefinitionId) const;
@@ -467,6 +521,20 @@ public:
 	FCozyDecorationScoreView GetDecorationScoreView() const;
 	/** 점수 → 보너스 (🙋 PointsPerStep점마다 BonusPerStep · 최대 BonusMax) · 순수 계산이라 시험에서 바로 씀 */
 	static float ComputeDecorationBonus(int32 Score, int32 PointsPerStep, float BonusPerStep, float BonusMax);
+	// --- 바닥 꾸미기 (Floors.csv · 꾸미기 상점 '바닥' 묶음 · 칸당 비용 · 🙋 2026-10-30 상점에 합치기로 결정) ---
+
+	const FCozyFloorRow* GetFloorDef(FName FloorId) const;
+	/** 상점 '바닥' 목록 (Floors.csv 순서) */
+	TArray<FName> GetFloorCatalog() const;
+	/** 도구·종류 번호로 바닥 ID (없으면 NAME_None = 비용 없음) */
+	FName FindFloorId(ECozyFloorTool Tool, int32 Style) const;
+	/** Cells칸 칠하는 견적 (상태를 바꾸지 않음) */
+	FCozyFloorQuote GetFloorQuote(FName FloorId, int32 Cells) const;
+	/** Cells칸 비용을 확인 → 차감을 한 번에 · 부족하면 아무것도 바꾸지 않고 false (지우기는 부르지 않음 = 무료·환불 없음) */
+	bool PayFloorCost(FName FloorId, int32 Cells, FText& OutMessage);
+	/** 원(지면 붓)이 걸치는 칸 (영지 밖 칸 포함 · 칸당 비용 계산용) */
+	TArray<FIntPoint> GetCellsInCircle(const FVector& Center, float Radius) const;
+
 	/** 걸어서 지나갈 수 있는 시설·장식인가 (🤖 돌길처럼 bWalkable인 장식만) */
 	bool IsWalkableFacility(const FCozyFacilityState& Facility) const;
 	/**
@@ -513,6 +581,8 @@ public:
 	bool DebugInitDataOnly(FString& OutErrors);
 	/** 자동 시험용: 상태를 통째로 바꾼다 (액터·저장 없음 · 불러오기와 같은 정리 SanitizeLoadedState 적용) */
 	void DebugSetState(const FCozyEstateState& NewState);
+	/** 자동 시험용: 시설 레벨을 그대로 바꾼다 (데이터 상한 무시 · 불러오기 정리 없음 · 데모 밖 레벨 효과 시험) */
+	void DebugSetFacilityLevel(const FGuid& FacilityId, int32 Level);
 	/** 디버그: 꾸미기 점수·보너스·장식 목록을 로그와 한 줄 글로 */
 	FString DebugDescribeDecorations() const;
 
@@ -614,6 +684,11 @@ public:
 	/** 상태가 바뀔 때마다 알림 (UI 새로 고침용) */
 	FOnCozyEstateChanged OnEstateChanged;
 
+	/** 영지 일 알림 (수확·가공 완료·업그레이드 완료·판매·배치 확정·구매·주민 배치 · 방치 정산 중에는 보내지 않음) */
+	FOnCozyEstateEvent OnCozyEstateEvent;
+	/** 지금 알림을 보내지 않는 중인가 (방치 정산 등) */
+	bool IsEventSuppressed() const { return EventSuppressDepth > 0; }
+
 	// --- UTickableWorldSubsystem ---
 	virtual void Tick(float DeltaTime) override;
 	virtual TStatId GetStatId() const override;
@@ -705,6 +780,15 @@ private:
 	FCozyJobRecord* FindJobMutable(const FGuid& Id);
 
 	void NotifyChanged(bool bStructural = true);
+	/** 영지 일 알림 보내기 (방치 정산 중이면 보내지 않음) */
+	void BroadcastEstateEvent(ECozyEstateEventKind Kind, const FGuid& FacilityId, FName ItemId, int32 Amount, int32 Level = 0);
+	/** 0보다 크면 알림을 보내지 않음 (방치 정산 · 자체 검사) */
+	int32 EventSuppressDepth = 0;
+	/** 모아 둔 알림 (작업 진행 중에는 모았다가 끝난 뒤 한 번에 보냄 · 받는 쪽이 진행 중인 목록을 건드리지 않게) */
+	TArray<FCozyEstateEvent> PendingEvents;
+	void FlushEstateEvents();
+	/** 동시 가공 칸 수 (상태·정의로 · GetProcessingSlotCount 공통) */
+	int32 GetProcessingSlotCount(const FCozyFacilityState& Facility, const FCozyFacilityRow& Def) const;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UDataTable> FacilityTable;
@@ -735,6 +819,10 @@ private:
 	/** 꾸미기 장식 (Decorations.csv · 행마다 시설 정의도 함께 등록됨) */
 	UPROPERTY(Transient)
 	TObjectPtr<UDataTable> DecorationTable;
+
+	/** 바닥 꾸미기 (Floors.csv · 없으면 바닥 칠하기가 무료) */
+	UPROPERTY(Transient)
+	TObjectPtr<UDataTable> FloorTable;
 	/** 장식 행을 기능 없는 시설 정의로 시설 표에 더한다 (같은 ID가 이미 있으면 경고 후 건너뜀) */
 	void RegisterDecorationFacilities(FString& OutErrors);
 

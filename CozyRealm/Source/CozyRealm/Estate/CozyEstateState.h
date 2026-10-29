@@ -225,4 +225,8 @@ struct FCozyEstateState
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Estate")
 	double MindShardRewardSeconds = 0.0;
+
+	/** '데모는 여기까지' 안내를 보여 줬는가 (신사가 데모 마지막 레벨에 닿으면 한 번 · 출시 수정 2차 · 예전 저장은 false로 읽힘) */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Estate")
+	bool bDemoEndShown = false;
 };

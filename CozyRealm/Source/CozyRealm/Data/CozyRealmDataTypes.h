@@ -4,6 +4,8 @@
 #include "Engine/DataTable.h"
 #include "CozyRealmDataTypes.generated.h"
 
+class UStaticMesh;
+
 /**
  *  게임 데이터 표(CSV)의 행 구조.
  *  숫자는 코드가 아니라 Data/GameData/*.csv에만 둔다 (기획서 결정 카드).
@@ -28,6 +30,36 @@ enum class ECozyFacilityFunction : uint8
 	ShrineCore,
 	/** 관리 대상 생산 시설(밭) 전체의 공통 성장·작물 해금 (밭 관리 시설 · D37·D39) */
 	FieldManagement
+};
+
+/** 영지 일 알림 종류 (소리·화면 효과 연결 · 프로젝트 설정 Cozy Audio의 Event Sounds 키 · 출시 수정 2차 2026-10-30) */
+UENUM(BlueprintType)
+enum class ECozyEstateEventKind : uint8
+{
+	/** 수확·수령: 시설의 미수령분을 창고로 옮김 (품목 · 옮긴 수량) */
+	Harvest UMETA(DisplayName = "Harvest (수확·수령)"),
+	/** 가공 회차 완료: 완료품이 시설 미수령분에 쌓임 (품목 · 수량) */
+	ProcessingDone UMETA(DisplayName = "Processing Done (가공 완료)"),
+	/** 업그레이드 완료 (새 레벨) */
+	UpgradeDone UMETA(DisplayName = "Upgrade Done (업그레이드 완료)"),
+	/** 판매: 받은 재화 (품목 = 대금 재화 · 수량 = 받은 양) */
+	Sale UMETA(DisplayName = "Sale (판매)"),
+	/** 배치 모드에서 시설·장식 위치 확정 */
+	PlacementConfirmed UMETA(DisplayName = "Placement Confirmed (배치 확정)"),
+	/** 꾸미기 상점 구매 · 바닥 칠하기 비용 (품목 = 장식·바닥 ID · 수량 = 개수·칸 수) */
+	Purchase UMETA(DisplayName = "Purchase (구매)"),
+	/** 주민 배치 */
+	ResidentAssigned UMETA(DisplayName = "Resident Assigned (주민 배치)")
+};
+
+/** 바닥 꾸미기 도구 (Floors.csv · 꾸미기 상점 '바닥' 묶음) */
+UENUM(BlueprintType)
+enum class ECozyFloorTool : uint8
+{
+	/** 지면 붓: 드래그로 칠함 (Style 1~3 = 흙·돌·모래 · 0은 지우개 = 원래 풀) */
+	Brush,
+	/** 바닥 타일: 한 칸에 하나 (Style 0~2 = 나무·돌·풀) */
+	Tile
 };
 
 /** 재료·재화 구분 */
@@ -113,6 +145,57 @@ struct FCozyFacilityRow : public FTableRowBase
 	/** 미수령 생산물을 창고로 옮기는 버튼 이름 (예: 수확 · 수령) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Production")
 	FText CollectButtonLabel;
+
+	/**
+	 *  이 레벨에 닿을 때마다 동시 작업 칸 +1 (가공 칸 ProcessingSlots · 업그레이드 칸 UpgradeSlots 공통 · 출시 수정 2차).
+	 *  예: (5) = Lv1~4는 기본 칸, Lv5부터 +1 · 비우면 레벨과 무관
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Growth")
+	TArray<int32> SlotBonusLevels;
+
+	/** 주민 숙소(나가야): Lv1에 들일 수 있는 주민 수 · 0이면 숙소 아님 (영입 기능이 이 한도를 씀) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Residents")
+	int32 ResidentCapacity = 0;
+
+	/** 주민 숙소: 레벨이 1 오를 때마다 늘어나는 주민 수 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Residents")
+	int32 ResidentCapacityPerLevel = 0;
+
+	/** 외형 1단계 메시 경로 (예: /Game/CozyRealm/Facilities/Mill/SM_Mill_A.SM_Mill_A) · 비우면 회색 상자 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Look")
+	TSoftObjectPtr<UStaticMesh> MeshStage1;
+
+	/** 외형 2단계 메시 경로 · 비우면 1단계 메시 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Look")
+	TSoftObjectPtr<UStaticMesh> MeshStage2;
+
+	/** 외형 3단계 메시 경로 · 비우면 2단계(없으면 1단계) 메시 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Look")
+	TSoftObjectPtr<UStaticMesh> MeshStage3;
+
+	/** 메시 바닥 크기를 차지 칸(Size)에 맞춰 늘이고 줄임 (가로·세로 비율 유지 · 끄면 메시 원래 크기) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Look")
+	bool bFitMeshToCells = true;
+
+	/** 메시 추가 배율 (칸 맞춤 뒤에 곱함 · 1 = 그대로) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Look")
+	float MeshScale = 1.f;
+
+	/** 메시 위치 보정 (cm · 칸 가운데 바닥 기준 · 피벗이 바닥 가운데가 아닌 메시용) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Look")
+	FVector MeshOffset = FVector::ZeroVector;
+
+	/** 메시 방향 보정 (도 · 정면이 다른 쪽을 보는 메시용) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Look")
+	float MeshYaw = 0.f;
+
+	/** 이 외형 단계에 쓸 메시 경로 (비어 있는 단계는 낮은 단계로 · 모두 비면 빈 경로 = 회색 상자) */
+	const TSoftObjectPtr<UStaticMesh>& GetStageMesh(int32 Stage) const
+	{
+		if (Stage >= 3 && !MeshStage3.IsNull()) { return MeshStage3; }
+		if (Stage >= 2 && !MeshStage2.IsNull()) { return MeshStage2; }
+		return MeshStage1;
+	}
 
 	/** 🙋/🤖/❓ 표시와 메모 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Note")
@@ -403,6 +486,53 @@ struct FCozyDecorationRow : public FTableRowBase
 	/** 주인공이 위로 걸어갈 수 있는가 (돌길처럼 낮은 장식) · 시설·장식과는 여전히 칸이 겹칠 수 없음 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Decoration")
 	bool bWalkable = false;
+
+	/** 장식 메시 경로 (예: /Game/CozyRealm/Decor/SM_Lantern.SM_Lantern) · 비우면 임시 도형 (출시 수정 2차) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Look")
+	TSoftObjectPtr<UStaticMesh> Mesh;
+
+	/** 메시 바닥 크기를 차지 칸에 맞춤 (비율 유지) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Look")
+	bool bFitMeshToCells = true;
+
+	/** 메시 추가 배율 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Look")
+	float MeshScale = 1.f;
+
+	/** 메시 위치 보정 (cm) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Look")
+	FVector MeshOffset = FVector::ZeroVector;
+
+	/** 메시 방향 보정 (도) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Look")
+	float MeshYaw = 0.f;
+
+	/** 🙋/🤖/❓ 표시와 메모 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Note")
+	FString Note;
+};
+
+/** 바닥 꾸미기 한 종류 (Floors.csv · 꾸미기 상점 '바닥' 묶음 · 칸당 비용을 내고 칠함 · 출시 수정 2차) */
+USTRUCT(BlueprintType)
+struct FCozyFloorRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	/** 화면에 보이는 이름 (예: 흙길) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Floor")
+	FText DisplayName;
+
+	/** 도구 (Brush = 지면 붓 · Tile = 바닥 타일) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Floor")
+	ECozyFloorTool Tool = ECozyFloorTool::Brush;
+
+	/** 도구 안의 종류 번호 (붓 1~3 · 타일 0~2 · 지금 지형 재질·타일 색 순서) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Floor")
+	int32 Style = 1;
+
+	/** 한 칸 칠할 때 내는 재화 (재화 ID → 개수 · 비우면 무료) · 🤖 지우기(원래 풀로)는 무료·환불 없음 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Floor")
+	TMap<FName, int32> CostPerCell;
 
 	/** 🙋/🤖/❓ 표시와 메모 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Note")
