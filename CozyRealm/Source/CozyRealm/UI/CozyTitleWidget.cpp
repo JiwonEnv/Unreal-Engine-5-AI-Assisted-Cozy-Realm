@@ -178,7 +178,7 @@ void UCozyTitleWidget::BuildTree()
 			if (UHorizontalBoxSlot* S = LogoRow->AddChildToHorizontalBox(IconSize)) { S->SetVerticalAlignment(VAlign_Center); S->SetPadding(FMargin(0.f, 0.f, 14.f, 0.f)); }
 		}
 		UTextBlock* Logo = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("LogoText"));
-		Logo->SetText(FText::FromString(Config->LogoText));
+		Logo->SetText(FText::FromString(Config->GetLogoText()));
 		Logo->SetFont(Font(88.f));
 		Logo->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, .96f, .9f)));
 		Logo->SetShadowOffset(FVector2D(3.f, 4.f));
