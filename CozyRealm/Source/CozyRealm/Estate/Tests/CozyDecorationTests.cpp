@@ -306,6 +306,8 @@ bool FCozyDecorationOverlapTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("빈 칸은 겹치지 않음"), Estate->FindPlacementOverlap(Lantern, Free, 0, 0.f, Other));
 	Test.PlaceDecoration(Lantern, Free);
 	TestTrue(TEXT("장식 칸에 시설을 놓으면 겹침"), Estate->FindPlacementOverlap(FacilityId, Free, 0, 0.f, Other));
+	// 1×1끼리는 그 장식 하나와만 겹침 (시설은 칸이 커서 이웃 시설과 먼저 겹칠 수 있음)
+	TestTrue(TEXT("장식 칸에 다른 장식을 놓으면 겹침"), Estate->FindPlacementOverlap(Path, Free, 0, 0.f, Other));
 	TestEqual(TEXT("겹친 상대는 그 장식"), Other, Lantern);
 	TestFalse(TEXT("등롱 칸은 걸을 수 없음"), Estate->IsCellWalkable(Free));
 
