@@ -220,6 +220,8 @@ bool FCozyLevelEffectsTest::RunTest(const FString& Parameters)
 	Test.SetLevel(TEXT("Mill"), 1);
 	const FCozyUpgradeQuote Quote = Estate->GetUpgradeQuote(Mill);
 	TestTrue(TEXT("제분소 업그레이드 효과 안내가 있음"), Quote.EffectLines.Num() > 0);
+	// 나가야는 위에서 Lv3으로 바꿨으므로 다음 성장 행이 있는 Lv1로 되돌린 뒤 견적
+	Test.SetLevel(TEXT("Nagaya"), 1);
 	const FCozyUpgradeQuote NagayaQuote = Estate->GetUpgradeQuote(Test.IdOf(TEXT("Nagaya")));
 	TestTrue(TEXT("나가야 업그레이드 효과 안내가 있음"), NagayaQuote.EffectLines.Num() > 0);
 	return true;
