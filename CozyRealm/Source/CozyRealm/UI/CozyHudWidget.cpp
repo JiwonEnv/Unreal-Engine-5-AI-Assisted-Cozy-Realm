@@ -759,7 +759,10 @@ void UCozyHudWidget::ShowDemoEnd()
 		ApplyFont(Title, ECozyUiTextRole::Title);
 		Title->SetAutoWrapText(true);
 		Column->AddChildToVerticalBox(Title);
-		UTextBlock* Body = MakeText(OrDefault(Demo->EndBody, LOCTEXT("DemoEndBody", "신사를 데모의 마지막 단계까지 키웠습니다. 함께해 주셔서 고맙습니다!\n정식판에서 새 시설과 주민, 이야기가 이어집니다. 위시리스트에 담아 두시면 출시 소식을 받아 볼 수 있어요.\n영지는 계속 둘러보고 꾸밀 수 있습니다.")), 17);
+		// 본문의 {Level} = 데모 마지막 신사 레벨 (Growth.csv의 신사 최대 레벨에서 읽음 · 출시 수정 3차)
+		const UCozyEstateSubsystem* EstateForLevel = GetEstate();
+		const int32 FinalLevel = EstateForLevel ? EstateForLevel->GetDemoFinalShrineLevel() : 0;
+		UTextBlock* Body = MakeText(FText::FormatNamed(OrDefault(Demo->EndBody, LOCTEXT("DemoEndBody", "신사를 데모의 마지막 단계(Lv.{Level})까지 키웠습니다. 함께해 주셔서 고맙습니다!\n정식판에서 새 시설과 주민, 이야기가 이어집니다. 위시리스트에 담아 두시면 출시 소식을 받아 볼 수 있어요.\n영지는 계속 둘러보고 꾸밀 수 있습니다.")), TEXT("Level"), FText::AsNumber(FinalLevel)), 17);
 		ApplyFont(Body, ECozyUiTextRole::Body);
 		Body->SetAutoWrapText(true);
 		if (UVerticalBoxSlot* BodySlot = Column->AddChildToVerticalBox(Body))

@@ -21,7 +21,7 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "데모 끝", meta = (DisplayName = "End Title (제목)"))
 	FText EndTitle;
 
-	/** 안내 본문 (줄바꿈은 \n 대신 Shift+Enter) */
+	/** 안내 본문 (줄바꿈은 \n 대신 Shift+Enter) · {Level}은 데모 마지막 신사 레벨 숫자로 바뀜 (Growth.csv에서 읽음 · 출시 수정 3차) */
 	UPROPERTY(Config, EditAnywhere, Category = "데모 끝", meta = (DisplayName = "End Body (본문)", MultiLine = true))
 	FText EndBody;
 
