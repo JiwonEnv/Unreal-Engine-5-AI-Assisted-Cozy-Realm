@@ -1191,6 +1191,7 @@ TArray<TPair<FName, FText>> UCozyHudWidget::GetFacilityMenu(const FCozyFacilityR
 		case ECozyFacilityFunction::UpgradeQueue: Items.Add({ TEXT("Upgrade"), LOCTEXT("IconUpgrade2", "업그레이드") }); break;
 		case ECozyFacilityFunction::ShrineCore: Items.Add({ TEXT("Shrine"), LOCTEXT("IconShrine2", "신사") }); break;
 		case ECozyFacilityFunction::FieldManagement: Items.Add({ TEXT("FieldManagement"), LOCTEXT("IconFieldMgmt2", "밭 관리") }); break;
+		case ECozyFacilityFunction::Storage: Items.Add({ TEXT("Storage"), LOCTEXT("IconStorage2", "창고") }); break;
 		default: break;
 		}
 	}
@@ -1210,6 +1211,7 @@ void UCozyHudWidget::OpenFacilityFunction(FName Function, const FGuid& FacilityI
 	else if (Function == TEXT("Upgrade")) { OpenWindow(ECozyWindowKind::Upgrade, FacilityId); }
 	else if (Function == TEXT("Shrine")) { OpenWindow(ECozyWindowKind::Shrine, FacilityId); }
 	else if (Function == TEXT("FieldManagement")) { OpenWindow(ECozyWindowKind::FieldManagement, FacilityId); }
+	else if (Function == TEXT("Storage")) { OpenWindow(ECozyWindowKind::Storage, FGuid()); }
 	else if (Function == TEXT("Resident")) { OpenWindow(ECozyWindowKind::Nagaya, FGuid(), FacilityId); }
 }
 
@@ -2099,14 +2101,25 @@ void UCozyHudWidget::RefreshDebugPanel()
 	SetRes(LOCTEXT("SetWheat10", "창고 밀 10개로"), TEXT("Wheat"), 10);
 	SetRes(LOCTEXT("SetWheat90", "밀 90"), TEXT("Wheat"), 90);
 	EndRow();
+	// 창고 한도 근처 (한도는 창고 레벨에 따라 바뀌므로 누를 때 계산 · 출시 수정 3차)
+	auto SetResNearCap = [this, &Btn](const FText& Label, FName ItemId, int32 BelowCap)
+	{
+		Btn(Label, FText::Format(LOCTEXT("DbgSetCapTip", "창고의 {0}을(를) 창고 한도보다 {1}개 적게 맞춥니다 (0이면 가득)"), FText::FromName(ItemId), FText::AsNumber(BelowCap)), [this, ItemId, BelowCap]()
+		{
+			if (UCozyEstateSubsystem* EstateNow = GetEstate())
+			{
+				EstateNow->DebugSetResource(ItemId, EstateNow->GetStorageCap() - BelowCap);
+			}
+		});
+	};
 	Row();
-	SetRes(LOCTEXT("SetWheat97", "밀 97"), TEXT("Wheat"), 97);
-	SetRes(LOCTEXT("SetWheat98", "밀 98"), TEXT("Wheat"), 98);
-	SetRes(LOCTEXT("SetWheat100", "밀 100 (가득)"), TEXT("Wheat"), 100);
+	SetResNearCap(LOCTEXT("SetWheat97", "밀 한도-3"), TEXT("Wheat"), 3);
+	SetResNearCap(LOCTEXT("SetWheat98", "밀 한도-2"), TEXT("Wheat"), 2);
+	SetResNearCap(LOCTEXT("SetWheat100", "밀 가득 (한도)"), TEXT("Wheat"), 0);
 	EndRow();
 	Row();
-	SetRes(LOCTEXT("SetFlour98", "창고 밀가루 98개로"), TEXT("Flour"), 98);
-	SetRes(LOCTEXT("SetFlour100", "밀가루 100 (가득)"), TEXT("Flour"), 100);
+	SetResNearCap(LOCTEXT("SetFlour98", "밀가루 한도-2"), TEXT("Flour"), 2);
+	SetResNearCap(LOCTEXT("SetFlour100", "밀가루 가득 (한도)"), TEXT("Flour"), 0);
 	EndRow();
 
 	// 꾸미기 점수 (4주차 기능 2)
@@ -2191,7 +2204,7 @@ void UCozyHudWidget::RefreshDebugPanel()
 				const FCozyFacilityState* Facility = EstateNow->FindFacility(FacilityId);
 				if (Facility && Facility->DefinitionId == TEXT("Mill"))
 				{
-					EstateNow->DebugSetResource(TEXT("Wheat"), 100);
+					EstateNow->DebugSetResource(TEXT("Wheat"), EstateNow->GetStorageCap());
 					FText Message;
 					EstateNow->StartUpgrade(FacilityId, Message);
 					ShowToast(Message);

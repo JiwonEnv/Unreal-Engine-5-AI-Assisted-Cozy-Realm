@@ -527,7 +527,7 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 	{
 		R.Current = Estate->GetAmount(Param);
 		const FCozyItemRow* Item = Estate->GetItemDef(Param);
-		R.Max = (Item && Item->Category == ECozyItemCategory::Material) ? Estate->GetConfig().StorageCapPerItem : 0.f;
+		R.Max = (Item && Item->Category == ECozyItemCategory::Material) ? Estate->GetStorageCap() : 0.f;
 		R.StateColor = (R.Max > 0.f && R.Current >= R.Max) ? ECozyUiColor::Warning : ECozyUiColor::Ok;
 		break;
 	}
@@ -614,7 +614,7 @@ FCozyUiValueResult UCozyUiScreen::GetValue(ECozyUiValue Value, FName Param) cons
 		{
 			const int32 Space = Estate->GetStorageSpace(Param);
 			R.Current = Space;
-			R.Max = Estate->GetConfig().StorageCapPerItem;
+			R.Max = Estate->GetStorageCap();
 			R.Text = Space > 0 ? FText::Format(LOCTEXT("SpaceLeft", "더 받을 수 있음 {0}개"), FText::AsNumber(Space)) : LOCTEXT("SpaceFull", "가득 참 — 받을 수 있는 공간이 없습니다");
 			R.StateColor = Space > 0 ? ECozyUiColor::InkMuted : ECozyUiColor::Warning;
 		}

@@ -317,8 +317,8 @@ public:
 	/** CSV 데이터를 읽고 새 게임 상태를 만든 뒤 시설 액터를 놓는다 (게임 모드가 호출) */
 	void StartEstate();
 
-	/** 데이터를 다시 검사해 로그에 경고를 남긴다 (디버그 메뉴) · 문제 개수는 로그 끝줄에 */
-	void ValidateData() const;
+	/** 데이터를 다시 검사해 로그에 경고를 남긴다 (디버그 메뉴) · 문제 개수는 로그 끝줄에 · 문제 개수를 돌려줌 (자동 시험 · 출시 수정 3차) */
+	int32 ValidateData() const;
 	/**
 	 *  쓸 곳(레시피 재료·업그레이드 비용·장식 가격)도 판매가도 없는 재료 (시험용 레시피는 셈하지 않음 · 데이터 검사가 경고).
 	 *  OutDeadEnd = 데모에서 만들 수 있는데 쓸 곳이 없음(진행이 막힘) · OutUnused = 만드는 곳도 없음
@@ -365,6 +365,14 @@ public:
 
 	/** 공용 창고에 이 재료를 더 받을 수 있는 수량 (재화는 한도 없음 → MAX_int32) */
 	int32 GetStorageSpace(FName ItemId) const;
+
+	/**
+	 *  재료 한 종류당 공용 창고 한도 (출시 수정 3차).
+	 *  영지에 놓인 창고 시설(Storage 기능) 중 가장 높은 한도 · 창고가 없거나 보관함에 있으면 EstateConfig의 StorageCapPerItem (창고 Lv1과 같음)
+	 */
+	int32 GetStorageCap() const;
+	/** 창고 시설 한 곳의 재료 한도 (레벨 기준 · StorageCapPerItem × StorageCapGrowthPerLevel^(레벨-1) · 창고가 아니면 0) */
+	int32 ComputeStorageCap(const FCozyFacilityRow& Def, int32 Level) const;
 
 	/** 창고 화면에 보여 줄 재료·재화 ID (재료 먼저, 표 순서) */
 	TArray<FName> GetStorageItems() const;
@@ -704,6 +712,13 @@ private:
 	bool LoadOrBuildState(FDateTime& OutSavedUtc);
 	/** 불러온 상태에서 데이터에 없는 시설·주민·작업·재료 참조를 정리 (정리 6-6 · 지운 개수를 로그) */
 	void SanitizeLoadedState();
+	/**
+	 *  시작 배치 표(StartFacilities.csv)에 있는 창고 시설이 상태에 없으면 빈 자리에 Lv1로 놓는다 (창고가 생기기 전 저장 · 출시 수정 3차).
+	 *  시작 좌표가 비어 있으면 거기 · 아니면 영지 칸을 차례로 훑어 첫 빈 자리 · 빈 자리가 없으면 보관함에 넣음 · 놓은 개수를 돌려줌
+	 */
+	int32 EnsureStorageFacility();
+	/** 칸만 보고 (지형·장애물은 보지 않음) 이 자리에 다른 시설·장식이 없고 영지 안인가 */
+	bool IsGridAreaFree(FIntPoint Coord, FIntPoint Size, const FGuid& IgnoreId) const;
 	/** 칸 좌표 · 크기 → 월드 위치 (실제 지면 높이) */
 	FVector ComputeFacilityLocation(FIntPoint Coord, FIntPoint Size, const FGuid* Surface = nullptr) const;
 	ACozyFacilityActor* FindFacilityActor(const FGuid& FacilityId) const;

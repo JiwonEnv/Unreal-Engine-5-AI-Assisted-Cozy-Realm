@@ -29,7 +29,9 @@ enum class ECozyFacilityFunction : uint8
 	/** 영지 레벨 · 다른 시설의 레벨 상한 (신사) */
 	ShrineCore,
 	/** 관리 대상 생산 시설(밭) 전체의 공통 성장·작물 해금 (밭 관리 시설 · D37·D39) */
-	FieldManagement
+	FieldManagement,
+	/** 공용 창고: 재료 한 종류당 보관 한도 · 레벨이 오르면 한도가 늘어남 (창고 · 출시 수정 3차) */
+	Storage
 };
 
 /** 영지 일 알림 종류 (소리·화면 효과 연결 · 프로젝트 설정 Cozy Audio의 Event Sounds 키 · 출시 수정 2차 2026-10-30) */
@@ -152,6 +154,13 @@ struct FCozyFacilityRow : public FTableRowBase
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Growth")
 	TArray<int32> SlotBonusLevels;
+
+	/**
+	 *  공용 창고(Storage 기능): 레벨이 1 오를 때마다 재료 한도에 곱하는 배율 (1.5 = 레벨마다 ×1.5).
+	 *  Lv1 한도는 EstateConfig.csv의 StorageCapPerItem · 한도 = StorageCapPerItem × 배율^(레벨-1) (출시 수정 3차)
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Storage")
+	float StorageCapGrowthPerLevel = 1.f;
 
 	/** 주민 숙소(나가야): Lv1에 들일 수 있는 주민 수 · 0이면 숙소 아님 (영입 기능이 이 한도를 씀) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Residents")
@@ -557,7 +566,7 @@ struct FCozyEstateConfigRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Grid")
 	FVector GridOrigin = FVector(-1200.f, -1200.f, 10.f);
 
-	/** 재료 한 종류당 창고 한도 · 가득 차면 그 재료 생산이 멈춤 */
+	/** 재료 한 종류당 공용 창고 한도 (창고 Lv1 · 창고 시설이 없을 때도 이 값) · 창고 레벨이 오르면 시설의 StorageCapGrowthPerLevel만큼 늘어남 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Storage")
 	int32 StorageCapPerItem = 100;
 
