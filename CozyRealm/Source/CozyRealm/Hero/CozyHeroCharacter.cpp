@@ -196,6 +196,15 @@ void ACozyHeroCharacter::SpawnCompareDolls()
 	{
 		return;
 	}
+	// 개발용 참고 물체 (키·크기 숫자가 붙은 인형·문 벽·구슬): 설정에서 켰을 때만 · 출시 빌드에서는 항상 끔 (출시 수정 3차)
+	bool bShowDolls = Config.bShowCompareDolls;
+#if UE_BUILD_SHIPPING
+	bShowDolls = false;
+#endif
+	if (!bShowDolls)
+	{
+		return;
+	}
 	// 주인공 옆 빈 칸에 한 줄로 (칸마다 하나)
 	const FIntPoint HeroCell = Estate->WorldToCell(GetActorLocation());
 	int32 Placed = 0;

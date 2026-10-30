@@ -77,7 +77,7 @@ namespace CozyDebug
 				break;
 			}
 		}
-		Estate->DebugSetResource(TEXT("Flour"), 100);
+		Estate->DebugSetResource(TEXT("Flour"), Estate->GetStorageCap());
 		for (const TCHAR* Item : { TEXT("Gold"), TEXT("Wheat"), TEXT("Flour"), TEXT("TimeTalisman"), TEXT("MindShard") })
 		{
 			Estate->DebugAddResource(Item, 50);
@@ -91,7 +91,7 @@ namespace CozyDebug
 				break;
 			}
 		}
-		Estate->DebugSetResource(TEXT("Flour"), 100);
+		Estate->DebugSetResource(TEXT("Flour"), Estate->GetStorageCap());
 		// -CozyStatePause: 제분소 주민도 빼서 가공 일시 정지 (창고 공간 부족 대신 일시 정지 표시를 보려고 · 밀가루는 비움)
 		bool bMillPaused = false;
 		if (FParse::Param(FCommandLine::Get(), TEXT("CozyStatePause")))

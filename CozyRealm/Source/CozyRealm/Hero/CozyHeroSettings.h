@@ -26,6 +26,13 @@ struct FCozyHeroConfig
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="1 크기", meta=(DisplayName="Body Width Ratio (몸통 굵기 · 머리 대비)", ClampMin="0.3", ClampMax="1.5"))
 	float BodyWidthRatio = 0.75f;
 
+	/**
+	 *  크기 비교용 인형·오니비 구슬·문 벽을 주인공 옆에 세움 (개발용 참고 물체 · 크기 기준 시험 때만 켬).
+	 *  꺼 두면 아래 목록이 있어도 세우지 않음 · 출시(Shipping) 빌드에서는 켜도 세우지 않음 (출시 수정 3차 2026-10-30)
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="1 크기", meta=(DisplayName="Show Compare Dolls (크기 비교용 물체 보이기 · 개발용)"))
+	bool bShowCompareDolls = false;
+
 	/** 비교용 인형 키 목록 (cm) · 주인공 시작 위치 옆에 서서 머리 위에 키 숫자를 보여 줌 · 비우면 인형 없음 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="1 크기", meta=(DisplayName="Compare Heights (비교용 인형 키 cm)"))
 	TArray<float> CompareHeights = { 90.f, 160.f };

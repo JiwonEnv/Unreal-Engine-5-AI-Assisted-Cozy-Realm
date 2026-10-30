@@ -585,6 +585,100 @@ void UCozyEstateSubsystem::SanitizeLoadedState()
 	{
 		PromoteQueuedProcessing(Facility.InstanceId, State.GameSeconds);
 	}
+
+	// 🙋 창고가 생기기 전 저장: 창고를 빈 자리에 놓음 (출시 수정 3차 2026-10-30)
+	EnsureStorageFacility();
+}
+
+bool UCozyEstateSubsystem::IsGridAreaFree(FIntPoint Coord, FIntPoint Size, const FGuid& IgnoreId) const
+{
+	if (Coord.X < 0 || Coord.Y < 0 || Coord.X + Size.X > Config.GridSize.X || Coord.Y + Size.Y > Config.GridSize.Y)
+	{
+		return false;
+	}
+	for (const FCozyFacilityState& Other : State.Facilities)
+	{
+		if (Other.bStored || Other.InstanceId == IgnoreId)
+		{
+			continue;
+		}
+		const FIntPoint OtherSize = GetFootprint(Other.InstanceId, Other.Rotation);
+		if (Coord.X < Other.GridCoord.X + OtherSize.X && Other.GridCoord.X < Coord.X + Size.X
+			&& Coord.Y < Other.GridCoord.Y + OtherSize.Y && Other.GridCoord.Y < Coord.Y + Size.Y)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+int32 UCozyEstateSubsystem::EnsureStorageFacility()
+{
+	if (!StartFacilityTable)
+	{
+		return 0;
+	}
+	int32 Added = 0;
+	StartFacilityTable->ForeachRow<FCozyStartFacilityRow>(TEXT("EnsureStorage"), [this, &Added](const FName& Key, const FCozyStartFacilityRow& Row)
+	{
+		const FCozyFacilityRow* Def = GetFacilityDef(Row.FacilityId);
+		if (!Def || !Def->Functions.Contains(ECozyFacilityFunction::Storage)
+			|| State.Facilities.ContainsByPredicate([&Row](const FCozyFacilityState& Each) { return Each.DefinitionId == Row.FacilityId; }))
+		{
+			return;
+		}
+		// 먼저 보관 상태로 넣어 두고 (자리 검사가 이 시설을 찾을 수 있게) 빈 자리를 찾으면 꺼냄
+		FCozyFacilityState Facility;
+		Facility.InstanceId = FGuid::NewGuid();
+		Facility.DefinitionId = Row.FacilityId;
+		Facility.GridCoord = Row.GridCoord;
+		Facility.Rotation = Row.Rotation;
+		Facility.Level = 1;
+		Facility.bStored = true;
+		State.Facilities.Add(Facility);
+		const FGuid Id = Facility.InstanceId;
+		const FIntPoint Size = GetFootprint(Id, Row.Rotation);
+
+		// 지형·장애물까지 보는 배치 검사(배치 모드와 같음)로 놓을 수 있는 자리가 있으면: 시작 좌표가 되면 거기, 아니면 첫 빈 자리
+		// 지형 정보가 없는 월드(자동 시험)면: 칸만 보고 시작 좌표 → 첫 빈 자리
+		FIntPoint Coord = Row.GridCoord;
+		FIntPoint WorldSpot;
+		FText Ignored;
+		bool bFound = false;
+		if (GetWorld() && FindFreeSpot(Id, Row.Rotation, WorldSpot))
+		{
+			bFound = true;
+			if (!IsGridAreaFree(Row.GridCoord, Size, Id) || !CanPlaceFacility(Id, Row.GridCoord, Row.Rotation, Ignored))
+			{
+				Coord = WorldSpot;
+			}
+		}
+		else
+		{
+			bFound = IsGridAreaFree(Coord, Size, Id);
+		}
+		for (int32 Y = 0; !bFound && Y < Config.GridSize.Y; ++Y)
+		{
+			for (int32 X = 0; !bFound && X < Config.GridSize.X; ++X)
+			{
+				if (IsGridAreaFree(FIntPoint(X, Y), Size, Id))
+				{
+					Coord = FIntPoint(X, Y);
+					bFound = true;
+				}
+			}
+		}
+		FCozyFacilityState* Placed = State.Facilities.FindByPredicate([&Id](const FCozyFacilityState& Each) { return Each.InstanceId == Id; });
+		if (bFound && Placed)
+		{
+			Placed->GridCoord = Coord;
+			Placed->bStored = false;
+		}
+		++Added;
+		UE_LOG(LogCozyRealm, Log, TEXT("[불러오기 검사] 창고 %s가 없어 %s (칸 %d,%d · Lv1)"), *Row.FacilityId.ToString(),
+			bFound ? TEXT("빈 자리에 놓음") : TEXT("빈 자리가 없어 보관함에 넣음"), Coord.X, Coord.Y);
+	});
+	return Added;
 }
 
 void UCozyEstateSubsystem::DebugReloadFromSave()
@@ -894,7 +988,7 @@ void UCozyEstateSubsystem::RegisterDecorationFacilities(FString& OutErrors)
 	}
 }
 
-void UCozyEstateSubsystem::ValidateData() const
+int32 UCozyEstateSubsystem::ValidateData() const
 {
 	int32 Issues = 0;
 	auto Warn = [&Issues](const FString& Message)
@@ -1192,6 +1286,7 @@ void UCozyEstateSubsystem::ValidateData() const
 	ValidateProgression(Warn);
 
 	UE_LOG(LogCozyRealm, Log, TEXT("[데이터 검사] 끝 · 문제 %d개"), Issues);
+	return Issues;
 }
 
 void UCozyEstateSubsystem::ValidateProgression(TFunctionRef<void(const FString&)> Warn) const
@@ -2112,7 +2207,34 @@ int32 UCozyEstateSubsystem::GetStorageSpace(FName ItemId) const
 	{
 		return MAX_int32;
 	}
-	return FMath::Max(0, Config.StorageCapPerItem - GetAmount(ItemId));
+	return FMath::Max(0, GetStorageCap() - GetAmount(ItemId));
+}
+
+int32 UCozyEstateSubsystem::ComputeStorageCap(const FCozyFacilityRow& Def, int32 Level) const
+{
+	if (!Def.Functions.Contains(ECozyFacilityFunction::Storage))
+	{
+		return 0;
+	}
+	// 🙋 창고 레벨업마다 한도 증가 (2026-10-30) · 🤖 배율은 Facilities.csv StorageCapGrowthPerLevel (1 미만은 1로)
+	const double Growth = FMath::Max(1.0, static_cast<double>(Def.StorageCapGrowthPerLevel));
+	const double Cap = static_cast<double>(FMath::Max(0, Config.StorageCapPerItem)) * FMath::Pow(Growth, static_cast<double>(FMath::Max(0, Level - 1)));
+	return static_cast<int32>(FMath::Min<double>(FMath::RoundToDouble(Cap), static_cast<double>(MAX_int32 / 2)));
+}
+
+int32 UCozyEstateSubsystem::GetStorageCap() const
+{
+	// 창고가 없거나 보관함에 있어도 Lv1 한도는 지킴 (재료가 사라지지 않게)
+	int32 Cap = FMath::Max(0, Config.StorageCapPerItem);
+	for (const FCozyFacilityState& Facility : State.Facilities)
+	{
+		const FCozyFacilityRow* Def = Facility.bStored ? nullptr : GetFacilityDef(Facility.DefinitionId);
+		if (Def && Def->Functions.Contains(ECozyFacilityFunction::Storage))
+		{
+			Cap = FMath::Max(Cap, ComputeStorageCap(*Def, Facility.Level));
+		}
+	}
+	return Cap;
 }
 
 TArray<FName> UCozyEstateSubsystem::GetStorageItems() const
@@ -2141,7 +2263,7 @@ int32 UCozyEstateSubsystem::AddResource(FName ItemId, int32 Amount)
 	int32 Added = Amount;
 	if (Item->Category == ECozyItemCategory::Material)
 	{
-		Added = FMath::Clamp(Config.StorageCapPerItem - Current, 0, Amount);
+		Added = FMath::Clamp(GetStorageCap() - Current, 0, Amount);
 	}
 	Current += Added;
 	return Added;
@@ -2178,7 +2300,7 @@ FCozyUnclaimedView UCozyEstateSubsystem::GetUnclaimedView(const FGuid& FacilityI
 	{
 		const FCozyItemRow* ItemDef = GetItemDef(ShownItem);
 		View.StoredAmount = GetAmount(ShownItem);
-		View.StorageCap = (ItemDef && ItemDef->Category == ECozyItemCategory::Material) ? Config.StorageCapPerItem : 0;
+		View.StorageCap = (ItemDef && ItemDef->Category == ECozyItemCategory::Material) ? GetStorageCap() : 0;
 		View.CollectableNow = FMath::Min(View.Amount, GetStorageSpace(ShownItem));
 	}
 	return View;
@@ -3484,6 +3606,11 @@ FCozyUpgradeQuote UCozyEstateSubsystem::GetUpgradeQuote(const FGuid& FacilityId)
 		Quote.EffectLines.Add(FText::Format(LOCTEXT("EffResidents", "효과: 들일 수 있는 주민 {0} → {1}명"),
 			FText::AsNumber(ComputeResidentCapacity(*Def, Quote.FromLevel)), FText::AsNumber(ComputeResidentCapacity(*Def, Quote.ToLevel))));
 	}
+	if (Def->Functions.Contains(ECozyFacilityFunction::Storage))
+	{
+		Quote.EffectLines.Add(FText::Format(LOCTEXT("EffStorage", "효과: 재료 한 종류당 창고 한도 {0} → {1}개"),
+			FText::AsNumber(ComputeStorageCap(*Def, Quote.FromLevel)), FText::AsNumber(ComputeStorageCap(*Def, Quote.ToLevel))));
+	}
 	if (Def->SpeedBonusPerLevel > 0.f && !Def->Functions.Contains(ECozyFacilityFunction::FieldManagement))
 	{
 		Quote.EffectLines.Add(FText::Format(LOCTEXT("EffSpeed", "효과: 속도 ×{0} → ×{1}"),
@@ -3574,9 +3701,9 @@ FCozyUpgradeQuote UCozyEstateSubsystem::GetUpgradeQuote(const FGuid& FacilityId)
 				}
 			}
 			const int32 Final = Refund.Have - CostOfSame + Refund.Amount;
-			if (Final > Config.StorageCapPerItem)
+			if (Final > GetStorageCap())
 			{
-				CozyEstate::AppendListItem(Shortages, FString::Printf(TEXT("%s 공간 %d개 부족"), *GetItemName(Refund.ItemId).ToString(), Final - Config.StorageCapPerItem));
+				CozyEstate::AppendListItem(Shortages, FString::Printf(TEXT("%s 공간 %d개 부족"), *GetItemName(Refund.ItemId).ToString(), Final - GetStorageCap()));
 			}
 		}
 		if (!Shortages.IsEmpty())
@@ -4480,7 +4607,8 @@ void UCozyEstateSubsystem::DebugSetResource(FName ItemId, int32 Amount)
 {
 	if (GetItemDef(ItemId))
 	{
-		State.Resources.FindOrAdd(ItemId) = FMath::Clamp(Amount, 0, Config.StorageCapPerItem);
+		const FCozyItemRow* Item = GetItemDef(ItemId);
+		State.Resources.FindOrAdd(ItemId) = FMath::Clamp(Amount, 0, Item->Category == ECozyItemCategory::Material ? GetStorageCap() : MAX_int32);
 		NotifyChanged();
 	}
 }

@@ -64,7 +64,7 @@ namespace CozyRelease2Test
 			return false;
 		}
 
-		/** 레벨을 그대로 바꿈 (데모 상한 Lv3을 넘는 Lv5 효과도 시험) */
+		/** 레벨을 그대로 바꿈 (데모 상한을 넘는 레벨 효과도 시험) */
 		void SetLevel(FName DefinitionId, int32 Level)
 		{
 			Estate->DebugSetFacilityLevel(IdOf(DefinitionId), Level);
@@ -330,7 +330,7 @@ bool FCozyDemoEndOnceTest::RunTest(const FString& Parameters)
 	}
 	UCozyEstateSubsystem* Estate = Test.Estate;
 	const int32 Final = Estate->GetDemoFinalShrineLevel();
-	TestEqual(TEXT("데모 마지막 신사 레벨 = 3 (Growth.csv)"), Final, 3);
+	TestEqual(TEXT("데모 마지막 신사 레벨 = 5 (Growth.csv · 🙋 출시 수정 3차에서 Lv3 → Lv5)"), Final, 5);
 	TestFalse(TEXT("시작할 때는 안내 없음"), Estate->ShouldShowDemoEnd());
 	Test.SetLevel(TEXT("Shrine"), Final - 1);
 	TestFalse(TEXT("마지막 전 레벨에서는 안내 없음"), Estate->ShouldShowDemoEnd());
