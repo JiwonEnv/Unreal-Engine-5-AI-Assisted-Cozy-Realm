@@ -1,0 +1,236 @@
+[
+  {
+    "번호": 1,
+    "시설ID": "B01",
+    "시설": "신사",
+    "소품": "봉납함",
+    "파일명": "B01_신사_봉납함.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-e0896280-3993-4603-88d3-be21a7ced051.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: a small traditional Japanese wooden offertory box, slatted top, thick wooden frame, no writing"
+  },
+  {
+    "번호": 2,
+    "시설ID": "B01",
+    "시설": "신사",
+    "소품": "석등",
+    "파일명": "B01_신사_석등.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-e4ed26fb-7703-4af9-b11d-3f506b8705b7.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: a squat traditional Japanese stone lantern, broad cap, hollow light chamber, sturdy pedestal, no flame"
+  },
+  {
+    "번호": 3,
+    "시설ID": "B02",
+    "시설": "제분소",
+    "소품": "곡물자루",
+    "파일명": "B02_제분소_곡물자루.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-05c04dbc-90cc-4450-a612-7aca499c7b09.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one bulging cream linen grain sack tied shut with thick rope, broad cloth folds"
+  },
+  {
+    "번호": 4,
+    "시설ID": "B02",
+    "시설": "제분소",
+    "소품": "곡물체",
+    "파일명": "B02_제분소_곡물체.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-e31a381b-a576-45be-b5f4-c718eb78ef8a.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one shallow round wooden grain sieve with a thick circular wood rim and clearly readable coarse woven mesh bottom"
+  },
+  {
+    "번호": 5,
+    "시설ID": "B03",
+    "시설": "판매소",
+    "소품": "진열상자",
+    "파일명": "B03_판매소_진열상자.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-847779ef-a743-4ecc-99c4-abfc6a006d06.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one open wooden produce display crate with short stout feet and sloped back, empty interior"
+  },
+  {
+    "번호": 6,
+    "시설ID": "B03",
+    "시설": "판매소",
+    "소품": "막대저울",
+    "파일명": "B03_판매소_막대저울.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-80a150ce-6161-48da-9616-5871751c88b3.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one traditional Japanese wooden balance scale on a sturdy tabletop stand, single hanging weighing pan and visible counterweight"
+  },
+  {
+    "번호": 7,
+    "시설ID": "B04",
+    "시설": "나가야",
+    "소품": "물동이",
+    "파일명": "B04_나가야_물동이.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-56b20abb-14d3-40f2-96cd-99bc732a0f28.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one wooden water bucket with thick staves, two dark iron hoops and an upright wooden handle"
+  },
+  {
+    "번호": 8,
+    "시설ID": "B04",
+    "시설": "나가야",
+    "소품": "행등",
+    "파일명": "B04_나가야_행등.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-ad7dbbab-87c3-4a18-96b7-c5dcd759d4ab.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one traditional Japanese floor andon lantern with a stout wooden square frame and cream paper panels, unlit"
+  },
+  {
+    "번호": 9,
+    "시설ID": "B05",
+    "시설": "후신소",
+    "소품": "대패",
+    "파일명": "B05_후신소_대패.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-f8de979c-9341-4a0d-a57b-3023b01c882e.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one traditional Japanese kanna hand plane, thick rectangular wooden body and a single dark steel blade"
+  },
+  {
+    "번호": 10,
+    "시설ID": "B05",
+    "시설": "후신소",
+    "소품": "목재받침대",
+    "파일명": "B05_후신소_목재받침대.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-775a8d57-a306-4263-b786-366181332320.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one stout wooden sawhorse with a thick horizontal beam and four splayed legs, no logs"
+  },
+  {
+    "번호": 11,
+    "시설ID": "B06",
+    "시설": "밭관리시설",
+    "소품": "씨앗보관함",
+    "파일명": "B06_밭관리시설_씨앗보관함.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-d4d0abcc-6b9f-47b7-8dbe-b38f9913ad30.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one compact wooden seed storage cabinet with six closed drawers in two columns, stout frame, small round wooden pulls, no labels"
+  },
+  {
+    "번호": 12,
+    "시설ID": "B06",
+    "시설": "밭관리시설",
+    "소품": "호미",
+    "파일명": "B06_밭관리시설_호미.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-505d54a4-508f-457b-82ea-d519184fcbaf.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one short hand hoe with a chunky curved wooden handle and broad dark forged iron blade"
+  },
+  {
+    "번호": 13,
+    "시설ID": "B07",
+    "시설": "공통밭",
+    "소품": "물뿌리개",
+    "파일명": "B07_공통밭_물뿌리개.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-fee5bbc6-c35f-468a-819c-d9815d4ba56b.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one rustic wooden watering can with a stout barrel body, arched handle and short bamboo spout, empty"
+  },
+  {
+    "번호": 14,
+    "시설ID": "B07",
+    "시설": "공통밭",
+    "소품": "수확바구니",
+    "파일명": "B07_공통밭_수확바구니.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-5a802dbd-0974-432c-beab-960683de016c.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one empty deep oval bamboo harvest basket with a thick reinforced rim and two small side handles, broad simplified weave"
+  },
+  {
+    "번호": 15,
+    "시설ID": "B08",
+    "시설": "제빵소",
+    "소품": "빵삽",
+    "파일명": "B08_제빵소_빵삽.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-1b02b719-75d7-4fa3-8f9c-b92a9c1e9bc1.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one traditional wooden baker's peel, broad rounded rectangular paddle and thick long straight handle"
+  },
+  {
+    "번호": 16,
+    "시설ID": "B08",
+    "시설": "제빵소",
+    "소품": "반죽통",
+    "파일명": "B08_제빵소_반죽통.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-872e22fb-f87d-472f-b94b-a23ae7a82500.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one shallow oblong wooden dough kneading trough on short sturdy feet, empty interior, thick beveled rim"
+  },
+  {
+    "번호": 17,
+    "시설ID": "B09",
+    "시설": "창고",
+    "소품": "저장통",
+    "파일명": "B09_창고_저장통.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-99d4344c-c4b0-4e6c-9258-e9c8cc1a69f4.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one closed stout wooden storage barrel with two dark iron bands and a removable flat wooden lid"
+  },
+  {
+    "번호": 18,
+    "시설ID": "B09",
+    "시설": "창고",
+    "소품": "운반수레",
+    "파일명": "B09_창고_운반수레.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-7f9b7a58-6e87-4cf6-9768-66d14c2b2dbf.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one compact traditional wooden two-wheel handcart with an empty open cargo bed and two pulling shafts"
+  },
+  {
+    "번호": 19,
+    "시설ID": "B10",
+    "시설": "화과자가게",
+    "소품": "화과자진열반",
+    "파일명": "B10_화과자가게_화과자진열반.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-602b2bfa-825f-4af2-9b29-2813ec6dbbc9.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one empty shallow square dark reddish wooden wagashi serving tray with raised thick beveled edges"
+  },
+  {
+    "번호": 20,
+    "시설ID": "B10",
+    "시설": "화과자가게",
+    "소품": "꽃모양화과자",
+    "파일명": "B10_화과자가게_꽃모양화과자.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-319c9d3e-5ff3-41fd-86e6-e4c61b946293.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one large stylized pale pink flower-shaped nerikiri wagashi sweet with five broad petals and a muted yellow center, no plate"
+  },
+  {
+    "번호": 21,
+    "시설ID": "B11",
+    "시설": "공방",
+    "소품": "모루",
+    "파일명": "B11_공방_모루.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-a3965e1e-aaed-4b12-9768-82fcddc989f5.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one compact dark forged iron anvil with a short horn mounted firmly on a single chunky wooden stump"
+  },
+  {
+    "번호": 22,
+    "시설ID": "B11",
+    "시설": "공방",
+    "소품": "도구걸이",
+    "파일명": "B11_공방_도구걸이.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-a4c21187-7b8c-4dbd-af9a-41b9081c6bbf.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one small freestanding wooden tool rack with thick frame, three empty pegs and broad foot supports, no tools"
+  },
+  {
+    "번호": 23,
+    "시설ID": "B12",
+    "시설": "찻집겸여관",
+    "소품": "옆손잡이찻주전자",
+    "파일명": "B12_찻집겸여관_옆손잡이찻주전자.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-48926fae-0db1-4e96-a4d3-d6eece3d146f.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one traditional Japanese kyusu teapot in muted sage green glazed ceramic, short side handle perpendicular to the short spout, fitted lid, stout silhouette"
+  },
+  {
+    "번호": 24,
+    "시설ID": "B12",
+    "시설": "찻집겸여관",
+    "소품": "차보관통",
+    "파일명": "B12_찻집겸여관_차보관통.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-e3b9ee8a-022b-4071-87de-9e37d5ab7997.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one cylindrical Japanese wooden tea caddy with a fitted lid and a narrow muted cloth band, no lettering"
+  },
+  {
+    "번호": 25,
+    "시설ID": "B13",
+    "시설": "차밭",
+    "소품": "찻잎채집바구니",
+    "파일명": "B13_차밭_찻잎채집바구니.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-7452800f-26d6-4b6e-96a7-a94e582f7375.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one tall tapered bamboo tea picking basket with a thick open oval rim and two broad cloth shoulder straps, empty"
+  },
+  {
+    "번호": 26,
+    "시설ID": "B13",
+    "시설": "차밭",
+    "소품": "찻잎건조반",
+    "파일명": "B13_차밭_찻잎건조반.png",
+    "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-86afd4d1-c846-4431-bfe1-f7d2fbdeaf14.png",
+    "프롬프트": "Use case: stylized-concept. Single isolated 3D game prop reference for Tripo image-to-3D, CozyRealm Japanese cozy village art. Square 2048x2048 image. Only ONE object, entirely visible, centered with 12 percent margin, readable three-quarter view slightly above, plain light gray background, soft neutral studio lighting, minimal contact shadow. Stylized sculpted high-poly target: broad clean continuous planes, thick selectively chamfered edges, few long deliberate wood grain grooves, sparse local dents, no noisy cracks. Warm honey cedar wood, muted cream linen, warm gray stone with subtle ochre/lavender color patches where applicable, restrained material color variation and subtle curvature edge accents. Physical thickness and joins clearly readable. No building, ground diorama, extra props, text, labels, dimensions, layout panels, split views, watermark, dramatic lighting or baked deep shadows. Subject: one large shallow round bamboo tea drying tray with a stout rim and broad simplified woven surface, empty"
+  }
+]
