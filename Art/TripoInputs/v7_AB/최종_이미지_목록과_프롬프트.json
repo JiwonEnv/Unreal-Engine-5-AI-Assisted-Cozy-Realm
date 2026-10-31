@@ -1,0 +1,1988 @@
+{
+  "작성일": "2026-10-23",
+  "페이지": "https://app.notion.com/p/40210d86fdd581449da9cb2992fdbf6e",
+  "이미지수": 220,
+  "주의": "외형 제안 이미지. 실제 HP/LP 메시·베이크 결과 아님. 시설 단계·계절 상세 미정 유지.",
+  "이미지": [
+    {
+      "id": "W01-01",
+      "name": "기본 직선 기둥",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/W01-01_A_기본직선기둥.png",
+      "prompt": "단독 정사각 단면 직선 목재 기둥. A 큰 면과 베벨만, B 넓은 면·긴 홈·국소 찍힘.",
+      "uploaded": true
+    },
+    {
+      "id": "W01-01",
+      "name": "기본 직선 기둥",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/W01-01_B_기본직선기둥.png",
+      "prompt": "단독 정사각 단면 직선 목재 기둥. A 큰 면과 베벨만, B 넓은 면·긴 홈·국소 찍힘.",
+      "uploaded": true
+    },
+    {
+      "id": "W01-02",
+      "name": "짧은 직선 기둥",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/W01-02_A_짧은 직선 기둥.png",
+      "prompt": "Create ONE isolated CozyRealm asset: one straight square wooden structural post, height 100cm width 25cm depth 25cm, flat ends. A low polygon modeling blockout. Broad clean planar faces and simple substantial edge bevels only. No grain grooves, no dents, no surface texture, no wireframe. Gray clay studio render, neutral gray backdrop. Orthographic three-quarter view showing front/right/top. Entire single asset centered with margin, no pedestal, no ground set, no text, no other objects. Reference only establishes lighting, neutral gray material and proportions of thick timber. This post is SHORT, squat half-height about 4 times its width.",
+      "uploaded": true
+    },
+    {
+      "id": "W02-01",
+      "name": "직선 보 100",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/W02-01_A_직선 보 100.png",
+      "prompt": "One isolated CozyRealm asset: one horizontal straight square-section wooden beam length 100cm cross section 20 by 20cm, no joints. A LOW POLYGON clean blockout appearance, broad smooth planes, simple thick chamfer faces, no grain, scratches, dents, texture, wireframe or text. Neutral gray clay material and gray background matching reference lighting. Orthographic three quarter studio view, whole single object with margin, no stand or other parts. Timber grain would run along the beam if present, but A must remain smooth. Do not reproduce reference vertical post; subject is described above.",
+      "uploaded": true
+    },
+    {
+      "id": "W02-02",
+      "name": "직선 보 200",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/W02-02_A_직선 보 200.png",
+      "prompt": "One isolated CozyRealm asset: one horizontal straight square-section wooden beam length 200cm cross section 20 by 20cm, no joints. A LOW POLYGON clean blockout appearance, broad smooth planes, simple thick chamfer faces, no grain, scratches, dents, texture, wireframe or text. Neutral gray clay material and gray background matching reference lighting. Orthographic three quarter studio view, whole single object with margin, no stand or other parts. Timber grain would run along the beam if present, but A must remain smooth. Do not reproduce reference vertical post; subject is described above.",
+      "uploaded": true
+    },
+    {
+      "id": "W02-03",
+      "name": "직선 보 400",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/W02-03_A_직선 보 400.png",
+      "prompt": "One isolated CozyRealm asset: one horizontal straight square-section wooden beam length 400cm cross section 20 by 20cm, no joints. A LOW POLYGON clean blockout appearance, broad smooth planes, simple thick chamfer faces, no grain, scratches, dents, texture, wireframe or text. Neutral gray clay material and gray background matching reference lighting. Orthographic three quarter studio view, whole single object with margin, no stand or other parts. Timber grain would run along the beam if present, but A must remain smooth. Do not reproduce reference vertical post; subject is described above.",
+      "uploaded": true
+    },
+    {
+      "id": "W03",
+      "name": "휜 버팀보",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/W03_A_휜 버팀보.png",
+      "prompt": "One isolated CozyRealm asset: one thick diagonally curved timber knee brace for joining a vertical post and horizontal beam, shallow S curve, flat angled mating ends, isolated brace only. A LOW POLYGON clean blockout appearance, broad smooth planes, simple thick chamfer faces, no grain, scratches, dents, texture, wireframe or text. Neutral gray clay material and gray background matching reference lighting. Orthographic three quarter studio view, whole single object with margin, no stand or other parts. Timber grain would run along the beam if present, but A must remain smooth. Do not reproduce reference vertical post; subject is described above.",
+      "uploaded": true
+    },
+    {
+      "id": "W01-02",
+      "name": "짧은 직선 기둥",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/W01-02_B_짧은 직선 기둥.png",
+      "prompt": "Edit first image into B highpoly sculpt of the exact same short straight wooden post. Keep shape, camera, size and background identical. Use second image only as sculpt language: broad planes, thick chamfer cuts, 2-3 shallow long tapered grain grooves and sparse localized small edge chips. Do not bend post. No diamond holes, no dense cracks, no noise, no text or other objects. Gray clay material.",
+      "uploaded": true
+    },
+    {
+      "id": "W02-01",
+      "name": "직선 보 100",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/W02-01_B_직선 보 100.png",
+      "prompt": "Edit FIRST image into B highpoly stylized ZBrush sculpt of exactly that same one horizontal straight square-section wooden beam length 100cm cross section 20 by 20cm, no joints. Preserve silhouette, pose, camera, proportions and background of first image. Second reference is detail language only. Broad calm planes, substantial hand-trimmed edge bevels, few shallow tapered woodgrain channels flowing along timber length, very sparse localized chips. Keep endgrain simple. No diamond shaped holes, no dense cracks or surface noise. Gray clay only. Entire single object, no text, no other parts.",
+      "uploaded": true
+    },
+    {
+      "id": "W02-02",
+      "name": "직선 보 200",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/W02-02_B_직선 보 200.png",
+      "prompt": "Edit FIRST image into B highpoly stylized ZBrush sculpt of exactly that same one horizontal straight square-section wooden beam length 200cm cross section 20 by 20cm, no joints. Preserve silhouette, pose, camera, proportions and background of first image. Second reference is detail language only. Broad calm planes, substantial hand-trimmed edge bevels, few shallow tapered woodgrain channels flowing along timber length, very sparse localized chips. Keep endgrain simple. No diamond shaped holes, no dense cracks or surface noise. Gray clay only. Entire single object, no text, no other parts.",
+      "uploaded": true
+    },
+    {
+      "id": "W02-03",
+      "name": "직선 보 400",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/W02-03_B_직선 보 400.png",
+      "prompt": "Edit FIRST image into B highpoly stylized ZBrush sculpt of exactly that same one horizontal straight square-section wooden beam length 400cm cross section 20 by 20cm, no joints. Preserve silhouette, pose, camera, proportions and background of first image. Second reference is detail language only. Broad calm planes, substantial hand-trimmed edge bevels, few shallow tapered woodgrain channels flowing along timber length, very sparse localized chips. Keep endgrain simple. No diamond shaped holes, no dense cracks or surface noise. Gray clay only. Entire single object, no text, no other parts.",
+      "uploaded": true
+    },
+    {
+      "id": "W03",
+      "name": "휜 버팀보",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/W03_B_휜 버팀보.png",
+      "prompt": "Edit FIRST image into B highpoly stylized ZBrush sculpt of exactly that same one thick diagonally curved timber knee brace for joining a vertical post and horizontal beam, shallow S curve, flat angled mating ends, isolated brace only. Preserve silhouette, pose, camera, proportions and background of first image. Second reference is detail language only. Broad calm planes, substantial hand-trimmed edge bevels, few shallow tapered woodgrain channels flowing along timber length, very sparse localized chips. Keep endgrain simple. No diamond shaped holes, no dense cracks or surface noise. Gray clay only. Entire single object, no text, no other parts.",
+      "uploaded": true
+    },
+    {
+      "id": "W04-01",
+      "name": "접합 블록",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/W04-01_A_접합 블록.png",
+      "prompt": "One isolated CozyRealm modeling asset: one compact square wooden joinery block with a shallow rectangular housing notch, no surrounding posts or beams. A lowpolygon blockout reference. Broad clean planar surfaces, simple substantial chamfers, minimal curved segments. No grain grooves, dents, cracks, texture, wireframe or text. Neutral gray clay, neutral gray studio background, threequarter orthographic view showing complete shape and mating ends with 10% margin. Only the described single part; no structure or reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "W04-02",
+      "name": "목재 끝 캡",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/W04-02_A_목재 끝 캡.png",
+      "prompt": "One isolated CozyRealm modeling asset: one compact thick square timber end cap with slight outward rim, flat back mating face. A lowpolygon blockout reference. Broad clean planar surfaces, simple substantial chamfers, minimal curved segments. No grain grooves, dents, cracks, texture, wireframe or text. Neutral gray clay, neutral gray studio background, threequarter orthographic view showing complete shape and mating ends with 10% margin. Only the described single part; no structure or reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "R01-01",
+      "name": "기본 지붕 널",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/R01-01_A_기본 지붕 널.png",
+      "prompt": "One isolated CozyRealm modeling asset: one broad thick wooden roof plank, length 120cm width 45cm thickness 7cm, slight gentle sag and chamfered front edge, no other planks. A lowpolygon blockout reference. Broad clean planar surfaces, simple substantial chamfers, minimal curved segments. No grain grooves, dents, cracks, texture, wireframe or text. Neutral gray clay, neutral gray studio background, threequarter orthographic view showing complete shape and mating ends with 10% margin. Only the described single part; no structure or reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "R01-02",
+      "name": "짧은 지붕 널",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/R01-02_A_짧은 지붕 널.png",
+      "prompt": "One isolated CozyRealm modeling asset: one broad thick wooden roof plank length 60cm width 45cm thickness 7cm, slight gentle sag, no other planks. A lowpolygon blockout reference. Broad clean planar surfaces, simple substantial chamfers, minimal curved segments. No grain grooves, dents, cracks, texture, wireframe or text. Neutral gray clay, neutral gray studio background, threequarter orthographic view showing complete shape and mating ends with 10% margin. Only the described single part; no structure or reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "W04-01",
+      "name": "접합 블록",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/W04-01_B_접합 블록.png",
+      "prompt": "Edit first image into B highpoly stylized sculpt of the same one compact square wooden joinery block with a shallow rectangular housing notch, no surrounding posts or beams. Keep exact overall proportions, camera and gray background. Sparse broad wood grain grooves aligned with longest axis, thick trimmed bevel planes and 1-2 localized small edge chips only. Broad calm faces dominate. No diamond holes, no all-over tiny scratches, no text. Gray clay only. Second reference provides sculpt language, not subject.",
+      "uploaded": true
+    },
+    {
+      "id": "W04-02",
+      "name": "목재 끝 캡",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/W04-02_B_목재 끝 캡.png",
+      "prompt": "Edit first image into B highpoly stylized sculpt of the same one compact thick square timber end cap with slight outward rim, flat back mating face. Keep exact overall proportions, camera and gray background. Sparse broad wood grain grooves aligned with longest axis, thick trimmed bevel planes and 1-2 localized small edge chips only. Broad calm faces dominate. No diamond holes, no all-over tiny scratches, no text. Gray clay only. Second reference provides sculpt language, not subject.",
+      "uploaded": true
+    },
+    {
+      "id": "R01-01",
+      "name": "기본 지붕 널",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/R01-01_B_기본 지붕 널.png",
+      "prompt": "Edit first image into B highpoly stylized sculpt of the same one broad thick wooden roof plank, length 120cm width 45cm thickness 7cm, slight gentle sag and chamfered front edge, no other planks. Keep exact overall proportions, camera and gray background. Sparse broad wood grain grooves aligned with longest axis, thick trimmed bevel planes and 1-2 localized small edge chips only. Broad calm faces dominate. No diamond holes, no all-over tiny scratches, no text. Gray clay only. Second reference provides sculpt language, not subject.",
+      "uploaded": true
+    },
+    {
+      "id": "R01-02",
+      "name": "짧은 지붕 널",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/R01-02_B_짧은 지붕 널.png",
+      "prompt": "Edit first image into B highpoly stylized sculpt of the same one broad thick wooden roof plank length 60cm width 45cm thickness 7cm, slight gentle sag, no other planks. Keep exact overall proportions, camera and gray background. Sparse broad wood grain grooves aligned with longest axis, thick trimmed bevel planes and 1-2 localized small edge chips only. Broad calm faces dominate. No diamond holes, no all-over tiny scratches, no text. Gray clay only. Second reference provides sculpt language, not subject.",
+      "uploaded": true
+    },
+    {
+      "id": "R01-03",
+      "name": "마감 지붕 널",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/R01-03_A_마감 지붕 널.png",
+      "prompt": "Create one isolated single CozyRealm part: one thick roof edge finishing plank with subtle curved outer side lip, isolated one plank. Use second reference for architectural language only, extract the described part, not entire reference sheet. A low poly blockout render, smooth broad planes and simple thick bevels, NO grooves, chips, cracks, grain, text, labels, other objects, sheet layout. Neutral gray clay studio render on same plain gray backdrop as first reference. Three quarter orthographic view, entire subject with margin. No color.",
+      "uploaded": true
+    },
+    {
+      "id": "R02",
+      "name": "직선 처마",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/R02_A_직선 처마.png",
+      "prompt": "Create one isolated single CozyRealm part: one horizontal straight thick rectangular timber eave beam with slightly rounded projecting lower edge, one piece no roof. Use second reference for architectural language only, extract the described part, not entire reference sheet. A low poly blockout render, smooth broad planes and simple thick bevels, NO grooves, chips, cracks, grain, text, labels, other objects, sheet layout. Neutral gray clay studio render on same plain gray backdrop as first reference. Three quarter orthographic view, entire subject with margin. No color.",
+      "uploaded": true
+    },
+    {
+      "id": "R03-01",
+      "name": "용마루 반복 구간",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/R03-01_A_용마루 반복 구간.png",
+      "prompt": "Create one isolated single CozyRealm part: one horizontal rounded-square timber ridge cap beam, 150cm long, constant cross section, flat ends. Use second reference for architectural language only, extract the described part, not entire reference sheet. A low poly blockout render, smooth broad planes and simple thick bevels, NO grooves, chips, cracks, grain, text, labels, other objects, sheet layout. Neutral gray clay studio render on same plain gray backdrop as first reference. Three quarter orthographic view, entire subject with margin. No color.",
+      "uploaded": true
+    },
+    {
+      "id": "R03-02",
+      "name": "용마루 끝 캡",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/R03-02_A_용마루 끝 캡.png",
+      "prompt": "Create one isolated single CozyRealm part: one short thick timber ridge-end cap, rounded-square cross section with visible flat endgrain face, no ornament. Use second reference for architectural language only, extract the described part, not entire reference sheet. A low poly blockout render, smooth broad planes and simple thick bevels, NO grooves, chips, cracks, grain, text, labels, other objects, sheet layout. Neutral gray clay studio render on same plain gray backdrop as first reference. Three quarter orthographic view, entire subject with margin. No color.",
+      "uploaded": true
+    },
+    {
+      "id": "R04",
+      "name": "일반 박공 마감",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/R04_A_일반 박공 마감.png",
+      "prompt": "Create one isolated single CozyRealm part: one diagonal thick roof verge timber for a Japanese rural gable, shallow upward sweep at outer tip, single bar only not entire gable. Use second reference for architectural language only, extract the described part, not entire reference sheet. A low poly blockout render, smooth broad planes and simple thick bevels, NO grooves, chips, cracks, grain, text, labels, other objects, sheet layout. Neutral gray clay studio render on same plain gray backdrop as first reference. Three quarter orthographic view, entire subject with margin. No color.",
+      "uploaded": true
+    },
+    {
+      "id": "A01-01",
+      "name": "기본 벽 패널",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/A01-01_A_기본 벽 패널.png",
+      "prompt": "Create one isolated single CozyRealm part: one plain rectangular thick plaster infill wall panel 200cm wide 200cm tall 12cm thick, no framing, no opening. Use second reference for architectural language only, extract the described part, not entire reference sheet. A low poly blockout render, smooth broad planes and simple thick bevels, NO grooves, chips, cracks, grain, text, labels, other objects, sheet layout. Neutral gray clay studio render on same plain gray backdrop as first reference. Three quarter orthographic view, entire subject with margin. No color.",
+      "uploaded": true
+    },
+    {
+      "id": "R01-03",
+      "name": "마감 지붕 널",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/R01-03_B_마감 지붕 널.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one thick roof edge finishing plank with subtle curved outer side lip, isolated one plank. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "R02",
+      "name": "직선 처마",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/R02_B_직선 처마.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one horizontal straight thick rectangular timber eave beam with slightly rounded projecting lower edge, one piece no roof. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "R03-01",
+      "name": "용마루 반복 구간",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/R03-01_B_용마루 반복 구간.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one horizontal rounded-square timber ridge cap beam, 150cm long, constant cross section, flat ends. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "R03-02",
+      "name": "용마루 끝 캡",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/R03-02_B_용마루 끝 캡.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one short thick timber ridge-end cap, rounded-square cross section with visible flat endgrain face, no ornament. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "R04",
+      "name": "일반 박공 마감",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/R04_B_일반 박공 마감.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one diagonal thick roof verge timber for a Japanese rural gable, shallow upward sweep at outer tip, single bar only not entire gable. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "A01-01",
+      "name": "기본 벽 패널",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/A01-01_B_기본 벽 패널.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one plain rectangular thick plaster infill wall panel 200cm wide 200cm tall 12cm thick, no framing, no opening. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad largely smooth plaster plane, only subtle shallow broad surface variation, no chipped mosaic or cracks at color boundaries. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "A01-02",
+      "name": "절반 폭 벽 패널",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/A01-02_A_절반 폭 벽 패널.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one plain rectangular thick plaster infill wall panel 100cm wide 200cm tall 12cm thick, no framing, no opening. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "A01-03",
+      "name": "창 개구부 벽 패널",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/A01-03_A_창 개구부 벽 패널.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one rectangular thick plaster infill wall panel with one centered rectangular window opening, opening width 60cm height 80cm, no frame no glass. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "A02",
+      "name": "기본 창틀과 창살",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/A02_A_기본 창틀과 창살.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one thick rectangular wooden window frame with two simple vertical bars and one horizontal crossbar, open gaps no glass, no wall. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "A03-01",
+      "name": "문틀",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/A03-01_A_문틀.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one thick wooden doorway frame with two vertical jambs and horizontal lintel, open center, no door no wall. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "A03-02",
+      "name": "문짝",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/A03-02_A_문짝.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one simple rectangular Japanese rural wooden door leaf of 5 thick upright planks and 2 horizontal battens, small simple handle, no frame no wall. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "A04-02",
+      "name": "둘레 기초석",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/A04-02_A_둘레 기초석.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one elongated squat rectangular foundation stone block with flat mating ends and broad irregular chamfered edges. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "A04-03",
+      "name": "계단판",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/A04-03_A_계단판.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one broad shallow rectangular stone entrance step slab with flat top and bottom, substantial gently rounded chamfered front edge. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "A01-02",
+      "name": "절반 폭 벽 패널",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/A01-02_B_절반 폭 벽 패널.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one plain rectangular thick plaster infill wall panel 100cm wide 200cm tall 12cm thick, no framing, no opening. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad largely smooth plaster plane, only subtle shallow broad surface variation, no chipped mosaic or cracks at color boundaries. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "A01-03",
+      "name": "창 개구부 벽 패널",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/A01-03_B_창 개구부 벽 패널.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one rectangular thick plaster infill wall panel with one centered rectangular window opening, opening width 60cm height 80cm, no frame no glass. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad largely smooth plaster plane, only subtle shallow broad surface variation, no chipped mosaic or cracks at color boundaries. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "A02",
+      "name": "기본 창틀과 창살",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/A02_B_기본 창틀과 창살.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one thick rectangular wooden window frame with two simple vertical bars and one horizontal crossbar, open gaps no glass, no wall. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "A03-01",
+      "name": "문틀",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/A03-01_B_문틀.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one thick wooden doorway frame with two vertical jambs and horizontal lintel, open center, no door no wall. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "A03-02",
+      "name": "문짝",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/A03-02_B_문짝.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one simple rectangular Japanese rural wooden door leaf of 5 thick upright planks and 2 horizontal battens, small simple handle, no frame no wall. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "A04-02",
+      "name": "둘레 기초석",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/A04-02_B_둘레 기초석.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one elongated squat rectangular foundation stone block with flat mating ends and broad irregular chamfered edges. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "A04-03",
+      "name": "계단판",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/A04-03_B_계단판.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one broad shallow rectangular stone entrance step slab with flat top and bottom, substantial gently rounded chamfered front edge. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "U01",
+      "name": "절벽 직선",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U01_A_절벽 직선.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one stylized straight cliff module, broad vertical rock face below flat soil cap, flat side boundaries and top, no grass or props. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "U02",
+      "name": "절벽 바깥 코너",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U02_A_절벽 바깥 코너.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one convex outside 90-degree cliff corner module, two exposed broad stone faces, flat soil top, clean mating boundaries. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "U03",
+      "name": "절벽 안쪽 코너",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U03_A_절벽 안쪽 코너.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one concave inside 90-degree cliff corner module with clearly recessed L shaped rock face, flat soil top, no plants. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "U04",
+      "name": "절벽 끝",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U04_A_절벽 끝.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one terminal cliff end cap module, tapered rounded rock mass with one flat mating side and flat soil top. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "U05",
+      "name": "낮은 바위 넓은형",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U05_A_낮은 바위 넓은형.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one low broad asymmetrical field boulder, broad continuous stone planes and thick rounded bevels, not brick, no plants. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "U06",
+      "name": "낮은 바위 세움형",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U06_A_낮은 바위 세움형.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one squat upright irregular field rock with asymmetrical top, broad calm stone planes, not cube, no plants. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "U07",
+      "name": "낮은 바위 납작형",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U07_A_낮은 바위 납작형.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one flat elongated irregular field boulder slab, broad top planes, no plants. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "U08",
+      "name": "세로형 경석 주암",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U08_A_세로형 경석 주암.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one tall vertical Japanese garden landscape rock main spire, asymmetrical offset summit, long vertical ridges with large broad planes, heavy grounded base, no bonsai no grass. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "U09",
+      "name": "세로형 경석 곁암",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U09_A_세로형 경석 곁암.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one slender shorter vertical Japanese garden companion rock, leaning asymmetrical peak, long broad vertical planes, no plants. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "U10",
+      "name": "세로형 경석 받침",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U10_A_세로형 경석 받침.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one low angular broad base boulder for vertical Japanese landscape rock grouping, broad planes, no plants. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "U01",
+      "name": "절벽 직선",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U01_B_절벽 직선.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one stylized straight cliff module, broad vertical rock face below flat soil cap, flat side boundaries and top, no grass or props. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "U02",
+      "name": "절벽 바깥 코너",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U02_B_절벽 바깥 코너.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one convex outside 90-degree cliff corner module, two exposed broad stone faces, flat soil top, clean mating boundaries. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "U03",
+      "name": "절벽 안쪽 코너",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U03_B_절벽 안쪽 코너.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one concave inside 90-degree cliff corner module with clearly recessed L shaped rock face, flat soil top, no plants. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "U04",
+      "name": "절벽 끝",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U04_B_절벽 끝.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one terminal cliff end cap module, tapered rounded rock mass with one flat mating side and flat soil top. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "U05",
+      "name": "낮은 바위 넓은형",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U05_B_낮은 바위 넓은형.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one low broad asymmetrical field boulder, broad continuous stone planes and thick rounded bevels, not brick, no plants. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "U06",
+      "name": "낮은 바위 세움형",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U06_B_낮은 바위 세움형.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one squat upright irregular field rock with asymmetrical top, broad calm stone planes, not cube, no plants. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "U07",
+      "name": "낮은 바위 납작형",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U07_B_낮은 바위 납작형.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one flat elongated irregular field boulder slab, broad top planes, no plants. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "U08",
+      "name": "세로형 경석 주암",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U08_B_세로형 경석 주암.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one tall vertical Japanese garden landscape rock main spire, asymmetrical offset summit, long vertical ridges with large broad planes, heavy grounded base, no bonsai no grass. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "U09",
+      "name": "세로형 경석 곁암",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U09_B_세로형 경석 곁암.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one slender shorter vertical Japanese garden companion rock, leaning asymmetrical peak, long broad vertical planes, no plants. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "U10",
+      "name": "세로형 경석 받침",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U10_B_세로형 경석 받침.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one low angular broad base boulder for vertical Japanese landscape rock grouping, broad planes, no plants. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "U11",
+      "name": "활엽수 줄기와 큰 가지",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U11_A_활엽수 줄기와 큰 가지.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one stylized deciduous tree trunk with 4 major branching limbs and broad root flare, gracefully asymmetrical, NO leaves, no soil base. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "U12",
+      "name": "소나무 줄기와 큰 가지",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U12_A_소나무 줄기와 큰 가지.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one stylized Japanese pine trunk growing upward then flowing sideways with 4 layered horizontal branches, strong asymmetric silhouette and roots, NO needles NO foliage no rock. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "U15",
+      "name": "신사 곡선 지붕 부재",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U15_A_신사 곡선 지붕 부재.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one thick wooden shrine roof eave end beam with pronounced gentle upward sweep, substantial flat mating end, no roof assembly no ornament. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "U16-01",
+      "name": "맷돌 윗돌",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U16-01_A_맷돌 윗돌.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one thick circular millstone upper disk with central circular grain hole, flat underside, substantial chamfered rim, no handle no bottom stone. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "U16-02",
+      "name": "맷돌 아랫돌",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U16-02_A_맷돌 아랫돌.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one thick circular millstone lower disk with flat top and small central axle socket, chamfered rim, no upper stone no timber. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "U18",
+      "name": "열린 곡물 자루",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U18_A_열린 곡물 자루.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one open grain sack with folded thick rim and visible simple grain fill, broad folds, no other objects. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "U19",
+      "name": "차양 천",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U19_A_차양 천.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one short curved draping rectangular fabric awning sheet with hanging front hem and 3 broad folds, no supporting frame no wall. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "N02-01",
+      "name": "직선 경사로",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N02-01_A_직선 경사로.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one straight terrain ramp module from low ground to raised flat top, stone sidewalls, clean flat mating boundaries no vegetation. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "N08-01",
+      "name": "강둑 직선",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N08-01_A_강둑 직선.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one straight low riverbank terrain edge module with broad stony side and flat dirt upper ledge, no water no plants no separate rocks. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "A04-01",
+      "name": "기둥 받침석",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/A04-01_A_기둥 받침석_v2.png",
+      "prompt": "낮고 두툼한 정사각 기초석. A 큰 면·베벨, B 넓은 면·국소 깎임.",
+      "uploaded": true
+    },
+    {
+      "id": "A04-01",
+      "name": "기둥 받침석",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/A04-01_B_기둥 받침석.png",
+      "prompt": "낮고 두툼한 정사각 기초석. A 큰 면·베벨, B 넓은 면·국소 깎임.",
+      "uploaded": true
+    },
+    {
+      "id": "U11",
+      "name": "활엽수 줄기와 큰 가지",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U11_B_활엽수 줄기와 큰 가지.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one stylized deciduous tree trunk with 4 major branching limbs and broad root flare, gracefully asymmetrical, NO leaves, no soil base. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "U12",
+      "name": "소나무 줄기와 큰 가지",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U12_B_소나무 줄기와 큰 가지.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one stylized Japanese pine trunk growing upward then flowing sideways with 4 layered horizontal branches, strong asymmetric silhouette and roots, NO needles NO foliage no rock. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "U15",
+      "name": "신사 곡선 지붕 부재",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U15_B_신사 곡선 지붕 부재.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one thick wooden shrine roof eave end beam with pronounced gentle upward sweep, substantial flat mating end, no roof assembly no ornament. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "U16-01",
+      "name": "맷돌 윗돌",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U16-01_B_맷돌 윗돌.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one thick circular millstone upper disk with central circular grain hole, flat underside, substantial chamfered rim, no handle no bottom stone. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "U16-02",
+      "name": "맷돌 아랫돌",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U16-02_B_맷돌 아랫돌.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one thick circular millstone lower disk with flat top and small central axle socket, chamfered rim, no upper stone no timber. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "U17",
+      "name": "닫힌 곡물 자루",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U17_A_닫힌 곡물 자루_v2.png",
+      "prompt": "입구를 완전히 묶은 닫힌 곡물 자루로 수정",
+      "revision": 2,
+      "uploaded": true
+    },
+    {
+      "id": "U17",
+      "name": "닫힌 곡물 자루",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U17_B_닫힌 곡물 자루.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one plump closed grain sack tied at neck with simple cord, grounded flat bottom, no grain outside no basket. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad carefully sculpted fabric folds, thick folded seams and gathered cloth weight, no wood grain or stone cracks. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "U18",
+      "name": "열린 곡물 자루",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U18_B_열린 곡물 자루.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one open grain sack with folded thick rim and visible simple grain fill, broad folds, no other objects. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad carefully sculpted fabric folds, thick folded seams and gathered cloth weight, no wood grain or stone cracks. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "U19",
+      "name": "차양 천",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U19_B_차양 천.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one short curved draping rectangular fabric awning sheet with hanging front hem and 3 broad folds, no supporting frame no wall. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad carefully sculpted fabric folds, thick folded seams and gathered cloth weight, no wood grain or stone cracks. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "N02-01",
+      "name": "직선 경사로",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N02-01_B_직선 경사로.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one straight terrain ramp module from low ground to raised flat top, stone sidewalls, clean flat mating boundaries no vegetation. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "N08-01",
+      "name": "강둑 직선",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N08-01_B_강둑 직선.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one straight low riverbank terrain edge module with broad stony side and flat dirt upper ledge, no water no plants no separate rocks. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "N08-02",
+      "name": "강둑 곡선",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N08-02_A_강둑 곡선.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one gentle curved riverbank terrain edge module with broad stony side and flat dirt upper ledge, no water no plants. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "N08-02",
+      "name": "강둑 곡선",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N08-02_B_강둑 곡선.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one gentle curved riverbank terrain edge module with broad stony side and flat dirt upper ledge, no water no plants. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "N09-01",
+      "name": "지면 상판",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N09-01_A_지면 상판.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one simple flat square ground terrain slab, shallow thickness, flat top and mating edges, no grass blades no pebbles. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "N09-01",
+      "name": "지면 상판",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N09-01_B_지면 상판.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one simple flat square ground terrain slab, shallow thickness, flat top and mating edges, no grass blades no pebbles. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad flat terrain surface with restrained gentle undulation, no wood grain no separate pebbles. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P02-01",
+      "name": "닫힌 나무 상자",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P02-01_A_닫힌 나무 상자.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one closed sturdy wooden crate of broad planks and thick corner battens, no logos no contents. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P02-01",
+      "name": "닫힌 나무 상자",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P02-01_B_닫힌 나무 상자.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one closed sturdy wooden crate of broad planks and thick corner battens, no logos no contents. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P02-02",
+      "name": "열린 나무 상자",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P02-02_A_열린 나무 상자.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one open top sturdy wooden crate, broad plank walls and visible interior floor, no lid no contents. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P02-02",
+      "name": "열린 나무 상자",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P02-02_B_열린 나무 상자.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one open top sturdy wooden crate, broad plank walls and visible interior floor, no lid no contents. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P03-01",
+      "name": "나무 통",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P03-01_A_나무 통.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one squat closed wooden barrel with staves and two simple metal bands, no tap no stand. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P03-01",
+      "name": "나무 통",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P03-01_B_나무 통.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one squat closed wooden barrel with staves and two simple metal bands, no tap no stand. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P03-02",
+      "name": "나무 물통",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P03-02_A_나무 물통.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one open wooden bucket with thick stave sides, two simple metal bands and one arch handle, empty interior. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P03-02",
+      "name": "나무 물통",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P03-02_B_나무 물통.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one open wooden bucket with thick stave sides, two simple metal bands and one arch handle, empty interior. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P04-01",
+      "name": "대바구니",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P04-01_A_대바구니.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one broad round Japanese bamboo harvest basket, thick rim and simple handle, large simplified woven bands, empty interior. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P04-01",
+      "name": "대바구니",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P04-01_B_대바구니.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one broad round Japanese bamboo harvest basket, thick rim and simple handle, large simplified woven bands, empty interior. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad woven bamboo strips with legible interlacing and thick rim, no microscopic texture, no stone cracks. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P04-02",
+      "name": "키",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P04-02_A_키.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one shallow Japanese winnowing basket with wide rounded back and flatter open front lip, broad simplified woven bands, no grain. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P04-02",
+      "name": "키",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P04-02_B_키.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one shallow Japanese winnowing basket with wide rounded back and flatter open front lip, broad simplified woven bands, no grain. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad woven bamboo strips with legible interlacing and thick rim, no microscopic texture, no stone cracks. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P05-02",
+      "name": "곡물 호퍼",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P05-02_A_곡물 호퍼.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one square wooden grain hopper funnel of thick horizontal planks, square open top tapering to small square bottom outlet, no millstone no posts. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P05-02",
+      "name": "곡물 호퍼",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P05-02_B_곡물 호퍼.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one square wooden grain hopper funnel of thick horizontal planks, square open top tapering to small square bottom outlet, no millstone no posts. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P05-03",
+      "name": "맷돌 축과 손잡이",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P05-03_A_맷돌 축과 손잡이.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one wooden millstone turning axle assembly, short vertical square axle with one horizontal crank arm and small vertical handgrip, no millstone. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P05-03",
+      "name": "맷돌 축과 손잡이",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P05-03_B_맷돌 축과 손잡이.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one wooden millstone turning axle assembly, short vertical square axle with one horizontal crank arm and small vertical handgrip, no millstone. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P06-02",
+      "name": "목공 망치",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P06-02_A_목공 망치.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one Japanese wooden mallet with thick rectangular head and sturdy tapered handle, isolated. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P06-02",
+      "name": "목공 망치",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P06-02_B_목공 망치.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one Japanese wooden mallet with thick rectangular head and sturdy tapered handle, isolated. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P06-03",
+      "name": "목공 톱",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P06-03_A_목공 톱_v2.png",
+      "prompt": "Edit this single Japanese woodworking hand saw. Add a clearly visible continuous row of small triangular cutting TEETH along ONE long cutting edge of the blade. It must clearly read as a hand SAW, not a kitchen cleaver. Preserve handle, blade dimensions, camera, gray clay, clean lowpoly broad smooth faces and background. No scratches, no text, no other objects.",
+      "uploaded": true
+    },
+    {
+      "id": "P06-03",
+      "name": "목공 톱",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P06-03_B_목공 톱.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one Japanese hand saw with simple broad steel blade and straight wrapped handle, no markings. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad forged metal planes, softened thick edges and sparse restrained hammer dents, no wood grain. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P07-02",
+      "name": "작물 팻말",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P07-02_A_작물 팻말.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small blank wooden crop sign with rectangular plaque on pointed short stake, no icon no text. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P07-02",
+      "name": "작물 팻말",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P07-02_B_작물 팻말.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small blank wooden crop sign with rectangular plaque on pointed short stake, no icon no text. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P08-01",
+      "name": "둥근 빵",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P08-01_A_둥근 빵.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small round rustic bread loaf with 3 broad shallow scoring cuts, no plate no crumbs. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P08-01",
+      "name": "둥근 빵",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P08-01_B_둥근 빵.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small round rustic bread loaf with 3 broad shallow scoring cuts, no plate no crumbs. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad soft baked volume, restrained scoring grooves, no wood grain or stone facets. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P08-02",
+      "name": "긴 빵",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P08-02_A_긴 빵.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one short elongated rustic bread loaf with 3 broad shallow scoring cuts, no plate no crumbs. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P08-02",
+      "name": "긴 빵",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P08-02_B_긴 빵.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one short elongated rustic bread loaf with 3 broad shallow scoring cuts, no plate no crumbs. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad soft baked volume, restrained scoring grooves, no wood grain or stone facets. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P08-03",
+      "name": "진열 그릇",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P08-03_A_진열 그릇.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one shallow simple ceramic bowl with thick rim and open interior, no food no decoration. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P08-03",
+      "name": "진열 그릇",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P08-03_B_진열 그릇.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one shallow simple ceramic bowl with thick rim and open interior, no food no decoration. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Smooth substantial ceramic volume, gently hand formed rim, tiny broad irregularities only, no chips or grain. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P09",
+      "name": "목재 벤치",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P09_A_목재 벤치.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one sturdy simple wooden bench assembled from 2 broad seat planks and chunky legs with cross braces, no backrest. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P09",
+      "name": "목재 벤치",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P09_B_목재 벤치.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one sturdy simple wooden bench assembled from 2 broad seat planks and chunky legs with cross braces, no backrest. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P10-01",
+      "name": "나무 초롱 골조",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P10-01_A_나무 초롱 골조.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one Japanese wooden lantern frame with small pitched roof and thick corner posts, open empty panels, no paper no light. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P10-01",
+      "name": "나무 초롱 골조",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P10-01_B_나무 초롱 골조.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one Japanese wooden lantern frame with small pitched roof and thick corner posts, open empty panels, no paper no light. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P10-02",
+      "name": "초롱 종이 패널",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P10-02_A_초롱 종이 패널.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one rectangular slightly curved thin paper lantern infill panel, no frame no symbols. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P10-02",
+      "name": "초롱 종이 패널",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P10-02_B_초롱 종이 패널.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one rectangular slightly curved thin paper lantern infill panel, no frame no symbols. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Thin smooth paper sheet with subtle broad sag, no cracks or wood grain. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P11-01",
+      "name": "울타리 직선",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P11-01_A_울타리 직선.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one short low wooden fence section with two upright square posts and two horizontal rails, no ground base. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P11-01",
+      "name": "울타리 직선",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P11-01_B_울타리 직선.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one short low wooden fence section with two upright square posts and two horizontal rails, no ground base. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P11-02",
+      "name": "울타리 끝 말뚝",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P11-02_A_울타리 끝 말뚝.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one low thick square wooden fence end post with simple bevelled top and pointed buried lower end, no rails. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P11-02",
+      "name": "울타리 끝 말뚝",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P11-02_B_울타리 끝 말뚝.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one low thick square wooden fence end post with simple bevelled top and pointed buried lower end, no rails. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P12-01",
+      "name": "디딤돌 넓은형",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P12-01_A_디딤돌 넓은형.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one thin broad irregular flat stepping stone with soft angular outline, no plants. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P12-01",
+      "name": "디딤돌 넓은형",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P12-01_B_디딤돌 넓은형.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one thin broad irregular flat stepping stone with soft angular outline, no plants. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P12-02",
+      "name": "디딤돌 긴형",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P12-02_A_디딤돌 긴형.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one thin elongated irregular stepping stone, flat broad upper face, no plants. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P12-02",
+      "name": "디딤돌 긴형",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P12-02_B_디딤돌 긴형.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one thin elongated irregular stepping stone, flat broad upper face, no plants. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "P12-03",
+      "name": "디딤돌 작은형",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P12-03_A_디딤돌 작은형.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small irregular rounded triangular stepping stone slab, no plants. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "P12-03",
+      "name": "디딤돌 작은형",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/P12-03_B_디딤돌 작은형.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small irregular rounded triangular stepping stone slab, no plants. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "S01",
+      "name": "공용 카운터",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/S01_A_공용 카운터.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one simple sturdy Japanese shop wooden counter, wide plank top and plank front, empty surface no goods. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "S01",
+      "name": "공용 카운터",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/S01_B_공용 카운터.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one simple sturdy Japanese shop wooden counter, wide plank top and plank front, empty surface no goods. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "S02",
+      "name": "공용 선반",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/S02_A_공용 선반.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one simple wooden storage shelf with 3 broad plank shelves and 4 chunky uprights, empty no props. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "S02",
+      "name": "공용 선반",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/S02_B_공용 선반.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one simple wooden storage shelf with 3 broad plank shelves and 4 chunky uprights, empty no props. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "S03",
+      "name": "공용 작업대",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/S03_A_공용 작업대.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one sturdy woodworking bench with broad plank top four thick legs and lower cross braces, no tools no vise. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "S03",
+      "name": "공용 작업대",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/S03_B_공용 작업대.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one sturdy woodworking bench with broad plank top four thick legs and lower cross braces, no tools no vise. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "S04-01",
+      "name": "씨앗함 본체",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/S04-01_A_씨앗함 본체.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small wooden seed drawer cabinet carcass with 6 empty rectangular drawer openings arranged 3 across 2 high, no drawers no icons. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "S04-01",
+      "name": "씨앗함 본체",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/S04-01_B_씨앗함 본체.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small wooden seed drawer cabinet carcass with 6 empty rectangular drawer openings arranged 3 across 2 high, no drawers no icons. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "S04-02",
+      "name": "씨앗함 서랍",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/S04-02_A_씨앗함 서랍.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small open wooden drawer box with thick front panel and simple knob, empty no label. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "S04-02",
+      "name": "씨앗함 서랍",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/S04-02_B_씨앗함 서랍.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small open wooden drawer box with thick front panel and simple knob, empty no label. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "S05",
+      "name": "밭 테두리 코너",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/S05_A_밭 테두리 코너.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one L-shaped low wooden planting-bed corner section made from two thick horizontal timber rails joined at right angle, no soil no crops. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "S05",
+      "name": "밭 테두리 코너",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/S05_B_밭 테두리 코너.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one L-shaped low wooden planting-bed corner section made from two thick horizontal timber rails joined at right angle, no soil no crops. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "S07",
+      "name": "반복 벽 구간",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/S07_A_반복 벽 구간.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one assembled Japanese rural wall bay with thick timber posts and beams, plaster panel and simple small wooden barred window, stone post bases, no roof no neighboring wall. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "S07",
+      "name": "반복 벽 구간",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/S07_B_반복 벽 구간.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one assembled Japanese rural wall bay with thick timber posts and beams, plaster panel and simple small wooden barred window, stone post bases, no roof no neighboring wall. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Keep wood, plaster, stone and metal shapes distinct. Wood gets sparse long grooves and broad bevels, stone gets broad calm faces and local chips, plaster stays largely smooth. No allover cracking. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "B08-오븐",
+      "name": "제빵소 오븐",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B08-오븐_A_제빵소 오븐.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one squat domed stone bread oven with broad arched open mouth and short simple chimney, no building no bread no wood pile. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "B08-오븐",
+      "name": "제빵소 오븐",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B08-오븐_B_제빵소 오븐.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one squat domed stone bread oven with broad arched open mouth and short simple chimney, no building no bread no wood pile. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad continuous stone planes, substantial irregular chamfer cuts, very sparse localized dents, one restrained natural fissure, no allover noise or brick pattern. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "B10-진열판",
+      "name": "과자 진열판",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B10-진열판_A_과자 진열판.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one shallow rectangular wooden serving tray with raised rim and short feet, empty no sweets. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "B10-진열판",
+      "name": "과자 진열판",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B10-진열판_B_과자 진열판.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one shallow rectangular wooden serving tray with raised rim and short feet, empty no sweets. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "B10-과자",
+      "name": "화과자 원형",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B10-과자_A_화과자 원형.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one simple rounded flower-shaped Japanese wagashi sweet with 5 broad petal folds, no plate no props. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "B10-과자",
+      "name": "화과자 원형",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B10-과자_B_화과자 원형.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one simple rounded flower-shaped Japanese wagashi sweet with 5 broad petal folds, no plate no props. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad soft baked volume, restrained scoring grooves, no wood grain or stone facets. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "B11-바이스",
+      "name": "공방 바이스",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B11-바이스_A_공방 바이스.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one compact Japanese woodworking bench vise assembly, thick wooden front jaw and back jaw with a single metal screw and short turning handle, no workbench no tools. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "B11-바이스",
+      "name": "공방 바이스",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B11-바이스_B_공방 바이스.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one compact Japanese woodworking bench vise assembly, thick wooden front jaw and back jaw with a single metal screw and short turning handle, no workbench no tools. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Keep wood, plaster, stone and metal shapes distinct. Wood gets sparse long grooves and broad bevels, stone gets broad calm faces and local chips, plaster stays largely smooth. No allover cracking. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "B12-찻잔",
+      "name": "찻잔",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B12-찻잔_A_찻잔.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small Japanese ceramic tea cup with thick rounded rim and simple foot, empty no pattern no handle. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "B12-찻잔",
+      "name": "찻잔",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B12-찻잔_B_찻잔.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small Japanese ceramic tea cup with thick rounded rim and simple foot, empty no pattern no handle. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Smooth substantial ceramic volume, gently hand formed rim, tiny broad irregularities only, no chips or grain. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "B12-대접상",
+      "name": "대접상",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B12-대접상_A_대접상.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small low rectangular Japanese wooden serving table with broad top and four short thick legs, no tea props. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "B12-대접상",
+      "name": "대접상",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B12-대접상_B_대접상.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small low rectangular Japanese wooden serving table with broad top and four short thick legs, no tea props. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "N04-잎",
+      "name": "활엽수 잎 가지",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N04-잎_A_활엽수 잎 가지.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small deciduous leafy twig with 7 broad simple pointed leaves in a flat readable fan arrangement, no trunk no ground. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "N04-잎",
+      "name": "활엽수 잎 가지",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N04-잎_B_활엽수 잎 가지.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small deciduous leafy twig with 7 broad simple pointed leaves in a flat readable fan arrangement, no trunk no ground. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Botanically legible THIN leaf/card surfaces, restrained leaf midribs and major shape folds. For pine replace the coarse blockout blades by fine slim grouped pine needles with airy gaps, not thick wooden paddles. Thin petals, no bark grain on leaves. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "N05-솔잎",
+      "name": "소나무 솔잎 군집",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N05-솔잎_A_소나무 솔잎 군집.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small Japanese pine needle twig cluster with 3 tuft groups along one slim branch, flattened readable fan silhouette for foliage texture card capture, no trunk no pot. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "N05-솔잎",
+      "name": "소나무 솔잎 군집",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N05-솔잎_B_소나무 솔잎 군집.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small Japanese pine needle twig cluster with 3 tuft groups along one slim branch, flattened readable fan silhouette for foliage texture card capture, no trunk no pot. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Botanically legible THIN leaf/card surfaces, restrained leaf midribs and major shape folds. For pine replace the coarse blockout blades by fine slim grouped pine needles with airy gaps, not thick wooden paddles. Thin petals, no bark grain on leaves. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "N06-풀1",
+      "name": "풀 군집 낮은형",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N06-풀1_A_풀 군집 낮은형.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small low tuft of 8 broad grass blades with clean separated silhouette, no earth clump. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "N06-풀1",
+      "name": "풀 군집 낮은형",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N06-풀1_B_풀 군집 낮은형.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small low tuft of 8 broad grass blades with clean separated silhouette, no earth clump. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Botanically legible THIN leaf/card surfaces, restrained leaf midribs and major shape folds. For pine replace the coarse blockout blades by fine slim grouped pine needles with airy gaps, not thick wooden paddles. Thin petals, no bark grain on leaves. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "N06-풀2",
+      "name": "풀 군집 긴형",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N06-풀2_A_풀 군집 긴형.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small upright grass tuft with 10 tapered blades flowing gently sideways, no earth. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "N06-풀2",
+      "name": "풀 군집 긴형",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N06-풀2_B_풀 군집 긴형.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small upright grass tuft with 10 tapered blades flowing gently sideways, no earth. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Botanically legible THIN leaf/card surfaces, restrained leaf midribs and major shape folds. For pine replace the coarse blockout blades by fine slim grouped pine needles with airy gaps, not thick wooden paddles. Thin petals, no bark grain on leaves. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "N06-꽃1",
+      "name": "야생화 작은꽃",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N06-꽃1_A_야생화 작은꽃.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small wildflower sprig with 3 simple five-petal flowers and 4 leaves, no soil. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "N06-꽃1",
+      "name": "야생화 작은꽃",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N06-꽃1_B_야생화 작은꽃.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small wildflower sprig with 3 simple five-petal flowers and 4 leaves, no soil. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Botanically legible THIN leaf/card surfaces, restrained leaf midribs and major shape folds. For pine replace the coarse blockout blades by fine slim grouped pine needles with airy gaps, not thick wooden paddles. Thin petals, no bark grain on leaves. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "N06-꽃2",
+      "name": "야생화 긴꽃",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N06-꽃2_A_야생화 긴꽃.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small Japanese meadow flowering stalk with a short spike of sparse simple blossoms and narrow leaves, no soil. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "N06-꽃2",
+      "name": "야생화 긴꽃",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N06-꽃2_B_야생화 긴꽃.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small Japanese meadow flowering stalk with a short spike of sparse simple blossoms and narrow leaves, no soil. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Botanically legible THIN leaf/card surfaces, restrained leaf midribs and major shape folds. For pine replace the coarse blockout blades by fine slim grouped pine needles with airy gaps, not thick wooden paddles. Thin petals, no bark grain on leaves. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "N06-억새",
+      "name": "억새 군집",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N06-억새_A_억새 군집.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small susuki pampas grass cluster with 3 long stems and 3 feathery seed heads, few curved narrow blades, no soil. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "N06-억새",
+      "name": "억새 군집",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N06-억새_B_억새 군집.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small susuki pampas grass cluster with 3 long stems and 3 feathery seed heads, few curved narrow blades, no soil. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Botanically legible THIN leaf/card surfaces, restrained leaf midribs and major shape folds. For pine replace the coarse blockout blades by fine slim grouped pine needles with airy gaps, not thick wooden paddles. Thin petals, no bark grain on leaves. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "N07-줄기",
+      "name": "관목 줄기",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N07-줄기_A_관목 줄기.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small stylized shrub woody branching skeleton with 5 main branches and low root base, no leaves no soil. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "N07-줄기",
+      "name": "관목 줄기",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N07-줄기_B_관목 줄기.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small stylized shrub woody branching skeleton with 5 main branches and low root base, no leaves no soil. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "N07-잎",
+      "name": "관목 잎 군집",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N07-잎_A_관목 잎 군집.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small leafy shrub twig with 9 broad leaves arranged in a compact rounded spray, no trunk no soil. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "N07-잎",
+      "name": "관목 잎 군집",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/N07-잎_B_관목 잎 군집.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small leafy shrub twig with 9 broad leaves arranged in a compact rounded spray, no trunk no soil. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Botanically legible THIN leaf/card surfaces, restrained leaf midribs and major shape folds. For pine replace the coarse blockout blades by fine slim grouped pine needles with airy gaps, not thick wooden paddles. Thin petals, no bark grain on leaves. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "B07-밀",
+      "name": "밀 군집",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B07-밀_A_밀 군집.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small cluster of 3 wheat stalks with clear grain heads and 4 slim leaves, no soil no planter. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "B07-밀",
+      "name": "밀 군집",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B07-밀_B_밀 군집.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small cluster of 3 wheat stalks with clear grain heads and 4 slim leaves, no soil no planter. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Botanically legible THIN leaf/card surfaces, restrained leaf midribs and major shape folds. For pine replace the coarse blockout blades by fine slim grouped pine needles with airy gaps, not thick wooden paddles. Thin petals, no bark grain on leaves. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "B13-줄기",
+      "name": "차나무 줄기",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B13-줄기_A_차나무 줄기.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small tea shrub branching woody skeleton, short stout trunk splitting into 5 low upright limbs, no leaves no soil. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "B13-줄기",
+      "name": "차나무 줄기",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B13-줄기_B_차나무 줄기.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small tea shrub branching woody skeleton, short stout trunk splitting into 5 low upright limbs, no leaves no soil. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Broad calm timber planes, thick trimmed bevels, few shallow long tapered grain channels along wood length, sparse localized edge dents. No dense splinters or diamond holes. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "B13-잎",
+      "name": "차나무 잎 가지",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B13-잎_A_차나무 잎 가지.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small tea twig with 7 elliptic pointed leaves with clear major midribs, compact upward spray, no trunk no soil. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "B13-잎",
+      "name": "차나무 잎 가지",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B13-잎_B_차나무 잎 가지.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small tea twig with 7 elliptic pointed leaves with clear major midribs, compact upward spray, no trunk no soil. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Botanically legible THIN leaf/card surfaces, restrained leaf midribs and major shape folds. For pine replace the coarse blockout blades by fine slim grouped pine needles with airy gaps, not thick wooden paddles. Thin petals, no bark grain on leaves. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "F01-팥",
+      "name": "팥 가지",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/F01-팥_A_팥 가지.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small azuki bean plant sprig with 3 trifoliate leaves and 2 simple bean pods, no soil. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "F01-팥",
+      "name": "팥 가지",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/F01-팥_B_팥 가지.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small azuki bean plant sprig with 3 trifoliate leaves and 2 simple bean pods, no soil. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Botanically legible THIN leaf/card surfaces, restrained leaf midribs and major shape folds. For pine replace the coarse blockout blades by fine slim grouped pine needles with airy gaps, not thick wooden paddles. Thin petals, no bark grain on leaves. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "F01-벼",
+      "name": "벼 군집",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/F01-벼_A_벼 군집.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small cluster of 3 rice stalks with drooping branched grain panicles and slender leaves, not wheat heads, no water no soil. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "F01-벼",
+      "name": "벼 군집",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/F01-벼_B_벼 군집.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small cluster of 3 rice stalks with drooping branched grain panicles and slender leaves, not wheat heads, no water no soil. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Botanically legible THIN leaf/card surfaces, restrained leaf midribs and major shape folds. For pine replace the coarse blockout blades by fine slim grouped pine needles with airy gaps, not thick wooden paddles. Thin petals, no bark grain on leaves. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "F02-꽃",
+      "name": "벚꽃 가지",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/F02-꽃_A_벚꽃 가지.png",
+      "prompt": "Create ONE isolated CozyRealm game modeling part: one small cherry blossom twig with 5 simple open five-petal flowers and 2 buds, no leaves no trunk no soil. A LOW POLYGON simplified blockout render. Broad clean planar forms, major silhouette curvature and substantial simple edge bevels. No small carved detail, no surface noise, no scratches, no grain. Minimal facets without visible wireframe. Neutral gray clay material and plain gray studio background matching reference. Three quarter orthographic product view, whole object with clear margin, no letters, labels, extra parts or scene. Reference sets gray presentation ONLY, do not reproduce reference post.",
+      "uploaded": true
+    },
+    {
+      "id": "F02-꽃",
+      "name": "벚꽃 가지",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/F02-꽃_B_벚꽃 가지.png",
+      "prompt": "Edit FIRST image into B highpoly sculpt of exactly the same one small cherry blossom twig with 5 simple open five-petal flowers and 2 buds, no leaves no trunk no soil. Preserve overall silhouette, proportions, pose, camera and background from first. Second reference sets sculpt language only, do not copy the wood subject. Botanically legible THIN leaf/card surfaces, restrained leaf midribs and major shape folds. For pine replace the coarse blockout blades by fine slim grouped pine needles with airy gaps, not thick wooden paddles. Thin petals, no bark grain on leaves. Neutral gray clay. No text, no additional objects, no wireframe. Single object entire in frame.",
+      "uploaded": true
+    },
+    {
+      "id": "B01-완성",
+      "name": "신사",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B01-완성_A_신사.png",
+      "prompt": "Create a SINGLE ISOLATED gray LOW POLY assembled appearance reference of the 신사 facility shown in the FIRST reference sheet. Extract ONLY the large main fully assembled facility on the left. Preserve its distinctive silhouette, roof profile, major posts, openings, foundation and functional equipment. Simplify to clean broad planar geometry, thick simple bevels, no small grain, chips, cracks or microtexture. Remove ALL text, panels, legends, callouts, duplicate views, exploded components and border. No scenery outside the facility. Neutral gray clay and plain gray backdrop matching second reference. Threequarter view, whole facility framed with clear margin. This is assembly reference, not a sheet. For crop fields keep separate simple leaf/card shapes rather than solid vegetation lumps.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B01-완성",
+      "name": "신사",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B01-완성_B_신사.png",
+      "prompt": "Edit FIRST image into gray HIGH POLY sculpt reference of exact same 신사 assembled facility. Preserve silhouette, camera, openings, equipment, layout and proportions. Second reference is original design for fidelity; third is CozyRealm sculpt-detail language only. Wood uses broad calm faces and sparse long tapered channels, thick trimmed bevels and localized dents. Stone uses broad continuous planes and local chips. Plaster stays largely smooth, never mosaic cracked. Cloth has broad folds. No overgrown detail or all-over small scratches. Entire single assembled facility only. No text, sheet panels, arrows, extra views, wireframe, color or scenery. Neutral gray studio background. For crop fields leaf/card forms stay separate.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B02-완성",
+      "name": "제분소",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B02-완성_A_제분소.png",
+      "prompt": "Create a SINGLE ISOLATED gray LOW POLY assembled appearance reference of the 제분소 facility shown in the FIRST reference sheet. Extract ONLY the large main fully assembled facility on the left. Preserve its distinctive silhouette, roof profile, major posts, openings, foundation and functional equipment. Simplify to clean broad planar geometry, thick simple bevels, no small grain, chips, cracks or microtexture. Remove ALL text, panels, legends, callouts, duplicate views, exploded components and border. No scenery outside the facility. Neutral gray clay and plain gray backdrop matching second reference. Threequarter view, whole facility framed with clear margin. This is assembly reference, not a sheet. For crop fields keep separate simple leaf/card shapes rather than solid vegetation lumps.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B02-완성",
+      "name": "제분소",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B02-완성_B_제분소.png",
+      "prompt": "Edit FIRST image into gray HIGH POLY sculpt reference of exact same 제분소 assembled facility. Preserve silhouette, camera, openings, equipment, layout and proportions. Second reference is original design for fidelity; third is CozyRealm sculpt-detail language only. Wood uses broad calm faces and sparse long tapered channels, thick trimmed bevels and localized dents. Stone uses broad continuous planes and local chips. Plaster stays largely smooth, never mosaic cracked. Cloth has broad folds. No overgrown detail or all-over small scratches. Entire single assembled facility only. No text, sheet panels, arrows, extra views, wireframe, color or scenery. Neutral gray studio background. For crop fields leaf/card forms stay separate.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B03-완성",
+      "name": "판매소",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B03-완성_A_판매소.png",
+      "prompt": "Create a SINGLE ISOLATED gray LOW POLY assembled appearance reference of the 판매소 facility shown in the FIRST reference sheet. Extract ONLY the large main fully assembled facility on the left. Preserve its distinctive silhouette, roof profile, major posts, openings, foundation and functional equipment. Simplify to clean broad planar geometry, thick simple bevels, no small grain, chips, cracks or microtexture. Remove ALL text, panels, legends, callouts, duplicate views, exploded components and border. No scenery outside the facility. Neutral gray clay and plain gray backdrop matching second reference. Threequarter view, whole facility framed with clear margin. This is assembly reference, not a sheet. For crop fields keep separate simple leaf/card shapes rather than solid vegetation lumps.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B03-완성",
+      "name": "판매소",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B03-완성_B_판매소.png",
+      "prompt": "Edit FIRST image into gray HIGH POLY sculpt reference of exact same 판매소 assembled facility. Preserve silhouette, camera, openings, equipment, layout and proportions. Second reference is original design for fidelity; third is CozyRealm sculpt-detail language only. Wood uses broad calm faces and sparse long tapered channels, thick trimmed bevels and localized dents. Stone uses broad continuous planes and local chips. Plaster stays largely smooth, never mosaic cracked. Cloth has broad folds. No overgrown detail or all-over small scratches. Entire single assembled facility only. No text, sheet panels, arrows, extra views, wireframe, color or scenery. Neutral gray studio background. For crop fields leaf/card forms stay separate.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B04-완성",
+      "name": "나가야",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B04-완성_A_나가야.png",
+      "prompt": "Create a SINGLE ISOLATED gray LOW POLY assembled appearance reference of the 나가야 facility shown in the FIRST reference sheet. Extract ONLY the large main fully assembled facility on the left. Preserve its distinctive silhouette, roof profile, major posts, openings, foundation and functional equipment. Simplify to clean broad planar geometry, thick simple bevels, no small grain, chips, cracks or microtexture. Remove ALL text, panels, legends, callouts, duplicate views, exploded components and border. No scenery outside the facility. Neutral gray clay and plain gray backdrop matching second reference. Threequarter view, whole facility framed with clear margin. This is assembly reference, not a sheet. For crop fields keep separate simple leaf/card shapes rather than solid vegetation lumps.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B04-완성",
+      "name": "나가야",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B04-완성_B_나가야.png",
+      "prompt": "Edit FIRST image into gray HIGH POLY sculpt reference of exact same 나가야 assembled facility. Preserve silhouette, camera, openings, equipment, layout and proportions. Second reference is original design for fidelity; third is CozyRealm sculpt-detail language only. Wood uses broad calm faces and sparse long tapered channels, thick trimmed bevels and localized dents. Stone uses broad continuous planes and local chips. Plaster stays largely smooth, never mosaic cracked. Cloth has broad folds. No overgrown detail or all-over small scratches. Entire single assembled facility only. No text, sheet panels, arrows, extra views, wireframe, color or scenery. Neutral gray studio background. For crop fields leaf/card forms stay separate.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B05-완성",
+      "name": "후신소",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B05-완성_A_후신소.png",
+      "prompt": "Create a SINGLE ISOLATED gray LOW POLY assembled appearance reference of the 후신소 facility shown in the FIRST reference sheet. Extract ONLY the large main fully assembled facility on the left. Preserve its distinctive silhouette, roof profile, major posts, openings, foundation and functional equipment. Simplify to clean broad planar geometry, thick simple bevels, no small grain, chips, cracks or microtexture. Remove ALL text, panels, legends, callouts, duplicate views, exploded components and border. No scenery outside the facility. Neutral gray clay and plain gray backdrop matching second reference. Threequarter view, whole facility framed with clear margin. This is assembly reference, not a sheet. For crop fields keep separate simple leaf/card shapes rather than solid vegetation lumps.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B05-완성",
+      "name": "후신소",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B05-완성_B_후신소.png",
+      "prompt": "Edit FIRST image into gray HIGH POLY sculpt reference of exact same 후신소 assembled facility. Preserve silhouette, camera, openings, equipment, layout and proportions. Second reference is original design for fidelity; third is CozyRealm sculpt-detail language only. Wood uses broad calm faces and sparse long tapered channels, thick trimmed bevels and localized dents. Stone uses broad continuous planes and local chips. Plaster stays largely smooth, never mosaic cracked. Cloth has broad folds. No overgrown detail or all-over small scratches. Entire single assembled facility only. No text, sheet panels, arrows, extra views, wireframe, color or scenery. Neutral gray studio background. For crop fields leaf/card forms stay separate.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B06-완성",
+      "name": "밭 관리 시설",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B06-완성_A_밭 관리 시설.png",
+      "prompt": "Create a SINGLE ISOLATED gray LOW POLY assembled appearance reference of the 밭 관리 시설 facility shown in the FIRST reference sheet. Extract ONLY the large main fully assembled facility on the left. Preserve its distinctive silhouette, roof profile, major posts, openings, foundation and functional equipment. Simplify to clean broad planar geometry, thick simple bevels, no small grain, chips, cracks or microtexture. Remove ALL text, panels, legends, callouts, duplicate views, exploded components and border. No scenery outside the facility. Neutral gray clay and plain gray backdrop matching second reference. Threequarter view, whole facility framed with clear margin. This is assembly reference, not a sheet. For crop fields keep separate simple leaf/card shapes rather than solid vegetation lumps.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B06-완성",
+      "name": "밭 관리 시설",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B06-완성_B_밭 관리 시설.png",
+      "prompt": "Edit FIRST image into gray HIGH POLY sculpt reference of exact same 밭 관리 시설 assembled facility. Preserve silhouette, camera, openings, equipment, layout and proportions. Second reference is original design for fidelity; third is CozyRealm sculpt-detail language only. Wood uses broad calm faces and sparse long tapered channels, thick trimmed bevels and localized dents. Stone uses broad continuous planes and local chips. Plaster stays largely smooth, never mosaic cracked. Cloth has broad folds. No overgrown detail or all-over small scratches. Entire single assembled facility only. No text, sheet panels, arrows, extra views, wireframe, color or scenery. Neutral gray studio background. For crop fields leaf/card forms stay separate.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B07-완성",
+      "name": "공통 밭과 밀",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B07-완성_A_공통 밭과 밀.png",
+      "prompt": "Create a SINGLE ISOLATED gray LOW POLY assembled appearance reference of the 공통 밭과 밀 facility shown in the FIRST reference sheet. Extract ONLY the large main fully assembled facility on the left. Preserve its distinctive silhouette, roof profile, major posts, openings, foundation and functional equipment. Simplify to clean broad planar geometry, thick simple bevels, no small grain, chips, cracks or microtexture. Remove ALL text, panels, legends, callouts, duplicate views, exploded components and border. No scenery outside the facility. Neutral gray clay and plain gray backdrop matching second reference. Threequarter view, whole facility framed with clear margin. This is assembly reference, not a sheet. For crop fields keep separate simple leaf/card shapes rather than solid vegetation lumps.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B07-완성",
+      "name": "공통 밭과 밀",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B07-완성_B_공통 밭과 밀.png",
+      "prompt": "Edit FIRST image into gray HIGH POLY sculpt reference of exact same 공통 밭과 밀 assembled facility. Preserve silhouette, camera, openings, equipment, layout and proportions. Second reference is original design for fidelity; third is CozyRealm sculpt-detail language only. Wood uses broad calm faces and sparse long tapered channels, thick trimmed bevels and localized dents. Stone uses broad continuous planes and local chips. Plaster stays largely smooth, never mosaic cracked. Cloth has broad folds. No overgrown detail or all-over small scratches. Entire single assembled facility only. No text, sheet panels, arrows, extra views, wireframe, color or scenery. Neutral gray studio background. For crop fields leaf/card forms stay separate.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B08-완성",
+      "name": "제빵소",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B08-완성_A_제빵소.png",
+      "prompt": "Create a SINGLE ISOLATED gray LOW POLY assembled appearance reference of the 제빵소 facility shown in the FIRST reference sheet. Extract ONLY the large main fully assembled facility on the left. Preserve its distinctive silhouette, roof profile, major posts, openings, foundation and functional equipment. Simplify to clean broad planar geometry, thick simple bevels, no small grain, chips, cracks or microtexture. Remove ALL text, panels, legends, callouts, duplicate views, exploded components and border. No scenery outside the facility. Neutral gray clay and plain gray backdrop matching second reference. Threequarter view, whole facility framed with clear margin. This is assembly reference, not a sheet. For crop fields keep separate simple leaf/card shapes rather than solid vegetation lumps.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B08-완성",
+      "name": "제빵소",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B08-완성_B_제빵소.png",
+      "prompt": "Edit FIRST image into gray HIGH POLY sculpt reference of exact same 제빵소 assembled facility. Preserve silhouette, camera, openings, equipment, layout and proportions. Second reference is original design for fidelity; third is CozyRealm sculpt-detail language only. Wood uses broad calm faces and sparse long tapered channels, thick trimmed bevels and localized dents. Stone uses broad continuous planes and local chips. Plaster stays largely smooth, never mosaic cracked. Cloth has broad folds. No overgrown detail or all-over small scratches. Entire single assembled facility only. No text, sheet panels, arrows, extra views, wireframe, color or scenery. Neutral gray studio background. For crop fields leaf/card forms stay separate.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B09-완성",
+      "name": "창고",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B09-완성_A_창고.png",
+      "prompt": "Create a SINGLE ISOLATED gray LOW POLY assembled appearance reference of the 창고 facility shown in the FIRST reference sheet. Extract ONLY the large main fully assembled facility on the left. Preserve its distinctive silhouette, roof profile, major posts, openings, foundation and functional equipment. Simplify to clean broad planar geometry, thick simple bevels, no small grain, chips, cracks or microtexture. Remove ALL text, panels, legends, callouts, duplicate views, exploded components and border. No scenery outside the facility. Neutral gray clay and plain gray backdrop matching second reference. Threequarter view, whole facility framed with clear margin. This is assembly reference, not a sheet. For crop fields keep separate simple leaf/card shapes rather than solid vegetation lumps.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B09-완성",
+      "name": "창고",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B09-완성_B_창고.png",
+      "prompt": "Edit FIRST image into gray HIGH POLY sculpt reference of exact same 창고 assembled facility. Preserve silhouette, camera, openings, equipment, layout and proportions. Second reference is original design for fidelity; third is CozyRealm sculpt-detail language only. Wood uses broad calm faces and sparse long tapered channels, thick trimmed bevels and localized dents. Stone uses broad continuous planes and local chips. Plaster stays largely smooth, never mosaic cracked. Cloth has broad folds. No overgrown detail or all-over small scratches. Entire single assembled facility only. No text, sheet panels, arrows, extra views, wireframe, color or scenery. Neutral gray studio background. For crop fields leaf/card forms stay separate.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B10-완성",
+      "name": "화과자 가게",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B10-완성_A_화과자 가게.png",
+      "prompt": "Create a SINGLE ISOLATED gray LOW POLY assembled appearance reference of the 화과자 가게 facility shown in the FIRST reference sheet. Extract ONLY the large main fully assembled facility on the left. Preserve its distinctive silhouette, roof profile, major posts, openings, foundation and functional equipment. Simplify to clean broad planar geometry, thick simple bevels, no small grain, chips, cracks or microtexture. Remove ALL text, panels, legends, callouts, duplicate views, exploded components and border. No scenery outside the facility. Neutral gray clay and plain gray backdrop matching second reference. Threequarter view, whole facility framed with clear margin. This is assembly reference, not a sheet. For crop fields keep separate simple leaf/card shapes rather than solid vegetation lumps.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B10-완성",
+      "name": "화과자 가게",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B10-완성_B_화과자 가게.png",
+      "prompt": "Edit FIRST image into gray HIGH POLY sculpt reference of exact same 화과자 가게 assembled facility. Preserve silhouette, camera, openings, equipment, layout and proportions. Second reference is original design for fidelity; third is CozyRealm sculpt-detail language only. Wood uses broad calm faces and sparse long tapered channels, thick trimmed bevels and localized dents. Stone uses broad continuous planes and local chips. Plaster stays largely smooth, never mosaic cracked. Cloth has broad folds. No overgrown detail or all-over small scratches. Entire single assembled facility only. No text, sheet panels, arrows, extra views, wireframe, color or scenery. Neutral gray studio background. For crop fields leaf/card forms stay separate.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B11-완성",
+      "name": "공방",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B11-완성_A_공방.png",
+      "prompt": "Create a SINGLE ISOLATED gray LOW POLY assembled appearance reference of the 공방 facility shown in the FIRST reference sheet. Extract ONLY the large main fully assembled facility on the left. Preserve its distinctive silhouette, roof profile, major posts, openings, foundation and functional equipment. Simplify to clean broad planar geometry, thick simple bevels, no small grain, chips, cracks or microtexture. Remove ALL text, panels, legends, callouts, duplicate views, exploded components and border. No scenery outside the facility. Neutral gray clay and plain gray backdrop matching second reference. Threequarter view, whole facility framed with clear margin. This is assembly reference, not a sheet. For crop fields keep separate simple leaf/card shapes rather than solid vegetation lumps.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B11-완성",
+      "name": "공방",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B11-완성_B_공방.png",
+      "prompt": "Edit FIRST image into gray HIGH POLY sculpt reference of exact same 공방 assembled facility. Preserve silhouette, camera, openings, equipment, layout and proportions. Second reference is original design for fidelity; third is CozyRealm sculpt-detail language only. Wood uses broad calm faces and sparse long tapered channels, thick trimmed bevels and localized dents. Stone uses broad continuous planes and local chips. Plaster stays largely smooth, never mosaic cracked. Cloth has broad folds. No overgrown detail or all-over small scratches. Entire single assembled facility only. No text, sheet panels, arrows, extra views, wireframe, color or scenery. Neutral gray studio background. For crop fields leaf/card forms stay separate.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B12-완성",
+      "name": "찻집 겸 여관",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B12-완성_A_찻집 겸 여관.png",
+      "prompt": "Create a SINGLE ISOLATED gray LOW POLY assembled appearance reference of the 찻집 겸 여관 facility shown in the FIRST reference sheet. Extract ONLY the large main fully assembled facility on the left. Preserve its distinctive silhouette, roof profile, major posts, openings, foundation and functional equipment. Simplify to clean broad planar geometry, thick simple bevels, no small grain, chips, cracks or microtexture. Remove ALL text, panels, legends, callouts, duplicate views, exploded components and border. No scenery outside the facility. Neutral gray clay and plain gray backdrop matching second reference. Threequarter view, whole facility framed with clear margin. This is assembly reference, not a sheet. For crop fields keep separate simple leaf/card shapes rather than solid vegetation lumps.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B12-완성",
+      "name": "찻집 겸 여관",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B12-완성_B_찻집 겸 여관.png",
+      "prompt": "Edit FIRST image into gray HIGH POLY sculpt reference of exact same 찻집 겸 여관 assembled facility. Preserve silhouette, camera, openings, equipment, layout and proportions. Second reference is original design for fidelity; third is CozyRealm sculpt-detail language only. Wood uses broad calm faces and sparse long tapered channels, thick trimmed bevels and localized dents. Stone uses broad continuous planes and local chips. Plaster stays largely smooth, never mosaic cracked. Cloth has broad folds. No overgrown detail or all-over small scratches. Entire single assembled facility only. No text, sheet panels, arrows, extra views, wireframe, color or scenery. Neutral gray studio background. For crop fields leaf/card forms stay separate.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B13-완성",
+      "name": "차밭",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B13-완성_A_차밭.png",
+      "prompt": "Create a SINGLE ISOLATED gray LOW POLY assembled appearance reference of the 차밭 facility shown in the FIRST reference sheet. Extract ONLY the large main fully assembled facility on the left. Preserve its distinctive silhouette, roof profile, major posts, openings, foundation and functional equipment. Simplify to clean broad planar geometry, thick simple bevels, no small grain, chips, cracks or microtexture. Remove ALL text, panels, legends, callouts, duplicate views, exploded components and border. No scenery outside the facility. Neutral gray clay and plain gray backdrop matching second reference. Threequarter view, whole facility framed with clear margin. This is assembly reference, not a sheet. For crop fields keep separate simple leaf/card shapes rather than solid vegetation lumps.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "B13-완성",
+      "name": "차밭",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/B13-완성_B_차밭.png",
+      "prompt": "Edit FIRST image into gray HIGH POLY sculpt reference of exact same 차밭 assembled facility. Preserve silhouette, camera, openings, equipment, layout and proportions. Second reference is original design for fidelity; third is CozyRealm sculpt-detail language only. Wood uses broad calm faces and sparse long tapered channels, thick trimmed bevels and localized dents. Stone uses broad continuous planes and local chips. Plaster stays largely smooth, never mosaic cracked. Cloth has broad folds. No overgrown detail or all-over small scratches. Entire single assembled facility only. No text, sheet panels, arrows, extra views, wireframe, color or scenery. Neutral gray studio background. For crop fields leaf/card forms stay separate.",
+      "kind": "시설 완성 참고",
+      "uploaded": true
+    },
+    {
+      "id": "U13",
+      "name": "대표 휜 기둥",
+      "variant": "A",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U13_A_휜기둥.png",
+      "prompt": "기존 휜 기둥 B에서 잔홈·찍힘을 제거하고 실루엣·두께·큰 베벨을 유지한 로우폴 형태 참고",
+      "uploaded": true
+    },
+    {
+      "id": "U13",
+      "name": "대표 휜 기둥",
+      "variant": "B",
+      "path": "E:/Project/UE5_CozyRealm/Art/TripoInputs/v7_AB/U13_B_휜기둥.png",
+      "prompt": "기존 승인된 휜 기둥 단독 입력 원본 재사용",
+      "uploaded": true
+    }
+  ],
+  "관리항목대응": [
+    [
+      "N01 언덕·절벽",
+      "U01~U04 / 지면 상판",
+      "실제 부품"
+    ],
+    [
+      "N02 경사로",
+      "N02-01",
+      "실제 부품"
+    ],
+    [
+      "N03 바위 군",
+      "U05~U10",
+      "실제 부품"
+    ],
+    [
+      "N04 활엽수",
+      "U11 + 잎 카드",
+      "줄기/식생 분리"
+    ],
+    [
+      "N05 소나무",
+      "U12 + 솔잎 카드",
+      "줄기/식생 분리"
+    ],
+    [
+      "N06 풀·야생화",
+      "풀·꽃·억새 카드 원형",
+      "카드 제작 참고"
+    ],
+    [
+      "N07 관목",
+      "관목 줄기 + 잎 카드",
+      "줄기/식생 분리"
+    ],
+    [
+      "N08 개울·강둑",
+      "N08-01~02 + 수면",
+      "물은 별도 재질"
+    ],
+    [
+      "N09 풀·흙·자갈 표면",
+      "N09-01 + T03",
+      "표면 3종은 재질, 새 입체 원형 3개 아님"
+    ],
+    [
+      "B01 신사",
+      "공용 키트 + 해당 기능품",
+      "시설 완성 참고 / 부품 별도"
+    ],
+    [
+      "B02 제분소",
+      "공용 키트 + 해당 기능품",
+      "시설 완성 참고 / 부품 별도"
+    ],
+    [
+      "B03 판매소",
+      "공용 키트 + 해당 기능품",
+      "시설 완성 참고 / 부품 별도"
+    ],
+    [
+      "B04 나가야",
+      "공용 키트 + 해당 기능품",
+      "시설 완성 참고 / 부품 별도"
+    ],
+    [
+      "B05 후신소",
+      "공용 키트 + 해당 기능품",
+      "시설 완성 참고 / 부품 별도"
+    ],
+    [
+      "B06 밭 관리 시설",
+      "공용 키트 + 해당 기능품",
+      "시설 완성 참고 / 부품 별도"
+    ],
+    [
+      "B07 공통 밭·밀",
+      "공용 키트 + 해당 기능품",
+      "시설 완성 참고 / 부품 별도"
+    ],
+    [
+      "B08 제빵소",
+      "공용 키트 + 해당 기능품",
+      "시설 완성 참고 / 부품 별도"
+    ],
+    [
+      "B09 창고",
+      "공용 키트 + 해당 기능품",
+      "시설 완성 참고 / 부품 별도"
+    ],
+    [
+      "B10 화과자 가게",
+      "공용 키트 + 해당 기능품",
+      "시설 완성 참고 / 부품 별도"
+    ],
+    [
+      "B11 공방",
+      "공용 키트 + 해당 기능품",
+      "시설 완성 참고 / 부품 별도"
+    ],
+    [
+      "B12 찻집 겸 여관",
+      "공용 키트 + 해당 기능품",
+      "시설 완성 참고 / 부품 별도"
+    ],
+    [
+      "B13 차밭",
+      "공용 키트 + 해당 기능품",
+      "시설 완성 참고 / 부품 별도"
+    ],
+    [
+      "P01 자루",
+      "U17·U18",
+      "실제 부품"
+    ],
+    [
+      "P02 상자",
+      "P02-01·02",
+      "실제 부품"
+    ],
+    [
+      "P03 통·물통",
+      "P03-01·02",
+      "실제 부품"
+    ],
+    [
+      "P04 바구니·키",
+      "P04-01·02",
+      "실제 부품"
+    ],
+    [
+      "P05 맷돌·호퍼",
+      "U16-01·02 / P05-02·03",
+      "상하 맷돌·호퍼·축 분리"
+    ],
+    [
+      "P06 작업대·도구",
+      "S03 / P06-02·03",
+      "작업대·망치·톱 분리"
+    ],
+    [
+      "P07 씨앗함·팻말",
+      "S04-01·02 / P07-02",
+      "함·서랍·팻말 분리"
+    ],
+    [
+      "P08 빵·그릇",
+      "P08-01~03",
+      "실제 부품"
+    ],
+    [
+      "P09 벤치",
+      "P09",
+      "조립 참고 겸 단독 컷"
+    ],
+    [
+      "P10 초롱",
+      "P10-01·02",
+      "골조·종이·발광 분리"
+    ],
+    [
+      "P11 울타리",
+      "P11-01·02",
+      "직선 구간·끝말뚝"
+    ],
+    [
+      "P12 디딤돌",
+      "P12-01~03",
+      "실제 부품"
+    ],
+    [
+      "F01 팥·쌀",
+      "팥·벼 카드 원형",
+      "밭 본체 재사용 / 수면 별도"
+    ],
+    [
+      "F02 벚나무",
+      "U11 파생 + 꽃 카드",
+      "새 줄기 확정 아님"
+    ],
+    [
+      "F03 시설 2·3단계",
+      "공용 키트와 후속 단계 부품",
+      "단계별 상세 미정 / 최종 외형 확정 금지"
+    ],
+    [
+      "F04 사계절",
+      "기존 원형과 계절 재질·카드",
+      "계절마다 하이폴 신규 복제하지 않음"
+    ]
+  ],
+  "노션검증": "220개 이미지·110개 원형 제목 등록 확인, 2026-10-23"
+}
