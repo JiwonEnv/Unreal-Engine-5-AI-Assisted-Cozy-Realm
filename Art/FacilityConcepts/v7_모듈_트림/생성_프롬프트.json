@@ -1,0 +1,99 @@
+{
+  "common": "Create ONE landscape 3:2 detailed production concept sheet for CozyRealm facility. Reference attached image is authoritative ART/MATERIAL/SCULPT STYLE: warm copper cedar, muted olive wooden shingle roof, cream plaster with broad lavender pigment stains, warm gray beige stone with ochre/lavender patches, broad continuous surfaces, thick sculpted chamfers, few long wood grooves, sparse local dents, restrained curvature-driven edge coloration; NO pervasive noisy scratches/cracks, no photoreal grunge, no blurry painterly concept haze. It should look like a sculpted highpoly baked onto a clean game lowpoly mesh with Substance materials. Dark neutral gray studio background soft clear lighting.\nLayout: left 55% large beautiful assembled 3/4 facility render, lower left small gray sculpt view; right upper clean exploded structural assembly with physically plausible matching parts, right middle 5-7 separated reusable components; right bottom small flat TS01 horizontal wood trim swatch with colored UV strip diagram linked to a standard straight beam and its endcap. Short readable Korean headings only. Color coding small callout dots and outlines NOT repainting building: blue \"공용 모듈\", amber \"TS01 목재 트림\", purple \"개별 베이크\", green \"공용 재질\". Show which actual part is used where via a FEW clear callouts. Include gray clay closeup of unique feature if relevant; for farms use card construction instead. Labels T01 석재, T02 회벽, AT02 소품 only where applicable. Explicit big form/chamfer geometry belongs to mesh, trim supplies surface detail, no implying flat trim creates curved silhouette. Individual reference asset parts consistent with hero geometry as much as possible. All shared modules honor same kit shapes across designs: square slightly tapered straight post, thick rectangular straight beam, flat rectangular wall infill, thick olive roof plank with sparse sculpted chamfer, square foundation block. Characteristic curved front post reserved unique bake rather than universal stretched trim.\nSmall footer Korean \"외형·모듈·UV 배분 제안 / 치수·접합·베이크는 실제 모델에서 검증\". No exact dimension labels or promises of production-ready UV. This is provisional design sheet, not final engineered module plan. No scenery clutter, no entire village, no people, no fantasy magic, no watermarks.",
+  "facilities": [
+    [
+      "B01",
+      "신사 1단계",
+      "P1",
+      "Compact modest rural Japanese shrine, clearly Shinto shrine identity through simple front steps and restrained sacred rope, simple curved roof with muted olive timber shingles, warm wooden posts and cream plaster. Not huge temple, no excessive ornament, no Chinese pagoda, no ornate golden finials.",
+      "Shared straight posts/beams, foundation stones, wall panel; dedicated shrine curved roof/end support unique bake. Keep sacred rope a separate optional accent."
+    ],
+    [
+      "B02",
+      "제분소 1단계",
+      "P1",
+      "Match reference mill closely: open front workshop with two thick curved front posts, visible two-piece stone hand-mill and wooden grain hopper above it, cream lavender wall on right, small square wooden window, muted olive plank roof, foundation stones. No water wheel or windmill added.",
+      "Shared rear straight posts/beams/wall/window/roof planks/foundation; front signature curved post and curved brace individually baked; two-piece mill individually baked; hopper standard wood trim. No duplicated complete mill as module."
+    ],
+    [
+      "B03",
+      "판매소 1단계",
+      "P1",
+      "Open-front compact Japanese market booth with simple asymmetrical olive timber roof plus short muted indigo cloth awning, broad wood sales counter, 2 plain wooden display crates and folded goods, no writing/sign logos, no ornate hanging clutter.",
+      "Shared posts/beams/roof planks/foundation and counter boards TS01; awning cloth individual fold bake plus AT02; generic crates reused P02. Distinct low wide silhouette."
+    ],
+    [
+      "B04",
+      "나가야 1단계",
+      "P1",
+      "Low elongated Japanese row-house, three modest repeated bays under continuous olive shingle roof, each with restrained sliding wooden door/opening, cream plaster panels, shallow entrance porch, no shop counter, no second floor.",
+      "One repeatable wall-door bay plus terminal wall and roof end modules; shared posts/beams/roof/wall/foundation, TS01 straightwood T02 plaster T01 stone. Only special end/door detail unique bake candidate, no baked entire building."
+    ],
+    [
+      "B05",
+      "후신소 1단계",
+      "P1",
+      "Open rural carpentry/construction workshop shelter, large open side and visible timber workbench with saw/wood stock, olive wooden roof, warm cedar structure. Supports construction theme, no forge/anvil weapons, no industrial machinery.",
+      "Shared open framework, roof kit, foundation and P06 workbench standard boards TS01; curved brace same as mill proposed reuse, tools optional individual bake. Keep loose timber separately modeled."
+    ],
+    [
+      "B06",
+      "밭 관리 시설 1단계",
+      "P1",
+      "Very small low farm management shelter with olive plank roof, seed drawer cabinet, compact tools and crop marker, modest cream rear wall, wide open front, no crops growing inside, no giant warehouse silhouette.",
+      "Shared small posts/beams/roof panel/wall/foundation; seed cabinet P07 made from shared boards and drawer module TS01; labels blank AT02 paper. No new bespoke full-building bake."
+    ],
+    [
+      "B07",
+      "共通畑",
+      "P1",
+      "NOT A BUILDING. Show one low square timber-bordered tilled soil farm bed with a separate wheat crop cluster arranged in rows. Minimal stylistic wood border, no roof, no shed, no planter tower.",
+      "Four reusable wood border beams TS01 plus corner joint and separate soil plane T03 soil. Wheat plane-card cluster AT01 separate from bed. Exploded view clearly lifts wheat cards above soil and separates border. Title Korean must be B07 공통 밭 본체·밀 재배."
+    ],
+    [
+      "B08",
+      "제빵소 1단계",
+      "P2",
+      "Small rural Japanese bakery with an open work bay, restrained enclosed oven volume under a short chimney, wooden bread rack holding 2 simple bread shapes, warm cedar and cream lavender plaster, olive plank roof. Same kit but clearly bakery, no European fancy shop ornament.",
+      "Shared mill-family structural kit, rack boards TS01, plaster T02, stone T01; oven separate unique bake candidate, breads P08 separate; oven placement and vent geometry provisional."
+    ],
+    [
+      "B09",
+      "창고 1단계",
+      "P2",
+      "Compact enclosed Japanese storage shed, wide double wooden door and raised short porch, olive roof, restrained side vent, a few external reused sacks/crates/barrel, no active workshop machinery, no counter.",
+      "Repeat row-house/mill bays with shared walls/roof/doorframe and foundations, TS01 standard wood; sacks P01 separate unique-baked props reuse, crates P02 trim reuse, barrel P03 candidate. No whole storage building baked."
+    ],
+    [
+      "B10",
+      "화과자 가게",
+      "P3",
+      "Small Japanese wagashi sweet shop with distinct low open display niche, subdued red short noren cloth, a neat minimal tray of 3 simple colorful sweets, olive cedar plank roof, cream lavender plaster. No text signs, no modern glass storefront, restrained cozy rural proportions.",
+      "Shared store frame and counter TS01, plaster T02, stone T01; cloth and paper AT02, sweet tray and food unique bake candidates not finalized. Keep silhouette quieter than fantasy ornamental shops."
+    ],
+    [
+      "B11",
+      "공방",
+      "P3",
+      "Small equipment-making craft workshop, more enclosed than carpentry shelter, with one sturdy assembly bench, a few simple tool and equipment parts displayed inside, muted olive roof warm cedar cream plaster. No weapons shop, no giant forge, no repeated sawmill identity. Specialization motif provisional.",
+      "Reuse carpentry shelter structural kit and TS01 boards; separate equipment-making props unique bake candidates, selected handles/metal surfaces AT02. Do not confuse B05 construction carpentry with this equipment workshop."
+    ],
+    [
+      "B12",
+      "찻집 겸 여관",
+      "P3",
+      "Modest rural Japanese tea-house and inn, elongated low house with one welcoming open tea-serving porch, two simple low tables and restrained indigo cloth, other bays sliding doors for lodging, asymmetrical roof over veranda. Not hotel tower, not lavish temple.",
+      "Reuse row-house repeat bay and store canopy/counter modules, TS01 wood T02 plaster T01 foundation; tea-serving tables/teaware separate candidate props AT02/U. Final room count and footprint undecided."
+    ],
+    [
+      "B13",
+      "차밭",
+      "P3",
+      "NOT A BUILDING. Show one low terrain tea-growing plot with three orderly low trimmed tea bush rows, clearly broad tea leaves not wheat; modest optional wood edging and narrow exposed soil lanes. No shed, no roof, no rice water.",
+      "Wood edging reuse candidate TS01, soil T03, tea bush separate trunk/leaf-card cluster new tea-specific motif, atlas allocation candidate AT01, not pine needles and not assumed same crop mechanics as common farm. Final plot size undecided."
+    ]
+  ],
+  "reference": "사용자 첨부 제분소 기준 이미지",
+  "tool": "내장 이미지 생성 도구",
+  "note": "B13 지면의 개별 베이크 오표기를 공용 T03로 후속 수정"
+}
