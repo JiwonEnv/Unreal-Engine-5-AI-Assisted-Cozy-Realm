@@ -1,0 +1,12 @@
+{
+  "번호": 37,
+  "시설ID": "B11",
+  "시설": "공방",
+  "소품": "손풀무",
+  "대상": "one small traditional Japanese wooden box bellows, rectangular stout wooden box, a single sliding wooden plunger handle projecting from one short end, short dark iron air nozzle on one long side near base, no fire or furnace",
+  "방향": "Front is long box wall with air nozzle, rear plain long wall, right side the short end with sliding handle.",
+  "폴더": "B11_공방_손풀무",
+  "시점": "00_원본",
+  "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-dbdc25ec-6ee3-4d60-9efe-cf1120831af3.png",
+  "프롬프트": "Use case: stylized-concept. CozyRealm Japanese cozy village single game prop input image for Tripo. Subject: one small traditional Japanese wooden box bellows, rectangular stout wooden box, a single sliding wooden plunger handle projecting from one short end, short dark iron air nozzle on one long side near base, no fire or furnace. ONE object only, entire object visible, centered square composition with 12% margin. Clean readable three-quarter view, plain light gray background, soft neutral studio lighting, faint contact shadow. Stylized sculpted forms: broad continuous clean planes, thick selectively chamfered edges, only a few long deliberate wood grooves, sparse purposeful dents; warm honey cedar wood, muted cream cloth, warm gray stone with restrained ochre/lavender patches, muted sage ceramic and dark iron where applicable. Subtle curvature highlights, no noisy tiny scratches, no microtexture, no photorealistic wear. Solid readable thickness and coherent joins. No text, watermark, labels, scenes, extra objects, tools, people, ground platform, collage or alternate views. Preserve exactly the specified number of parts."
+}

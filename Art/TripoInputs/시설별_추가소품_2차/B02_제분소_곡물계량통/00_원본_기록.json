@@ -1,0 +1,12 @@
+{
+  "번호": 28,
+  "시설ID": "B02",
+  "시설": "제분소",
+  "소품": "곡물계량통",
+  "대상": "one empty square Japanese wooden masu grain measuring box, thick warm cedar walls, interlocking corner joints and recessed flat wooden bottom, no lid or lettering",
+  "방향": "Front is one square wall with visible finger joints; right side is adjacent wall.",
+  "폴더": "B02_제분소_곡물계량통",
+  "시점": "00_원본",
+  "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-d2cbf400-34ce-44fb-b6ec-0c9d52c4ccf5.png",
+  "프롬프트": "Use case: stylized-concept. CozyRealm Japanese cozy village single game prop input image for Tripo. Subject: one empty square Japanese wooden masu grain measuring box, thick warm cedar walls, interlocking corner joints and recessed flat wooden bottom, no lid or lettering. ONE object only, entire object visible, centered square composition with 12% margin. Clean readable three-quarter view, plain light gray background, soft neutral studio lighting, faint contact shadow. Stylized sculpted forms: broad continuous clean planes, thick selectively chamfered edges, only a few long deliberate wood grooves, sparse purposeful dents; warm honey cedar wood, muted cream cloth, warm gray stone with restrained ochre/lavender patches, muted sage ceramic and dark iron where applicable. Subtle curvature highlights, no noisy tiny scratches, no microtexture, no photorealistic wear. Solid readable thickness and coherent joins. No text, watermark, labels, scenes, extra objects, tools, people, ground platform, collage or alternate views. Preserve exactly the specified number of parts."
+}

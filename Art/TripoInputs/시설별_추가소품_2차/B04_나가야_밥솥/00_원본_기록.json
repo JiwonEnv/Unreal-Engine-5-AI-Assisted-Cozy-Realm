@@ -1,0 +1,12 @@
+{
+  "번호": 30,
+  "시설ID": "B04",
+  "시설": "나가야",
+  "소품": "밥솥",
+  "대상": "one stout traditional Japanese clay rice cooking pot with a flat thick wooden lid, dark charcoal ceramic body, two short opposing side lugs, broad rounded belly and low round foot",
+  "방향": "Front looks between the two ceramic lugs, lugs at left and right; right side looks directly at one lug.",
+  "폴더": "B04_나가야_밥솥",
+  "시점": "00_원본",
+  "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-c7690e10-58a9-4a80-a79f-1c3b34f23733.png",
+  "프롬프트": "Use case: stylized-concept. CozyRealm Japanese cozy village single game prop input image for Tripo. Subject: one stout traditional Japanese clay rice cooking pot with a flat thick wooden lid, dark charcoal ceramic body, two short opposing side lugs, broad rounded belly and low round foot. ONE object only, entire object visible, centered square composition with 12% margin. Clean readable three-quarter view, plain light gray background, soft neutral studio lighting, faint contact shadow. Stylized sculpted forms: broad continuous clean planes, thick selectively chamfered edges, only a few long deliberate wood grooves, sparse purposeful dents; warm honey cedar wood, muted cream cloth, warm gray stone with restrained ochre/lavender patches, muted sage ceramic and dark iron where applicable. Subtle curvature highlights, no noisy tiny scratches, no microtexture, no photorealistic wear. Solid readable thickness and coherent joins. No text, watermark, labels, scenes, extra objects, tools, people, ground platform, collage or alternate views. Preserve exactly the specified number of parts."
+}

@@ -1,0 +1,13 @@
+{
+  "번호": 36,
+  "시설ID": "B10",
+  "시설": "화과자가게",
+  "소품": "삼색경단",
+  "대상": "one single bamboo skewer carrying exactly three round dango dumplings, pale pink then cream then muted sage green from top to bottom, exposed short bamboo handle below, no plate",
+  "방향": "Skewer held vertically in all views, pink top cream middle green bottom, bamboo handle below. Rotate around vertical shaft.",
+  "폴더": "B10_화과자가게_삼색경단",
+  "시점": "01_정면",
+  "기준": "E:/Project/UE5_CozyRealm/Art/TripoInputs/시설별_추가소품_2차/B10_화과자가게_삼색경단/00_원본.png",
+  "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-8f04c5c7-9f55-49f0-917e-d3d92136725b.png",
+  "프롬프트": "Use case: precise-object-edit. Input is exact design identity reference of ONE CozyRealm game prop. Render this SAME physical object from FRONT orthographic elevation. Skewer held vertically in all views, pink top cream middle green bottom, bamboo handle below. Rotate around vertical shaft. Change ONLY camera angle, no redesign. Preserve exact reference dimensions, part count, color, material, lid/handle/teeth/compartment count, thickness, joints, wear and silhouette. Camera level at object mid-height, no three-quarter view, no perspective, no downward tilt. For side view the original broad front must recede into screen and only side thickness/profile is visible. Whole object centered with 12% empty border, same upright direction, plain light gray backdrop, neutral soft studio light, faint shadow. Keep stylized broad planes and thick bevels. No text, labels, grid, dimensions, collage, added props or alternate views. Hidden surfaces inferred conservatively. Exactly ONE requested view."
+}

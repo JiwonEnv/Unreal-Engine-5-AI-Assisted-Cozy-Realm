@@ -1,0 +1,13 @@
+{
+  "번호": 29,
+  "시설ID": "B03",
+  "시설": "판매소",
+  "소품": "금전함",
+  "대상": "one compact wooden shop cash box, closed flat hinged lid, small central dark iron clasp on front and stout corner joins, no coins or writing",
+  "방향": "Front has the single central iron clasp; rear has two small hinges and NO clasp.",
+  "폴더": "B03_판매소_금전함",
+  "시점": "03_후면",
+  "기준": "E:/Project/UE5_CozyRealm/Art/TripoInputs/시설별_추가소품_2차/B03_판매소_금전함/00_원본.png",
+  "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-61381656-8464-4d03-8f71-a36b740d80e2.png",
+  "프롬프트": "Use case: precise-object-edit. Input is exact design identity reference of ONE CozyRealm game prop. Render this SAME physical object from BACK orthographic elevation, camera rotated exactly 180 degrees around the upright axis from the front. Front has the single central iron clasp; rear has two small hinges and NO clasp. Change ONLY camera angle, no redesign. Preserve exact reference dimensions, part count, color, material, lid/handle/teeth/compartment count, thickness, joints, wear and silhouette. Camera level at object mid-height, no three-quarter view, no perspective, no downward tilt. For side view the original broad front must recede into screen and only side thickness/profile is visible. Whole object centered with 12% empty border, same upright direction, plain light gray backdrop, neutral soft studio light, faint shadow. Keep stylized broad planes and thick bevels. No text, labels, grid, dimensions, collage, added props or alternate views. Hidden surfaces inferred conservatively. Exactly ONE requested view."
+}

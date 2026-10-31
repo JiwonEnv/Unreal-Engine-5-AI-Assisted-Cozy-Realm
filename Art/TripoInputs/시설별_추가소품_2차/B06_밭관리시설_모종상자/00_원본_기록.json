@@ -1,0 +1,12 @@
+{
+  "번호": 32,
+  "시설ID": "B06",
+  "시설": "밭관리시설",
+  "소품": "모종상자",
+  "대상": "one shallow rectangular wooden seedling nursery tray with six empty chunky compartments in a two by three grid, thick rim and low stout feet, no plants or soil",
+  "방향": "Front is the long side with three compartments behind it; right side is short end with two compartments.",
+  "폴더": "B06_밭관리시설_모종상자",
+  "시점": "00_원본",
+  "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-e5d29c97-4a17-40c5-9d35-5a28cbc99ffa.png",
+  "프롬프트": "Use case: stylized-concept. CozyRealm Japanese cozy village single game prop input image for Tripo. Subject: one shallow rectangular wooden seedling nursery tray with six empty chunky compartments in a two by three grid, thick rim and low stout feet, no plants or soil. ONE object only, entire object visible, centered square composition with 12% margin. Clean readable three-quarter view, plain light gray background, soft neutral studio lighting, faint contact shadow. Stylized sculpted forms: broad continuous clean planes, thick selectively chamfered edges, only a few long deliberate wood grooves, sparse purposeful dents; warm honey cedar wood, muted cream cloth, warm gray stone with restrained ochre/lavender patches, muted sage ceramic and dark iron where applicable. Subtle curvature highlights, no noisy tiny scratches, no microtexture, no photorealistic wear. Solid readable thickness and coherent joins. No text, watermark, labels, scenes, extra objects, tools, people, ground platform, collage or alternate views. Preserve exactly the specified number of parts."
+}

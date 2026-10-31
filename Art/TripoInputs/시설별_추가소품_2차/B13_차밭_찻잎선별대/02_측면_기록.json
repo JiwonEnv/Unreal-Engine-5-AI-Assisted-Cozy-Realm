@@ -1,0 +1,7 @@
+{
+  "소품": "찻잎선별대",
+  "시점": "02_측면",
+  "기준": "E:/Project/UE5_CozyRealm/Art/TripoInputs/시설별_추가소품_2차/B13_차밭_찻잎선별대/00_원본.png",
+  "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-d8b7c129-472b-4e34-9f33-22eae1c23bd6.png",
+  "프롬프트": "Use case: precise-object-edit. Rotate this exact wooden tea sorting table 90 degrees horizontally to show its CLOSED SHORT SIDE. This is NOT the open front. The table is rectangular and this side is shorter. Critical silhouette: continuous full-height rectangular wooden rim across the ENTIRE top edge, NO low open cutout or dip in the middle. Straight raised side wall conceals most of the tray. Two stout near legs underneath, a short stretcher, far legs hidden. The open front access edge is perpendicular to picture plane and must NOT face viewer. Exact side elevation with horizontal level camera, no visible top surface, no perspective. Keep reference material, joints, thickness and design. Single full object, plain light gray, soft studio light, no text or extra objects."
+}

@@ -1,0 +1,12 @@
+{
+  "번호": 34,
+  "시설ID": "B08",
+  "시설": "제빵소",
+  "소품": "둥근빵",
+  "대상": "one round rustic golden brown bread loaf with exactly three wide shallow parallel scoring cuts across the domed top, broad faceted stylized crust, no plate or crumbs",
+  "방향": "Bread rests flat. Front sees the loaf side, scoring lines run toward camera; right side rotated 90 degrees.",
+  "폴더": "B08_제빵소_둥근빵",
+  "시점": "00_원본",
+  "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-d6febb6c-a535-4c0e-8e8a-697cb903b8e6.png",
+  "프롬프트": "Use case: stylized-concept. CozyRealm Japanese cozy village single game prop input image for Tripo. Subject: one round rustic golden brown bread loaf with exactly three wide shallow parallel scoring cuts across the domed top, broad faceted stylized crust, no plate or crumbs. ONE object only, entire object visible, centered square composition with 12% margin. Clean readable three-quarter view, plain light gray background, soft neutral studio lighting, faint contact shadow. Stylized sculpted forms: broad continuous clean planes, thick selectively chamfered edges, only a few long deliberate wood grooves, sparse purposeful dents; warm honey cedar wood, muted cream cloth, warm gray stone with restrained ochre/lavender patches, muted sage ceramic and dark iron where applicable. Subtle curvature highlights, no noisy tiny scratches, no microtexture, no photorealistic wear. Solid readable thickness and coherent joins. No text, watermark, labels, scenes, extra objects, tools, people, ground platform, collage or alternate views. Preserve exactly the specified number of parts."
+}

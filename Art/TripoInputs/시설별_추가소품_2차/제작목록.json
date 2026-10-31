@@ -1,0 +1,119 @@
+[
+  {
+    "번호": 27,
+    "시설ID": "B01",
+    "시설": "신사",
+    "소품": "정화수그릇",
+    "대상": "one squat rectangular Japanese stone water basin (chozubachi), thick rounded chamfered rim, deep empty rectangular hollow, short broad integral foot, no writing or ornaments",
+    "방향": "Front is the long broad stone basin wall; right side is the narrow end.",
+    "폴더": "B01_신사_정화수그릇"
+  },
+  {
+    "번호": 28,
+    "시설ID": "B02",
+    "시설": "제분소",
+    "소품": "곡물계량통",
+    "대상": "one empty square Japanese wooden masu grain measuring box, thick warm cedar walls, interlocking corner joints and recessed flat wooden bottom, no lid or lettering",
+    "방향": "Front is one square wall with visible finger joints; right side is adjacent wall.",
+    "폴더": "B02_제분소_곡물계량통"
+  },
+  {
+    "번호": 29,
+    "시설ID": "B03",
+    "시설": "판매소",
+    "소품": "금전함",
+    "대상": "one compact wooden shop cash box, closed flat hinged lid, small central dark iron clasp on front and stout corner joins, no coins or writing",
+    "방향": "Front has the single central iron clasp; rear has two small hinges and NO clasp.",
+    "폴더": "B03_판매소_금전함"
+  },
+  {
+    "번호": 30,
+    "시설ID": "B04",
+    "시설": "나가야",
+    "소품": "밥솥",
+    "대상": "one stout traditional Japanese clay rice cooking pot with a flat thick wooden lid, dark charcoal ceramic body, two short opposing side lugs, broad rounded belly and low round foot",
+    "방향": "Front looks between the two ceramic lugs, lugs at left and right; right side looks directly at one lug.",
+    "폴더": "B04_나가야_밥솥"
+  },
+  {
+    "번호": 31,
+    "시설ID": "B05",
+    "시설": "후신소",
+    "소품": "나무망치",
+    "대상": "one traditional woodworking wooden mallet, chunky rectangular cedar head with thick chamfered corners and a short straight central wooden handle, no metal",
+    "방향": "Handle points vertically downward in all views. Front sees the long broad face of the mallet head; right side sees the short striking end.",
+    "폴더": "B05_후신소_나무망치"
+  },
+  {
+    "번호": 32,
+    "시설ID": "B06",
+    "시설": "밭관리시설",
+    "소품": "모종상자",
+    "대상": "one shallow rectangular wooden seedling nursery tray with six empty chunky compartments in a two by three grid, thick rim and low stout feet, no plants or soil",
+    "방향": "Front is the long side with three compartments behind it; right side is short end with two compartments.",
+    "폴더": "B06_밭관리시설_모종상자"
+  },
+  {
+    "번호": 33,
+    "시설ID": "B07",
+    "시설": "공통밭",
+    "소품": "농사용갈퀴",
+    "대상": "one ordinary rustic wooden garden rake used for smoothing soil, a long sturdy wooden handle connected to one short transverse wooden head with exactly five thick short blunt wooden teeth",
+    "방향": "Stand upright: handle up, rake head below. Front sees all five teeth spread left to right, right side sees narrow end of rake head with teeth overlapping.",
+    "폴더": "B07_공통밭_농사용갈퀴"
+  },
+  {
+    "번호": 34,
+    "시설ID": "B08",
+    "시설": "제빵소",
+    "소품": "둥근빵",
+    "대상": "one round rustic golden brown bread loaf with exactly three wide shallow parallel scoring cuts across the domed top, broad faceted stylized crust, no plate or crumbs",
+    "방향": "Bread rests flat. Front sees the loaf side, scoring lines run toward camera; right side rotated 90 degrees.",
+    "폴더": "B08_제빵소_둥근빵"
+  },
+  {
+    "번호": 35,
+    "시설ID": "B09",
+    "시설": "창고",
+    "소품": "밧줄뭉치",
+    "대상": "one neatly coiled thick natural hemp rope bundle lying flat, stacked broad circular loops with a single short loose end resting beside the coil, no extra ties or objects",
+    "방향": "Rope lies flat. Front has loose end pointing toward camera; right side loose end points viewer left; rear loose end points away.",
+    "폴더": "B09_창고_밧줄뭉치"
+  },
+  {
+    "번호": 36,
+    "시설ID": "B10",
+    "시설": "화과자가게",
+    "소품": "삼색경단",
+    "대상": "one single bamboo skewer carrying exactly three round dango dumplings, pale pink then cream then muted sage green from top to bottom, exposed short bamboo handle below, no plate",
+    "방향": "Skewer held vertically in all views, pink top cream middle green bottom, bamboo handle below. Rotate around vertical shaft.",
+    "폴더": "B10_화과자가게_삼색경단"
+  },
+  {
+    "번호": 37,
+    "시설ID": "B11",
+    "시설": "공방",
+    "소품": "손풀무",
+    "대상": "one small traditional Japanese wooden box bellows, rectangular stout wooden box, a single sliding wooden plunger handle projecting from one short end, short dark iron air nozzle on one long side near base, no fire or furnace",
+    "방향": "Front is long box wall with air nozzle, rear plain long wall, right side the short end with sliding handle.",
+    "폴더": "B11_공방_손풀무"
+  },
+  {
+    "번호": 38,
+    "시설ID": "B12",
+    "시설": "찻집겸여관",
+    "소품": "찻잔",
+    "대상": "one small handleless Japanese yunomi tea cup, muted sage green glazed ceramic, thick rounded lip, gently tapering body and low unglazed ochre foot ring, empty interior, no saucer or writing",
+    "방향": "Cup upright. Front is the designated ceramic face; rotate around vertical center for side and rear; preserve rim and foot.",
+    "폴더": "B12_찻집겸여관_찻잔"
+  },
+  {
+    "번호": 39,
+    "시설ID": "B13",
+    "시설": "차밭",
+    "소품": "찻잎선별대",
+    "대상": "one low Japanese wooden tea leaf sorting table with a shallow rectangular inset tray top, raised rim on three sides and low open access edge on front, four short stout legs and simple stretcher, empty",
+    "방향": "Front is the low open tray access edge, rear has taller continuous rim, right side is the short end.",
+    "폴더": "B13_차밭_찻잎선별대"
+  }
+]

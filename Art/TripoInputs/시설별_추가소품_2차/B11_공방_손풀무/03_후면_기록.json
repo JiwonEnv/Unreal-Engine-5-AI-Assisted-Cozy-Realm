@@ -1,0 +1,13 @@
+{
+  "번호": 37,
+  "시설ID": "B11",
+  "시설": "공방",
+  "소품": "손풀무",
+  "대상": "one small traditional Japanese wooden box bellows, rectangular stout wooden box, a single sliding wooden plunger handle projecting from one short end, short dark iron air nozzle on one long side near base, no fire or furnace",
+  "방향": "Front is long box wall with air nozzle, rear plain long wall, right side the short end with sliding handle.",
+  "폴더": "B11_공방_손풀무",
+  "시점": "03_후면",
+  "기준": "E:/Project/UE5_CozyRealm/Art/TripoInputs/시설별_추가소품_2차/B11_공방_손풀무/00_원본.png",
+  "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-ba774cab-057e-4dcf-a12c-63b39fe551bc.png",
+  "프롬프트": "Use case: precise-object-edit. Input is exact design identity reference of ONE CozyRealm game prop. Render this SAME physical object from BACK orthographic elevation, camera rotated exactly 180 degrees around the upright axis from the front. Front is the SHORT END with the iron air nozzle pointing toward camera; right side is the broad cloth bellows panel with plunger handle projecting horizontally to viewer right. Rear is the opposite short end with the wooden plunger, NO second nozzle. Follow actual reference design. Change ONLY camera angle, no redesign. Preserve exact reference dimensions, part count, color, material, lid/handle/teeth/compartment count, thickness, joints, wear and silhouette. Camera level at object mid-height, no three-quarter view, no perspective, no downward tilt. For side view the original broad front must recede into screen and only side thickness/profile is visible. Whole object centered with 12% empty border, same upright direction, plain light gray backdrop, neutral soft studio light, faint shadow. Keep stylized broad planes and thick bevels. No text, labels, grid, dimensions, collage, added props or alternate views. Hidden surfaces inferred conservatively. Exactly ONE requested view."
+}

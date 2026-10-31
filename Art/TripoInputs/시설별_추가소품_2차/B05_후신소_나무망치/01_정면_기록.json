@@ -1,0 +1,13 @@
+{
+  "번호": 31,
+  "시설ID": "B05",
+  "시설": "후신소",
+  "소품": "나무망치",
+  "대상": "one traditional woodworking wooden mallet, chunky rectangular cedar head with thick chamfered corners and a short straight central wooden handle, no metal",
+  "방향": "Handle points vertically downward in all views. Front sees the long broad face of the mallet head; right side sees the short striking end.",
+  "폴더": "B05_후신소_나무망치",
+  "시점": "01_정면",
+  "기준": "E:/Project/UE5_CozyRealm/Art/TripoInputs/시설별_추가소품_2차/B05_후신소_나무망치/00_원본.png",
+  "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-d7c09ed3-4797-45b8-8fe6-a61cb748870f.png",
+  "프롬프트": "Use case: precise-object-edit. Input is exact design identity reference of ONE CozyRealm game prop. Render this SAME physical object from FRONT orthographic elevation. Handle points vertically downward in all views. Front sees the long broad face of the mallet head; right side sees the short striking end. Change ONLY camera angle, no redesign. Preserve exact reference dimensions, part count, color, material, lid/handle/teeth/compartment count, thickness, joints, wear and silhouette. Camera level at object mid-height, no three-quarter view, no perspective, no downward tilt. For side view the original broad front must recede into screen and only side thickness/profile is visible. Whole object centered with 12% empty border, same upright direction, plain light gray backdrop, neutral soft studio light, faint shadow. Keep stylized broad planes and thick bevels. No text, labels, grid, dimensions, collage, added props or alternate views. Hidden surfaces inferred conservatively. Exactly ONE requested view."
+}

@@ -1,0 +1,13 @@
+{
+  "번호": 39,
+  "시설ID": "B13",
+  "시설": "차밭",
+  "소품": "찻잎선별대",
+  "대상": "one low Japanese wooden tea leaf sorting table with a shallow rectangular inset tray top, raised rim on three sides and low open access edge on front, four short stout legs and simple stretcher, empty",
+  "방향": "Front is the low open tray access edge, rear has taller continuous rim, right side is the short end.",
+  "폴더": "B13_차밭_찻잎선별대",
+  "시점": "03_후면",
+  "기준": "E:/Project/UE5_CozyRealm/Art/TripoInputs/시설별_추가소품_2차/B13_차밭_찻잎선별대/00_원본.png",
+  "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-869815fc-ecae-4779-8a72-07225cb74694.png",
+  "프롬프트": "Use case: precise-object-edit. Input is exact design identity reference of ONE CozyRealm game prop. Render this SAME physical object from BACK orthographic elevation, camera rotated exactly 180 degrees around the upright axis from the front. Front is the low open tray access edge, rear has taller continuous rim, right side is the short end. Change ONLY camera angle, no redesign. Preserve exact reference dimensions, part count, color, material, lid/handle/teeth/compartment count, thickness, joints, wear and silhouette. Camera level at object mid-height, no three-quarter view, no perspective, no downward tilt. For side view the original broad front must recede into screen and only side thickness/profile is visible. Whole object centered with 12% empty border, same upright direction, plain light gray backdrop, neutral soft studio light, faint shadow. Keep stylized broad planes and thick bevels. No text, labels, grid, dimensions, collage, added props or alternate views. Hidden surfaces inferred conservatively. Exactly ONE requested view."
+}

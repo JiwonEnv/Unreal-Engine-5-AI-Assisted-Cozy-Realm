@@ -1,0 +1,14 @@
+{
+  "번호": 34,
+  "시설ID": "B08",
+  "시설": "제빵소",
+  "소품": "둥근빵",
+  "대상": "one round rustic golden brown bread loaf with exactly three wide shallow parallel scoring cuts across the domed top, broad faceted stylized crust, no plate or crumbs",
+  "방향": "Bread rests flat. Front sees the loaf side, scoring lines run toward camera; right side rotated 90 degrees.",
+  "폴더": "B08_제빵소_둥근빵",
+  "시점": "02_측면",
+  "기준": "E:/Project/UE5_CozyRealm/Art/TripoInputs/시설별_추가소품_2차/B08_제빵소_둥근빵/00_원본.png",
+  "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-49335b2b-000b-4610-8cc1-0357bdf0793f.png",
+  "프롬프트": "Use case: precise-object-edit. Same exact single prop from reference, preserve materials, proportions and ALL parts. Change camera only. RIGHT SIDE view rotated EXACTLY 90 degrees from front. Three parallel top scoring grooves must now run LEFT TO RIGHT across image, NOT toward camera. Keep round loaf flat on its base, preserve three scoring cuts and broad stylized crust. Strict orthographic, level horizontal camera, full object centered, neutral light gray background, soft studio lighting, no text or collage. No added objects.",
+  "보완": "시점 방향 보완"
+}

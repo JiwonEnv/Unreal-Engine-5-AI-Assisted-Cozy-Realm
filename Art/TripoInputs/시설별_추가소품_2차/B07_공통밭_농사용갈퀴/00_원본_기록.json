@@ -1,0 +1,12 @@
+{
+  "번호": 33,
+  "시설ID": "B07",
+  "시설": "공통밭",
+  "소품": "농사용갈퀴",
+  "대상": "one ordinary rustic wooden garden rake used for smoothing soil, a long sturdy wooden handle connected to one short transverse wooden head with exactly five thick short blunt wooden teeth",
+  "방향": "Stand upright: handle up, rake head below. Front sees all five teeth spread left to right, right side sees narrow end of rake head with teeth overlapping.",
+  "폴더": "B07_공통밭_농사용갈퀴",
+  "시점": "00_원본",
+  "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-30c94227-e3a0-4e4b-a16d-99cf438b7959.png",
+  "프롬프트": "Use case: stylized-concept. CozyRealm Japanese cozy village single game prop input image for Tripo. Subject: one ordinary rustic wooden garden rake used for smoothing soil, a long sturdy wooden handle connected to one short transverse wooden head with exactly five thick short blunt wooden teeth. ONE object only, entire object visible, centered square composition with 12% margin. Clean readable three-quarter view, plain light gray background, soft neutral studio lighting, faint contact shadow. Stylized sculpted forms: broad continuous clean planes, thick selectively chamfered edges, only a few long deliberate wood grooves, sparse purposeful dents; warm honey cedar wood, muted cream cloth, warm gray stone with restrained ochre/lavender patches, muted sage ceramic and dark iron where applicable. Subtle curvature highlights, no noisy tiny scratches, no microtexture, no photorealistic wear. Solid readable thickness and coherent joins. No text, watermark, labels, scenes, extra objects, tools, people, ground platform, collage or alternate views. Preserve exactly the specified number of parts."
+}
