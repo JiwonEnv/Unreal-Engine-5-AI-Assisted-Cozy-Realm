@@ -1,0 +1,8 @@
+{
+  "시설": "밭관리시설",
+  "소품": "호미",
+  "시점": "02_측면",
+  "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-563d56ed-f912-4440-acb6-362421d7f401.png",
+  "기준": "E:/Project/UE5_CozyRealm/Art/TripoInputs/시설별_추가소품_2026-10-31/B06_밭관리시설_호미.png",
+  "프롬프트": "Use case: precise-object-edit. This reference depicts an ordinary small hand hoe used only for loosening soil and weeding in a cozy farming game. Create a single RIGHT SIDE orthographic view of exactly the same gardening implement. Camera horizontal, perpendicular to its broad front face; show the side thickness and the existing curved wooden grip. Keep all existing parts, proportions, warm wooden color and dull iron surface, do not redesign or add anything. Full object centered with generous margin on a light gray studio background. No people, action, text, labels, collage or extra objects. Only a neutral product reference of a farming tool."
+}

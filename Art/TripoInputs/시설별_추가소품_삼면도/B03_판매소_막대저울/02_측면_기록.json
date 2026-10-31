@@ -1,0 +1,9 @@
+{
+  "시설": "판매소",
+  "소품": "막대저울",
+  "시점": "02_측면",
+  "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-b1cfd482-e772-4187-95e5-fb38d68b8cab.png",
+  "기준": "E:/Project/UE5_CozyRealm/Art/TripoInputs/시설별_추가소품_2026-10-31/B03_판매소_막대저울.png",
+  "프롬프트": "Use case: precise-object-edit. Same exact physical prop in the reference, camera change only, strict orthographic RIGHT SIDE view. Rotate the reference object EXACTLY 90 degrees to show the NARROW END-ON side of the balance scale. The long horizontal beam must point INTO the screen, NOT run left to right. The central upright post should occlude much of the beam. Hanging pan and counterweight overlap in projection. Show the short depth of the foot platform. NO broadside silhouette. Preserve exact material, part count, thickness, joints, proportions and CozyRealm stylized wood/metal palette. Complete object centered, generous margin, plain light gray background, neutral studio light, no text, collage, added objects or three-quarter view.",
+  "정정": "직교 측면 방향 보완"
+}

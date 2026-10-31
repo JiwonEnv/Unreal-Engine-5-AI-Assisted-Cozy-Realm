@@ -1,0 +1,9 @@
+{
+  "시설": "공통밭",
+  "소품": "물뿌리개",
+  "시점": "02_측면",
+  "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-1e18a041-5494-4c48-ad7b-cb8fe113f41f.png",
+  "기준": "E:/Project/UE5_CozyRealm/Art/TripoInputs/시설별_추가소품_2026-10-31/B07_공통밭_물뿌리개.png",
+  "프롬프트": "Use case: precise-object-edit. Same exact physical prop in the reference, camera change only, strict orthographic RIGHT SIDE view. Show the watering can in EXACT SIDE PROFILE, spout extends HORIZONTALLY TO VIEWER LEFT, body on right. See the SIDE LENGTH of the bamboo spout, NOT directly into the perforated rose. The handle arch is seen end-on as a narrow vertical strip over body. Keep the same object, all details, no redesign. Preserve exact material, part count, thickness, joints, proportions and CozyRealm stylized wood/metal palette. Complete object centered, generous margin, plain light gray background, neutral studio light, no text, collage, added objects or three-quarter view.",
+  "정정": "직교 측면 방향 보완"
+}

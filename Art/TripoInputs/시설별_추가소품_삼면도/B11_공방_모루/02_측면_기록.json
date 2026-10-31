@@ -1,0 +1,9 @@
+{
+  "시설": "공방",
+  "소품": "모루",
+  "시점": "02_측면",
+  "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-e154609a-9a65-405b-ad86-712aba33fa90.png",
+  "기준": "E:/Project/UE5_CozyRealm/Art/TripoInputs/시설별_추가소품_2026-10-31/B11_공방_모루.png",
+  "프롬프트": "Use case: precise-object-edit. Same exact physical prop in the reference, camera change only, strict orthographic RIGHT SIDE view. Rotate reference EXACTLY 90 degrees to show the NARROW end of the anvil, seen along its long horn-to-tail axis. Camera at flat tail end looking toward horn. The horn must point AWAY FROM camera and be occluded, NOT project left or right. Top face appears as narrow thick rectangle. Keep round stump and iron hoop. Preserve exact material, part count, thickness, joints, proportions and CozyRealm stylized wood/metal palette. Complete object centered, generous margin, plain light gray background, neutral studio light, no text, collage, added objects or three-quarter view.",
+  "정정": "직교 측면 방향 보완"
+}

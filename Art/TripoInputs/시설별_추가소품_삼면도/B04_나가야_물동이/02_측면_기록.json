@@ -1,0 +1,10 @@
+{
+  "시설": "나가야",
+  "소품": "물동이",
+  "폴더": "B04_나가야_물동이",
+  "시점": "02_측면",
+  "파일": "E:/Project/UE5_CozyRealm/Art/TripoInputs/시설별_추가소품_삼면도/B04_나가야_물동이/02_측면.png",
+  "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-c9b8b4e1-cfc9-4077-b0d9-fc3fc07902c9.png",
+  "기준": "E:/Project/UE5_CozyRealm/Art/TripoInputs/시설별_추가소품_2026-10-31/B04_나가야_물동이.png",
+  "프롬프트": "Use case: precise-object-edit. Input image is the EXACT design identity reference, not a loose style reference. Create ONE separate square image showing this SAME physical prop from RIGHT SIDE elevation, camera yaw 90 degrees from declared front. Front shows the broad arch of the upright bucket handle. Change camera angle ONLY. Preserve exact shape, proportions, part count, joints, handles, straps, openings, thickness, material palette and sculpt detail of the reference; do not redesign, decorate, simplify or add objects. Infer only hidden surfaces conservatively. Strict orthographic elevation with horizontal camera at object midheight, no perspective, no three-quarter angle, no downward tilt. Single complete prop centered with 12% border on every side, same object up direction, plain light gray background, soft neutral studio lighting and faint contact shadow. Match CozyRealm stylized broad planes, thick bevels and warm wood/cream cloth/muted material colors from reference. No labels, text, grid, dimensions, panels, collage or other views. This output must contain ONLY the requested 02_측면 view."
+}

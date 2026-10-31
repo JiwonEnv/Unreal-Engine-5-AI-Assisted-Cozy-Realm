@@ -1,0 +1,9 @@
+{
+  "시설": "제빵소",
+  "소품": "반죽통",
+  "시점": "02_측면",
+  "원본": "C:\\Users\\ljw13\\.codex\\generated_images\\01a15423-c421-7310-861a-3344f52033ea\\exec-7006e16b-b2d1-4122-b4be-7f59d7892c7a.png",
+  "기준": "E:/Project/UE5_CozyRealm/Art/TripoInputs/시설별_추가소품_2026-10-31/B08_제빵소_반죽통.png",
+  "프롬프트": "Use case: precise-object-edit. Same exact physical prop in the reference, camera change only, strict orthographic RIGHT SIDE view. Show the SHORT END of the long trough, end-on. Camera looks ALONG the long axis of the trough. The narrow rounded END WALL is centered, not the long broad side. Long axis recedes into screen and is hidden by orthographic projection. Two near feet visible beneath narrow end; far feet overlap. Preserve exact material, part count, thickness, joints, proportions and CozyRealm stylized wood/metal palette. Complete object centered, generous margin, plain light gray background, neutral studio light, no text, collage, added objects or three-quarter view.",
+  "정정": "직교 측면 방향 보완"
+}
